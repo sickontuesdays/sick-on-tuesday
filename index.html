@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>S!ck on Tuesdays — Destiny 2 Tools Hub</title>
+  <meta name="description" content="Landing page for S!ck on Tuesdays with quick links to trusted Destiny 2 tools." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0b0d10; --panel:#12161b; --panel2:#161b22; --muted:#95a2b3;
+      --text:#e7edf5; --brand:#7dd3fc; --accent:#60a5fa; --ring:#1f2937;
+      --card:#0f1318; --cardHover:#131922; --border:#1e2630;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif;
+      color:var(--text); background:radial-gradient(1200px 800px at 80% -20%, #0f1a26 0%, #0b0d10 60%),
+             linear-gradient(180deg,#0b0d10 0%, #0a0c0f 100%);
+    }
+    .wrap{max-width:1100px; margin:0 auto; padding:32px 20px 56px}
+    header{
+      display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:28px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:14px; text-decoration:none; color:var(--text);
+    }
+    .badge{font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+    .title{font-size:clamp(22px,3vw,28px); font-weight:800; letter-spacing:.01em}
+    .subtitle{color:var(--muted); margin-top:6px; max-width:70ch}
+    .ctaRow{display:flex; gap:12px; flex-wrap:wrap; margin-top:18px}
+    .btn{
+      appearance:none; border:1px solid var(--border); background:linear-gradient(180deg,var(--panel) 0%, var(--panel2) 100%);
+      color:var(--text); padding:10px 14px; border-radius:10px; text-decoration:none; font-weight:600;
+      transition:transform .08s ease, background .2s ease, border-color .2s ease;
+    }
+    .btn:hover{transform:translateY(-1px); border-color:#2b3644}
+    .grid{
+      display:grid; grid-template-columns:repeat(1,minmax(0,1fr)); gap:14px; margin-top:26px;
+    }
+    @media (min-width:640px){ .grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
+    @media (min-width:960px){ .grid{grid-template-columns:repeat(3,minmax(0,1fr));} }
+    .card{
+      background:linear-gradient(180deg,var(--card) 0%, var(--panel2) 160%);
+      border:1px solid var(--border); border-radius:14px; padding:16px; position:relative; overflow:hidden;
+      transition:transform .08s ease, border-color .2s ease, background .25s ease;
+    }
+    .card:hover{transform:translateY(-2px); border-color:#2b3644; background:var(--cardHover)}
+    .card h3{margin:4px 0 6px; font-size:17px}
+    .card p{margin:0; color:var(--muted); font-size:14px; line-height:1.5}
+    .pill{
+      position:absolute; top:12px; right:12px; font-size:11px; color:#0b0d10; background:linear-gradient(180deg,var(--brand),var(--accent));
+      padding:4px 8px; border-radius:999px; font-weight:700; letter-spacing:.06em;
+    }
+    .footer{
+      margin-top:36px; padding-top:18px; border-top:1px solid var(--border); color:var(--muted); font-size:13px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    }
+    .links{display:flex; gap:14px; flex-wrap:wrap}
+    .links a{color:var(--muted); text-decoration:none; border-bottom:1px dotted transparent}
+    .links a:hover{color:var(--text); border-bottom-color:var(--text)}
+    .ghostLogo{
+      width:40px; height:40px; border-radius:10px; background:linear-gradient(180deg,#1b2530,#0f1720);
+      border:1px solid var(--border); display:grid; place-items:center; color:var(--brand); font-weight:800;
+      box-shadow:0 0 0 1px var(--ring) inset;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="brand" href="/" aria-label="S!ck on Tuesdays home">
+        <!-- TODO: swap this block with your PNG/SVG logo when you re-host images -->
+        <div class="ghostLogo">S!</div>
+        <div>
+          <div class="badge">Casting Destiny</div>
+          <div class="title">S!ck on Tuesdays</div>
+        </div>
+      </a>
+      <div class="ctaRow">
+        <!-- Add your socials/email as needed -->
+        <a class="btn" href="mailto:sickontuesdays@gmail.com">Contact</a>
+        <a class="btn" href="https://www.bungie.net/" target="_blank" rel="noopener">Bungie</a>
+      </div>
+    </header>
+
+    <section>
+      <p class="subtitle">
+        Site coming soon. Until then, here’s a curated list of trusted <strong>Destiny 2</strong> tools we use regularly.
+        Use at your own discretion.
+      </p>
+
+      <div class="grid">
+        <!-- Each card: title + short blurb + external link. Add/trim freely. -->
+        <a class="card" href="https://app.destinyitemmanager.com/" target="_blank" rel="noopener">
+          <span class="pill">Tool</span>
+          <h3>Destiny Inventory Manager (DIM)</h3>
+          <p>Manage inventory, move gear, create builds, and check stats.</p>
+        </a>
+
+        <a class="card" href="https://www.light.gg/" target="_blank" rel="noopener">
+          <span class="pill">Tool</span>
+          <h3>light.gg</h3>
+          <p>Perk rolls, collections, and community insights.</p>
+        </a>
+
+        <a class="card" href="https://engram.blue/" target="_blank" rel="noopener">
+          <span class="pill">Tool</span>
+          <h3>Engram.blue</h3>
+          <p>Pattern progress tracking for crafted weapons.</p>
+        </a>
+
+        <a class="card" href="https://destinytrialsreport.com/" target="_blank" rel="noopener">
+          <span class="pill">PVP</span>
+          <h3>Trials Report</h3>
+          <p>Player stats and Trials activity analytics.</p>
+        </a>
+
+        <a class="card" href="https://d2armorpicker.com/" target="_blank" rel="noopener">
+          <span class="pill">Builds</span>
+          <h3>D2 Armor Picker</h3>
+          <p>Optimize armor stat distributions for your builds.</p>
+        </a>
+
+        <a class="card" href="https://www.todayindestiny.com/" target="_blank" rel="noopener">
+          <span class="pill">Daily</span>
+          <h3>Today in Destiny</h3>
+          <p>What’s on today: rotations, vendors, challenges, and more.</p>
+        </a>
+
+        <a class="card" href="https://d2foundry.gg/" target="_blank" rel="noopener">
+          <span class="pill">Weapons</span>
+          <h3>D2 Foundry</h3>
+          <p>Weapon breakdowns with rollable perks and TTK calculators.</p>
+        </a>
+
+        <a class="card" href="https://mobalytics.gg/destiny-2" target="_blank" rel="noopener">
+          <span class="pill">Builds</span>
+          <h3>Mobalytics</h3>
+          <p>Community buildcrafting and meta tools.</p>
+        </a>
+
+        <a class="card" href="https://d2checkpoint.com/" target="_blank" rel="noopener">
+          <span class="pill">Raids</span>
+          <h3>D2 Checkpoint</h3>
+          <p>Join a bot for needed encounter checkpoints.</p>
+        </a>
+
+        <a class="card" href="https://lowlidev.com.au/destiny/maps" target="_blank" rel="noopener">
+          <span class="pill">Maps</span>
+          <h3>Destiny 2 Maps</h3>
+          <p>Interactive maps for collectibles and activities.</p>
+        </a>
+
+        <a class="card" href="https://docs.google.com/spreadsheets/d/1u_PYpgyGBcJqj9k6s9m1S7n8q7U4dRkyZxIEGq5f7i8" target="_blank" rel="noopener">
+          <span class="pill">Data</span>
+          <h3>Aegis Spreadsheets</h3>
+          <p>Boss and weapon damage analytics. (Community sheet)</p>
+        </a>
+
+        <a class="card" href="https://destinyemblemcollector.com/" target="_blank" rel="noopener">
+          <span class="pill">Collect</span>
+          <h3>Emblem Collector</h3>
+          <p>Browse emblems and learn how to obtain them.</p>
+        </a>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>&copy; <span id="y"></span> S!ck on Tuesdays</div>
+      <nav class="links">
+        <!-- Replace these with your actual social links -->
+        <!-- <a href="https://youtube.com/..." target="_blank" rel="noopener">YouTube</a>
+        <a href="https://twitch.tv/..." target="_blank" rel="noopener">Twitch</a> -->
+        <a href="mailto:sickontuesdays@gmail.com">sickontuesdays@gmail.com</a>
+      </nav>
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById('y').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
