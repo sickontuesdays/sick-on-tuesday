@@ -18,8 +18,8 @@
     --radius:14px; --shadow:0 6px 24px rgba(2,10,20,.35);
 
     /* Grid unit sizing (change these to scale everything) */
-    --colW: 90px;  /* base column width */
-    --rowH: 90px;  /* base row height */
+    --colW: 90px;   /* base column width */
+    --rowH: 90px;   /* base row height */
   }
   @media (max-width:1200px){ :root{ --colW:80px; --rowH:84px; } }
   @media (max-width:980px){ :root{ --colW:72px; --rowH:80px; } }
@@ -45,7 +45,7 @@
   }
 
   .wrap{
-    width:min(1800px, 80vw);  /* ← uses ~80% browser width */
+    width:min(1800px, 80vw);                 /* ← uses ~80% browser width */
     margin:20px auto 60px;
   }
 
@@ -58,10 +58,7 @@
   .status{color:var(--muted); font-size:14px}
   .status .dot{display:inline-block; width:9px; height:9px; border-radius:999px; background:var(--good); box-shadow:0 0 12px var(--good); margin-right:8px}
 
-  /* ==== GRID LAYOUT ==== 
-     12 columns x N rows. We place modules in explicit positions to match the reference layout.
-     Tweak only the grid-column / grid-row on the ".pos-*" classes to match your image exactly.
-  */
+  /* ==== GRID LAYOUT ==== */
   .grid{
     display:grid;
     grid-template-columns: repeat(12, minmax(var(--colW), 1fr));
@@ -69,7 +66,7 @@
     gap:14px;
   }
 
-  /* module base */
+  /* Module base */
   .mod{
     position:relative;
     background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 140%);
@@ -99,12 +96,14 @@
   .t{width:100%; border-collapse:collapse; margin-top:8px; font-size:14px}
   .t th,.t td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left}
   .tag{display:inline-block; padding:2px 8px; border:1px solid var(--border); border-radius:999px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+  a{color:var(--arc); text-decoration:none}
+  a:hover{text-decoration:underline}
 
-  /* ---- EXACT INITIAL POSITIONS (edit these to match your screenshot) ---- */
-  /* hero (matches “pond5”-sized main box) */
+  /* ---- EXACT INITIAL POSITIONS (edit these to match your screenshot precisely) ---- */
+  /* hero (matches “Pond5”-sized main box) */
   .pos-hero      { grid-column: 1 / span 8;  grid-row: 1 / span 6; }
 
-  /* right-side stack of medium/small tiles */
+  /* right-side stack of medium tiles */
   .pos-tools     { grid-column: 9 / span 4;  grid-row: 1 / span 2; }
   .pos-rotators  { grid-column: 9 / span 4;  grid-row: 3 / span 2; }
   .pos-vendors   { grid-column: 9 / span 4;  grid-row: 5 / span 2; }
@@ -114,22 +113,27 @@
   .pos-mods      { grid-column: 5 / span 4;  grid-row: 7 / span 3; }
   .pos-clan      { grid-column: 9 / span 4;  grid-row: 7 / span 3; } /* aligns with right stack */
 
-  /* circles tile (tuck it near hero bottom-left) */
+  /* circles tile (small) */
   .pos-circles   { grid-column: 1 / span 4;  grid-row: 10 / span 2; }
 
   /* news tile (wide) */
   .pos-intel     { grid-column: 5 / span 8;  grid-row: 10 / span 2; }
 
   /* ==== EXPANSION BEHAVIOR ==== */
+  /* Expanded sizes */
   .mod.expanded-main    { grid-column: 1 / span 8; grid-row: 1 / span 6; }  /* grows to hero footprint */
   .mod.expanded-quarter { grid-column: 1 / span 4; grid-row: 1 / span 3; }  /* 1/4 of hero */
 
-  /* When any expanded, keep others visible but compact */
+  /* Draw expanded tile on top */
+  .mod.expanded-main,
+  .mod.expanded-quarter{ z-index:10; }
+
+  /* When something is expanded, allow auto placement and compact the others */
+  .grid.has-expanded { grid-auto-flow: dense; }
+
   .grid.has-expanded .mod:not(.expanded-main):not(.expanded-quarter){
-    /* shrink footprint but keep readable */
-    grid-row-end: span 1;
-    /* We don’t collapse columns here to zero so they remain visible.
-       They’ll hold their original span unless screen is tight. */
+    grid-column: auto / span 2;    /* compact width */
+    grid-row: auto / span 1;       /* compact height */
     padding:12px;
   }
   .grid.has-expanded .mod:not(.expanded-main):not(.expanded-quarter) .summary{ font-size:13px }
@@ -148,9 +152,9 @@
   .circle.warn{ outline:2px solid rgba(245,158,11,.35) }
   .circle.bad{ outline: 2px solid rgba(251,113,133,.35) }
 
-  /* Responsive fallback: on narrow screens, we let the grid stack but keep 80% width aim */
+  /* Responsive fallback: on narrow screens, let the grid stack while keeping wide expansions */
   @media (max-width: 880px){
-    .wrap{ width: min(1000px, 94vw); }             /* use more of the viewport on small screens */
+    .wrap{ width: min(1000px, 94vw); }                 /* use more of the viewport on small screens */
     .grid{ grid-template-columns: repeat(6, minmax(70px, 1fr)); }
     .pos-hero     { grid-column: 1 / span 6; grid-row: 1 / span 6; }
     .pos-tools    { grid-column: 1 / span 3; grid-row: 7 / span 2; }
@@ -304,22 +308,51 @@
   </div>
 
 <script>
-  // Expansion logic (button in top-right of each box)
-  (function(){
-    const grid = document.getElementById('grid');
-    const modules = Array.from(document.querySelectorAll('.mod'));
+/* Expand/Collapse logic — keeps other tiles visible by reflowing them around the expanded one */
+document.addEventListener('DOMContentLoaded', () => {
+  const grid = document.getElementById('grid');
+  const modules = [...document.querySelectorAll('.mod')];
 
-    function collapseAll(){
-      modules.forEach(m => {
-        m.classList.remove('expanded-main','expanded-quarter');
-        m.querySelector('.toggle').setAttribute('aria-expanded','false');
-        m.querySelector('.toggle').textContent = 'Expand';
-        m.querySelector('.details').style.display = 'none';
-        m.querySelector('.summary').style.display = '';
-      });
-      grid.classList.remove('has-expanded');
-    }
-    function expand(mod){
-      const mode = mod.dataset.expand || 'main';
-      // already expanded? collapse back
-      if (mod.classList.contains('expanded-main') || mod.classList.contains(
+  function collapseAll() {
+    grid.classList.remove('has-expanded');
+    modules.forEach(m => {
+      m.classList.remove('expanded-main','expanded-quarter');
+      const btn = m.querySelector('.toggle');
+      if (btn) { btn.setAttribute('aria-expanded','false'); btn.textContent = 'Expand'; }
+      const s = m.querySelector('.summary'); if (s) s.style.display = '';
+      const d = m.querySelector('.details'); if (d) d.style.display = 'none';
+    });
+  }
+
+  function expand(mod) {
+    const cls = (mod.dataset.expand === 'quarter') ? 'expanded-quarter' : 'expanded-main';
+    const already = mod.classList.contains('expanded-main') || mod.classList.contains('expanded-quarter');
+    if (already) { collapseAll(); return; }
+
+    collapseAll();
+    mod.classList.add(cls);
+    grid.classList.add('has-expanded');
+
+    const s = mod.querySelector('.summary'); if (s) s.style.display = 'none';
+    const d = mod.querySelector('.details'); if (d) d.style.display = 'block';
+
+    const btn = mod.querySelector('.toggle');
+    if (btn) { btn.setAttribute('aria-expanded','true'); btn.textContent = 'Collapse'; }
+  }
+
+  // One listener for all tiles
+  grid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.toggle');
+    if (!btn) return;
+    const mod = btn.closest('.mod');
+    if (mod) expand(mod);
+  });
+
+  // Click outside to collapse (optional)
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.mod')) collapseAll();
+  });
+});
+</script>
+</body>
+</html>
