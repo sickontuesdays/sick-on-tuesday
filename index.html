@@ -3,24 +3,28 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>S!ck on Tuesdays — Command Grid (Draggable/Resizable)</title>
-<meta name="description" content="Destiny 2 command-center grid with drag and resize, collision handling." />
+<title>S!ck on Tuesdays — Command Grid (Draggable/Resizable + Lock, Hide, 5 Layout Tabs)</title>
+<meta name="description" content="Destiny 2 command-center grid with drag/resize, lock toggle, hide/unhide, and 5 per-user layouts." />
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+
 <style>
   :root{
-    /* Destiny-ish palette */
+    /* Palette */
     --bg:#0a0e13; --panel:#0f1520; --panel2:#121a28;
     --ink:#e7eefc; --muted:#94a7c4; --border:#1f2b3e;
-    --arc:#7dd3fc; --arc2:#60a5fa; --good:#34d399;
-    --radius:14px; --shadow:0 6px 24px rgba(2,10,20,.35);
+    --arc:#7dd3fc; --good:#34d399; --warn:#f59e0b; --bad:#fb7185;
 
-    /* GRID TUNING */
-    --cols: 12;            /* number of columns */
-    --colW: 90px;          /* base column width */
-    --rowH: 90px;          /* base row height */
-    --gap: 14px;           /* space between cells/cards */
+    /* Grid tuning */
+    --cols: 12;      /* number of columns */
+    --colW: 90px;    /* base column width */
+    --rowH: 90px;    /* base row height */
+    --gap: 14px;     /* gutters */
+
+    /* Wrap width (for placing left/right docks in the margins) */
+    --wrapW: 80vw;
   }
   @media (max-width: 1300px){ :root{ --colW:84px; --rowH:86px; } }
   @media (max-width: 1100px){ :root{ --colW:78px; --rowH:80px; } }
@@ -45,20 +49,36 @@
     mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
   }
 
-  .wrap{ width:min(2000px, 80vw); margin:20px auto 60px; }
+  .wrap{ width:min(2000px, var(--wrapW)); margin:20px auto 60px; }
 
   header{
-    display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:14px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px;
   }
   .brand{display:flex; align-items:baseline; gap:12px}
   .brand h1{margin:0; font-size:28px; font-weight:700; letter-spacing:.04em}
   .brand .badge{color:var(--muted); font-size:13px; letter-spacing:.14em; text-transform:uppercase}
-  .status{color:var(--muted); font-size:14px}
-  .status .dot{display:inline-block; width:9px; height:9px; border-radius:999px; background:var(--good); box-shadow:0 0 12px var(--good); margin-right:8px}
+
+  /* Lock toggle (clickable) */
+  #lockToggle{
+    display:flex; align-items:center; gap:10px;
+    border:1px solid var(--border); border-radius:12px;
+    background:linear-gradient(180deg,#132033,#0e1726);
+    padding:8px 12px; cursor:pointer; user-select:none;
+    font-size:14px; color:var(--ink);
+  }
+  #lockToggle .dot{
+    width:12px; height:12px; border-radius:999px;
+    background:var(--good); box-shadow:0 0 12px var(--good);
+  }
+  body.locked #lockToggle .dot{ background:#9b1c1c; box-shadow:0 0 10px #9b1c1c; }
+  body.locked #lockToggle span.text::after{ content:"Layout Locked"; }
+  #lockToggle span.text::after{ content:"Editing Enabled"; }
+  body.locked .bar{ cursor:default; }
+  body.locked .resize{ display:none; }
 
   /* ===== GRID ===== */
   .grid{
-    position:relative; /* for dragging overlay math */
+    position:relative;
     display:grid;
     grid-template-columns: repeat(var(--cols), minmax(var(--colW), 1fr));
     grid-auto-rows: var(--rowH);
@@ -70,12 +90,12 @@
     position:relative;
     background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 140%);
     border:1px solid var(--border);
-    border-radius:var(--radius);
-    box-shadow:var(--shadow);
+    border-radius:14px;
+    box-shadow:0 6px 24px rgba(2,10,20,.35);
     overflow:hidden;
     user-select:none;
   }
-  .card:focus-within{ outline:2px solid #2a3a52; outline-offset:2px }
+  .card.hide{ display:none !important; }
 
   .bar{
     height:38px; display:flex; align-items:center; justify-content:space-between;
@@ -91,19 +111,66 @@
   a{color:var(--arc); text-decoration:none}
   a:hover{text-decoration:underline}
 
-  /* Resize handle */
   .resize{
     position:absolute; width:16px; height:16px; right:6px; bottom:6px;
     border:1px solid var(--border); border-radius:3px;
     background:linear-gradient(135deg, #0e1726 0%, #132033 100%);
     cursor:nwse-resize;
   }
-
-  /* While dragging/resizing, show a subtle “ghost” */
   .dragging{ opacity:.85; box-shadow:0 10px 26px rgba(0,0,0,.45); }
 
-  /* Utility */
-  .muted{ color:var(--muted) }
+  /* ===== Right controls (unused right margin) ===== */
+  .rightDock{
+    position:fixed; z-index:20;
+    top:86px;
+    right:max(10px, calc((100vw - var(--wrapW)) / 2 - 240px)); /* park inside right margin when available */
+    width:220px;
+  }
+  .controlBox{
+    border:1px solid var(--border); border-radius:12px;
+    background:linear-gradient(180deg,#0f1520,#101a28);
+    box-shadow:0 8px 28px rgba(0,0,0,.35);
+    overflow:hidden;
+  }
+  .controlHeader{
+    padding:10px 12px; font-weight:700; letter-spacing:.06em; cursor:pointer;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .controlHeader:hover{ background:#111b2a; }
+  .caret{ transition: transform .15s ease; }
+  .controlBody{ display:none; max-height:420px; overflow:auto; }
+  .controlBox.open .controlBody{ display:block; }
+  .controlBox.open .caret{ transform: rotate(180deg); }
+  .checkRow{ display:flex; align-items:center; gap:8px; padding:8px 12px; font-size:14px; color:var(--muted) }
+  .checkRow input{ transform: translateY(1px); }
+
+  /* ===== Left tabs (unused left margin) ===== */
+  .leftTabs{
+    position:fixed; z-index:20;
+    top:86px;
+    left:max(10px, calc((100vw - var(--wrapW)) / 2 - 160px)); /* park inside left margin when available */
+    width:140px;
+  }
+  .tabs{
+    border:1px solid var(--border); border-radius:12px; overflow:hidden;
+    background:linear-gradient(180deg,#0f1520,#101a28);
+    box-shadow:0 8px 28px rgba(0,0,0,.35);
+  }
+  .tabBtn{
+    width:100%; text-align:left; padding:10px 12px; border:0; background:transparent; color:var(--ink);
+    cursor:pointer; font-weight:700; letter-spacing:.04em; border-bottom:1px solid var(--border);
+  }
+  .tabBtn:hover{ background:#111b2a; }
+  .tabBtn.active{ background:#122132; }
+  .tabFooter{ padding:8px 12px; color:var(--muted); font-size:12px }
+
+  @media (max-width: 920px){
+    .rightDock, .leftTabs{
+      right: 10px; left: 10px; width: 220px; top: auto; bottom: 12px;
+    }
+    .leftTabs{ bottom: auto; top: 86px; left: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -113,13 +180,16 @@
         <h1>Guardian Command</h1>
         <span class="badge">S!ck on Tuesdays</span>
       </div>
-      <div class="status"><span class="dot"></span>Drag & Resize enabled</div>
+
+      <!-- Lock toggle -->
+      <div id="lockToggle" role="button" tabindex="0" aria-pressed="false" title="Click to lock/unlock layout">
+        <span class="dot" aria-hidden="true"></span>
+        <span class="text"></span>
+      </div>
     </header>
 
     <main class="grid" id="grid">
-      <!-- Initial layout = pattern from earlier (12-col mosaic). 
-           data-x/y = column/row start (0-based)
-           data-w/h = span width/height in grid units -->
+      <!-- Initial layout (pattern before last update). data-* are grid coords (0-based). -->
       <section class="card" data-id="D" data-x="0" data-y="0" data-w="8" data-h="6">
         <div class="bar"><div class="title">Season Overview</div><div class="handle">⋮⋮</div></div>
         <div class="content">Main “hero” area. Other boxes can grow/shrink as you arrange.</div>
@@ -164,7 +234,7 @@
 
       <section class="card" data-id="Telemetry" data-x="0" data-y="9" data-w="4" data-h="2">
         <div class="bar"><div class="title">Telemetry</div><div class="handle">⋮⋮</div></div>
-        <div class="content">Status pings and simple stats (formerly circles).</div>
+        <div class="content">Status pings and simple stats.</div>
         <div class="resize" aria-hidden="true"></div>
       </section>
 
@@ -176,193 +246,243 @@
     </main>
   </div>
 
+  <!-- Right hide/unhide control (in right margin) -->
+  <aside class="rightDock">
+    <div class="controlBox" id="panelControl">
+      <div class="controlHeader">
+        <span>Panels</span>
+        <span class="caret">▾</span>
+      </div>
+      <div class="controlBody" id="panelList"><!-- populated by JS --></div>
+    </div>
+  </aside>
+
+  <!-- Left layout tabs (in left margin) -->
+  <aside class="leftTabs">
+    <div class="tabs" id="layoutTabs">
+      <button class="tabBtn active" data-tab="layout1">Layout 1</button>
+      <button class="tabBtn" data-tab="layout2">Layout 2</button>
+      <button class="tabBtn" data-tab="layout3">Layout 3</button>
+      <button class="tabBtn" data-tab="layout4">Layout 4</button>
+      <button class="tabBtn" data-tab="layout5">Layout 5</button>
+      <div class="tabFooter muted">Each tab saves its own positions, sizes, and visibility.</div>
+    </div>
+  </aside>
+
 <script>
-/* ------------- DRAG/RESIZE GRID ENGINE (no libraries) -------------
-   - Grid is 12 columns (configurable). Each item has x,y,w,h in grid units.
-   - Dragging/resizing snaps to grid.
-   - On drop/resize we resolve collisions by pushing collided items DOWN
-     until there is space (Gridster-style). If no space in that row segment,
-     we scan subsequent rows. The grid grows vertically as needed.
--------------------------------------------------------------------- */
+/* ===================================================================
+   Command Grid Engine + Features:
+   - Drag/Resize with grid snapping and collision push-down
+   - Lock/Unlock via header light
+   - Hide/Unhide each panel via right dropdown
+   - 5 Saved layouts (tabs) persisted in localStorage
+   =================================================================== */
 (function(){
   const gridEl = document.getElementById('grid');
   const COLS = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols')) || 12;
-
   const GAP = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 14;
   const COLW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--colW')) || 90;
   const ROWH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || 90;
 
-  // ---- MODEL ----
+  // ---- Build initial items from DOM ----
   const items = [...gridEl.querySelectorAll('.card')].map(el => ({
-    el,
-    id: el.dataset.id,
+    el, id: el.dataset.id,
     x: +el.dataset.x, y: +el.dataset.y,
     w: +el.dataset.w, h: +el.dataset.h,
-    minW: 1, minH: 1, maxW: COLS
+    hidden: false, minW:1, minH:1, maxW: COLS
   }));
 
+  // Default layout snapshot
+  const DEFAULT_LAYOUT = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
+
+  // ---- State: lock + active layout id ----
+  let isLocked = false;
+  const LKEY = 'sot_layout_';     // per-layout save prefix
+  const ACTIVE_KEY = 'sot_active_layout';
+  let activeLayout = localStorage.getItem(ACTIVE_KEY) || 'layout1';
+
+  // ---- Helpers ----
+  function byId(id){ return items.find(i => i.id === id); }
+
   function applyLayout(){
-    // Set CSS Grid position for each item
     items.forEach(it => {
-      it.el.style.gridColumn = `${it.x + 1} / span ${it.w}`;
-      it.el.style.gridRow    = `${it.y + 1} / span ${it.h}`;
-      // sync data-* (handy for debugging)
-      it.el.dataset.x = it.x; it.el.dataset.y = it.y;
-      it.el.dataset.w = it.w; it.el.dataset.h = it.h;
+      it.el.classList.toggle('hide', !!it.hidden);
+      if (!it.hidden){
+        it.el.style.gridColumn = `${it.x + 1} / span ${it.w}`;
+        it.el.style.gridRow    = `${it.y + 1} / span ${it.h}`;
+      }
+      Object.assign(it.el.dataset, {x:it.x, y:it.y, w:it.w, h:it.h});
     });
+    renderPanelList(); // keep checkboxes in sync
   }
 
   function rectsOverlap(a,b){
+    if (a.hidden || b.hidden) return false;
     return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
   }
-
-  function getCollisions(target, ignoreId=null){
-    return items.filter(it => it.id !== target.id && it.id !== ignoreId && rectsOverlap(target, it));
+  function getCollisions(target){
+    return items.filter(it => it.id !== target.id && rectsOverlap(target, it));
   }
-
-  // Push an item down until it no longer collides (scan rows; keep same x,w if possible)
-  function pushDown(item, avoidId=null){
+  function pushDown(item){
     let changed = false;
-    let colliders = getCollisions(item, avoidId);
+    let colliders = getCollisions(item);
     while (colliders.length){
       for (const c of colliders){
-        c.y = item.y + item.h; // place directly below the pushing item
+        c.y = item.y + item.h; // push below
         changed = true;
       }
-      // after moving colliders, we must also resolve any chain-collisions
-      colliders = getCollisions(item, avoidId);
+      colliders = getCollisions(item);
     }
     return changed;
   }
-
-  // After each mutation, resolve collisions for all (in y-order)
-  function resolveAll(avoidId=null){
-    // Sort by y then x to push lower items first
+  function resolveAll(){
     const ordered = items.slice().sort((a,b)=> (a.y - b.y) || (a.x - b.x));
     let changed = false;
     for (const it of ordered){
-      if (pushDown(it, avoidId)) changed = true;
+      if (pushDown(it)) changed = true;
     }
     return changed;
   }
-
-  // Optional "compaction": pull items up if there is free space above them
   function compact(){
     const ordered = items.slice().sort((a,b)=> (a.y - b.y) || (a.x - b.x));
     for (const it of ordered){
-      let newY = it.y;
-      while (newY > 0){
-        const test = { ...it, y: newY - 1 };
-        if (!getCollisions(test).length){
-          it.y = newY - 1;
-          newY--;
-        } else { break; }
+      if (it.hidden) continue;
+      let ny = it.y;
+      while (ny > 0){
+        const test = {...it, y: ny - 1};
+        if (!getCollisions(test).length){ it.y = ny - 1; ny--; } else break;
       }
     }
   }
-
-  // Keep within bounds horizontally
   function clampToCols(it){
     if (it.w > COLS) it.w = COLS;
     if (it.x < 0) it.x = 0;
     if (it.x + it.w > COLS) it.x = COLS - it.w;
   }
 
-  // ---- DRAGGING ----
-  let dragging = null;
-  let startMouse = null;
-  let startPos = null;
+  // ---- Persistence ----
+  function saveLayout(id = activeLayout){
+    const data = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
+    localStorage.setItem(LKEY + id, JSON.stringify(data));
+  }
+  function loadLayout(id = activeLayout){
+    const raw = localStorage.getItem(LKEY + id);
+    const list = raw ? JSON.parse(raw) : DEFAULT_LAYOUT;
+    // merge onto items by id (preserve unknown cards if added later)
+    for (const it of items){
+      const found = list.find(x => x.id === it.id);
+      if (found){
+        Object.assign(it, {x:found.x, y:found.y, w:found.w, h:found.h, hidden:!!found.hidden});
+      } else {
+        // fall back to default for this card
+        const def = DEFAULT_LAYOUT.find(x => x.id === it.id);
+        Object.assign(it, def || {x:0,y:0,w:3,h:2,hidden:false});
+      }
+    }
+    compact(); resolveAll(); applyLayout();
+    activeLayout = id;
+    localStorage.setItem(ACTIVE_KEY, activeLayout);
+    updateTabsUI();
+  }
 
+  // ---- Lock toggle ----
+  const lockToggle = document.getElementById('lockToggle');
+  function setLocked(v){
+    isLocked = !!v;
+    document.body.classList.toggle('locked', isLocked);
+    lockToggle.setAttribute('aria-pressed', String(!isLocked ? false : true));
+  }
+  lockToggle.addEventListener('click', () => setLocked(!isLocked));
+  lockToggle.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLocked(!isLocked); } });
+
+  // ---- Dragging ----
+  let dragging = null, startMouse=null, startPos=null;
   gridEl.addEventListener('mousedown', e => {
+    if (isLocked) return;
     const bar = e.target.closest('.bar');
     if (!bar) return;
-    const el = bar.closest('.card');
-    const it = items.find(i => i.el === el);
-    dragging = it;
-    startMouse = { x: e.clientX, y: e.clientY };
-    startPos   = { x: it.x, y: it.y };
-    it.el.classList.add('dragging');
-    e.preventDefault();
+    const el = bar.closest('.card'); const it = items.find(i => i.el === el);
+    dragging = it; startMouse = {x:e.clientX, y:e.clientY}; startPos = {x:it.x, y:it.y};
+    it.el.classList.add('dragging'); e.preventDefault();
   });
-
   window.addEventListener('mousemove', e => {
     if (!dragging) return;
-    const dx = e.clientX - startMouse.x;
-    const dy = e.clientY - startMouse.y;
-    // convert px delta to grid units (snap)
-    const gx = Math.round(dx / (COLW + (GAP*(COLS-1)/COLS? 0 : 0)) ); // simple snap
-    const gy = Math.round(dy / (ROWH) );
-    dragging.x = startPos.x + gx;
-    dragging.y = Math.max(0, startPos.y + gy);
-    clampToCols(dragging);
-    resolveAll(dragging.id);
-    applyLayout();
+    const dx = e.clientX - startMouse.x, dy = e.clientY - startMouse.y;
+    const gx = Math.round(dx / (COLW)); const gy = Math.round(dy / (ROWH));
+    dragging.x = startPos.x + gx; dragging.y = Math.max(0, startPos.y + gy);
+    clampToCols(dragging); resolveAll(); applyLayout();
   });
-
   window.addEventListener('mouseup', () => {
     if (!dragging) return;
     dragging.el.classList.remove('dragging');
-    dragging = null;
-    compact(); resolveAll(); applyLayout();
+    dragging = null; compact(); resolveAll(); applyLayout(); saveLayout();
   });
 
-  // ---- RESIZING ----
-  let resizing = null;
-  let startSize = null;
-
+  // ---- Resizing ----
+  let resizing=null, startSize=null;
   gridEl.addEventListener('mousedown', e => {
-    const h = e.target.closest('.resize');
-    if (!h) return;
-    const el = h.closest('.card');
-    const it = items.find(i => i.el === el);
-    resizing = it;
-    startMouse = { x: e.clientX, y: e.clientY };
-    startSize  = { w: it.w, h: it.h };
-    it.el.classList.add('dragging');
-    e.preventDefault();
-    e.stopPropagation();
+    if (isLocked) return;
+    const h = e.target.closest('.resize'); if (!h) return;
+    const el = h.closest('.card'); const it = items.find(i => i.el === el);
+    resizing = it; startMouse = {x:e.clientX, y:e.clientY}; startSize = {w:it.w, h:it.h};
+    it.el.classList.add('dragging'); e.preventDefault(); e.stopPropagation();
   });
-
   window.addEventListener('mousemove', e => {
     if (!resizing) return;
-    const dx = e.clientX - startMouse.x;
-    const dy = e.clientY - startMouse.y;
-    const dw = Math.round(dx / (COLW) );
-    const dh = Math.round(dy / (ROWH) );
+    const dx = e.clientX - startMouse.x, dy = e.clientY - startMouse.y;
+    const dw = Math.round(dx / (COLW)); const dh = Math.round(dy / (ROWH));
     resizing.w = Math.max(resizing.minW, Math.min(resizing.maxW, startSize.w + dw));
     resizing.h = Math.max(resizing.minH, startSize.h + dh);
-    clampToCols(resizing);
-    resolveAll(resizing.id);
-    applyLayout();
+    clampToCols(resizing); resolveAll(); applyLayout();
   });
-
   window.addEventListener('mouseup', () => {
     if (!resizing) return;
-    resizing.el.classList.remove('dragging');
-    resizing = null;
-    compact(); resolveAll(); applyLayout();
+    resizing.el.classList.remove('dragging'); resizing = null;
+    compact(); resolveAll(); applyLayout(); saveLayout();
   });
 
-  // Initial paint
-  resolveAll(); applyLayout();
-
-  // Optional: keyboard nudging (arrow keys while focused on a card)
-  gridEl.addEventListener('keydown', (e) => {
-    const el = e.target.closest('.card'); if (!el) return;
-    const it = items.find(i => i.el === el);
-    if (!it) return;
-    let used = true;
-    switch(e.key){
-      case 'ArrowLeft': it.x -= 1; break;
-      case 'ArrowRight': it.x += 1; break;
-      case 'ArrowUp': it.y = Math.max(0, it.y - 1); break;
-      case 'ArrowDown': it.y += 1; break;
-      default: used = false;
-    }
-    if (used){
-      clampToCols(it); resolveAll(it.id); applyLayout(); e.preventDefault();
-    }
+  // ---- Right panel: hide/unhide ----
+  const panelControl = document.getElementById('panelControl');
+  const panelList = document.getElementById('panelList');
+  panelControl.querySelector('.controlHeader').addEventListener('click', () => {
+    panelControl.classList.toggle('open');
   });
+
+  function renderPanelList(){
+    panelList.innerHTML = '';
+    for (const it of items){
+      const row = document.createElement('label');
+      row.className = 'checkRow';
+      row.innerHTML = `<input type="checkbox" ${!it.hidden ? 'checked' : ''} data-id="${it.id}"><span>${it.el.querySelector('.title')?.textContent || it.id}</span>`;
+      panelList.appendChild(row);
+    }
+  }
+  panelList.addEventListener('change', (e) => {
+    const cb = e.target.closest('input[type="checkbox"]'); if (!cb) return;
+    const it = byId(cb.dataset.id); if (!it) return;
+    it.hidden = !cb.checked;
+    compact(); resolveAll(); applyLayout(); saveLayout();
+  });
+
+  // ---- Left tabs: 5 layouts ----
+  const tabsEl = document.getElementById('layoutTabs');
+  function updateTabsUI(){
+    for (const btn of tabsEl.querySelectorAll('.tabBtn')){
+      btn.classList.toggle('active', btn.dataset.tab === activeLayout);
+    }
+  }
+  tabsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tabBtn'); if (!btn) return;
+    if (btn.dataset.tab === activeLayout) return;
+    // save current before switching
+    saveLayout(activeLayout);
+    loadLayout(btn.dataset.tab);
+  });
+
+  // ---- Init ----
+  loadLayout(activeLayout);            // load or seed defaults
+  setLocked(false);                    // start unlocked
+  renderPanelList(); updateTabsUI();   // build controls
 })();
 </script>
 </body>
