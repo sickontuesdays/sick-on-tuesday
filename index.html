@@ -3,26 +3,27 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>S!ck on Tuesdays — Guardian Command Center</title>
-<meta name="description" content="Destiny 2 command-center landing dashboard." />
+<title>S!ck on Tuesdays — Guardian Command Layout</title>
+<meta name="description" content="Destiny 2 command-center layout matching reference mosaic." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    /* Destiny-ish palette */
+    /* Palette */
     --bg:#0a0e13; --panel:#0f1520; --panel2:#121a28;
-    --ink:#e7eefc; --muted:#94a7c4;
-    --arc:#7dd3fc; --arc2:#60a5fa; --border:#1f2b3e;
-    --good:#34d399; --warn:#f59e0b; --bad:#fb7185;
+    --ink:#e7eefc; --muted:#94a7c4; --border:#1f2b3e;
+    --arc:#7dd3fc; --arc2:#60a5fa; --good:#34d399;
     --radius:14px; --shadow:0 6px 24px rgba(2,10,20,.35);
 
-    /* Grid unit sizing (change these to scale everything) */
-    --colW: 90px;   /* base column width */
-    --rowH: 90px;   /* base row height */
+    /* Grid unit sizing */
+    --colW: 82px;   /* base column width */
+    --rowH: 82px;   /* base row height */
+    --gap: 14px;    /* grid gap & internal spacing */
   }
-  @media (max-width:1200px){ :root{ --colW:80px; --rowH:84px; } }
-  @media (max-width:980px){ :root{ --colW:72px; --rowH:80px; } }
+  @media (max-width:1300px){ :root{ --colW:76px; --rowH:78px; } }
+  @media (max-width:1100px){ :root{ --colW:70px; --rowH:74px; } }
+  @media (max-width:900px){  :root{ --colW:62px; --rowH:68px; } }
 
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -45,8 +46,8 @@
   }
 
   .wrap{
-    width:min(1800px, 80vw);                 /* ← uses ~80% browser width */
-    margin:20px auto 60px;
+    width: min(2000px, 80vw);              /* ← ~80% of browser width */
+    margin: 20px auto 60px;
   }
 
   header{
@@ -58,12 +59,20 @@
   .status{color:var(--muted); font-size:14px}
   .status .dot{display:inline-block; width:9px; height:9px; border-radius:999px; background:var(--good); box-shadow:0 0 12px var(--good); margin-right:8px}
 
-  /* ==== GRID LAYOUT ==== */
+  /* ==== GRID LAYOUT ==== 
+     14 columns x 10 rows to match the reference mosaic precisely.
+     Left column group (A/B/C) = cols 1–3
+     Main hero D = cols 4–12, rows 1–6
+     Right tall H = col 13, rows 1–6
+     Circles I/J column = col 14, rows 7–9
+     E/F/G row under D = cols 4–12, rows 7–9 (three equal squares)
+     K bottom bar = cols 10–14, row 10
+  */
   .grid{
     display:grid;
-    grid-template-columns: repeat(12, minmax(var(--colW), 1fr));
+    grid-template-columns: repeat(14, minmax(var(--colW), 1fr));
     grid-auto-rows: var(--rowH);
-    gap:14px;
+    gap: var(--gap);
   }
 
   /* Module base */
@@ -75,9 +84,9 @@
     box-shadow:var(--shadow);
     padding:14px 14px 12px;
     overflow:hidden;
-    transition:border-color .2s ease, transform .08s ease;
+    transition: border-color .2s ease, transform .08s ease;
   }
-  .mod:hover{border-color:#2a3a52; transform:translateY(-1px)}
+  .mod:hover{ border-color:#2a3a52; transform: translateY(-1px); }
   .title{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
     margin:0 0 8px; font-size:18px; letter-spacing:.03em;
@@ -93,80 +102,86 @@
   .toggle:hover{border-color:#2a3a52}
   .summary{color:var(--muted); font-size:14px}
   .details{display:none; color:var(--ink); font-size:14px}
+  a{color:var(--arc); text-decoration:none}
+  a:hover{text-decoration:underline}
   .t{width:100%; border-collapse:collapse; margin-top:8px; font-size:14px}
   .t th,.t td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left}
   .tag{display:inline-block; padding:2px 8px; border:1px solid var(--border); border-radius:999px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
-  a{color:var(--arc); text-decoration:none}
-  a:hover{text-decoration:underline}
 
-  /* ---- EXACT INITIAL POSITIONS (edit these to match your screenshot precisely) ---- */
-  /* hero (matches “Pond5”-sized main box) */
-  .pos-hero      { grid-column: 1 / span 8;  grid-row: 1 / span 6; }
+  /* ==== EXACT INITIAL POSITIONS (from your sketch) ==== */
+  /* Left stack */
+  .pos-A { grid-column: 1 / span 3; grid-row: 1 / span 3; }  /* square */
+  .pos-B { grid-column: 1 / span 3; grid-row: 4 / span 3; }  /* square */
+  .pos-C { grid-column: 1 / span 3; grid-row: 7 / span 1; }  /* slim bar */
 
-  /* right-side stack of medium tiles */
-  .pos-tools     { grid-column: 9 / span 4;  grid-row: 1 / span 2; }
-  .pos-rotators  { grid-column: 9 / span 4;  grid-row: 3 / span 2; }
-  .pos-vendors   { grid-column: 9 / span 4;  grid-row: 5 / span 2; }
+  /* Top center hero & right column */
+  .pos-D { grid-column: 4 / span 9; grid-row: 1 / span 6; }  /* hero */
+  .pos-H { grid-column: 13 / span 1; grid-row: 1 / span 6; } /* tall bar */
 
-  /* bottom strip under hero (three mediums) */
-  .pos-build     { grid-column: 1 / span 4;  grid-row: 7 / span 3; }
-  .pos-mods      { grid-column: 5 / span 4;  grid-row: 7 / span 3; }
-  .pos-clan      { grid-column: 9 / span 4;  grid-row: 7 / span 3; } /* aligns with right stack */
+  /* Bottom row under D: E F G squares */
+  .pos-E { grid-column: 4 / span 3; grid-row: 7 / span 3; }
+  .pos-F { grid-column: 7 / span 3; grid-row: 7 / span 3; }
+  .pos-G { grid-column: 10 / span 3; grid-row: 7 / span 3; }
 
-  /* circles tile (small) */
-  .pos-circles   { grid-column: 1 / span 4;  grid-row: 10 / span 2; }
+  /* Rightmost circles column (I over J) */
+  .pos-circles { grid-column: 14 / span 1; grid-row: 7 / span 3; padding: 12px; }
 
-  /* news tile (wide) */
-  .pos-intel     { grid-column: 5 / span 8;  grid-row: 10 / span 2; }
+  /* Bottom right bar */
+  .pos-K { grid-column: 10 / span 5; grid-row: 10 / span 1; }
 
   /* ==== EXPANSION BEHAVIOR ==== */
-  /* Expanded sizes */
-  .mod.expanded-main    { grid-column: 1 / span 8; grid-row: 1 / span 6; }  /* grows to hero footprint */
-  .mod.expanded-quarter { grid-column: 1 / span 4; grid-row: 1 / span 3; }  /* 1/4 of hero */
+  .mod.expanded-main    { grid-column: 4 / span 9; grid-row: 1 / span 6; }  /* grows to D footprint */
+  .mod.expanded-quarter { grid-column: 4 / span 4; grid-row: 1 / span 3; }  /* ~¼ of D */
 
-  /* Draw expanded tile on top */
   .mod.expanded-main,
-  .mod.expanded-quarter{ z-index:10; }
+  .mod.expanded-quarter { z-index: 10; }
 
-  /* When something is expanded, allow auto placement and compact the others */
   .grid.has-expanded { grid-auto-flow: dense; }
-
   .grid.has-expanded .mod:not(.expanded-main):not(.expanded-quarter){
-    grid-column: auto / span 2;    /* compact width */
-    grid-row: auto / span 1;       /* compact height */
-    padding:12px;
+    grid-column: auto / span 2;
+    grid-row: auto / span 1;
+    padding: 12px;
   }
   .grid.has-expanded .mod:not(.expanded-main):not(.expanded-quarter) .summary{ font-size:13px }
 
-  /* Circles visuals */
-  .circle-field{ display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-top:8px }
-  .circle{
-    width:100%; aspect-ratio:1/1; border-radius:50%;
-    border:2px solid #2a3a52;
-    background: radial-gradient(circle at 30% 35%, rgba(125,211,252,.18), transparent 55%),
-                radial-gradient(circle at 70% 70%, rgba(96,165,250,.16), transparent 60%),
-                #0c1320;
-    box-shadow: inset 0 0 12px rgba(125,211,252,.15);
+  /* ==== Circles module (true circles, no boxes) ==== */
+  .circle-stack{
+    --gap: 12px;
+    display:grid;
+    grid-template-rows: 1fr 1fr;
+    align-content: stretch;
+    justify-items: center;
+    gap: var(--gap);
+    height: 100%;
   }
-  .circle.ok{ outline: 2px solid rgba(52,211,153,.35) }
-  .circle.warn{ outline:2px solid rgba(245,158,11,.35) }
-  .circle.bad{ outline: 2px solid rgba(251,113,133,.35) }
+  .circle{
+    width: var(--circle-d, 60px);        /* JS computes this to fill the space */
+    height: var(--circle-d, 60px);
+    border-radius: 50%;
+    border: 3px solid #2a3a52;           /* outline only (no box) */
+    background: radial-gradient(circle at 30% 35%, rgba(125,211,252,.12), transparent 55%),
+                #0c1320;
+    box-shadow: inset 0 0 12px rgba(125,211,252,.12);
+  }
 
-  /* Responsive fallback: on narrow screens, let the grid stack while keeping wide expansions */
+  /* Responsive fallback stack (keeps proportions while narrower) */
   @media (max-width: 880px){
-    .wrap{ width: min(1000px, 94vw); }                 /* use more of the viewport on small screens */
-    .grid{ grid-template-columns: repeat(6, minmax(70px, 1fr)); }
-    .pos-hero     { grid-column: 1 / span 6; grid-row: 1 / span 6; }
-    .pos-tools    { grid-column: 1 / span 3; grid-row: 7 / span 2; }
-    .pos-rotators { grid-column: 4 / span 3; grid-row: 7 / span 2; }
-    .pos-vendors  { grid-column: 1 / span 6; grid-row: 9 / span 2; }
-    .pos-build    { grid-column: 1 / span 3; grid-row:11 / span 2; }
-    .pos-mods     { grid-column: 4 / span 3; grid-row:11 / span 2; }
-    .pos-clan     { grid-column: 1 / span 6; grid-row:13 / span 2; }
-    .pos-circles  { grid-column: 1 / span 3; grid-row:15 / span 2; }
-    .pos-intel    { grid-column: 4 / span 3; grid-row:15 / span 2; }
-    .mod.expanded-main{ grid-column:1 / span 6; grid-row:1 / span 6; }
-    .mod.expanded-quarter{ grid-column:1 / span 3; grid-row:1 / span 3; }
+    .wrap{ width: min(1100px, 94vw); }
+    .grid{ grid-template-columns: repeat(8, minmax(70px, 1fr)); }
+    /* Reasonable stacked approximation for small screens */
+    .pos-A { grid-column: 1 / span 3; grid-row: 1 / span 3; }
+    .pos-B { grid-column: 1 / span 3; grid-row: 4 / span 3; }
+    .pos-C { grid-column: 1 / span 3; grid-row: 7 / span 1; }
+    .pos-D { grid-column: 4 / span 5; grid-row: 1 / span 6; }
+    .pos-H { grid-column: 8 / span 1; grid-row: 1 / span 6; }
+    .pos-E { grid-column: 4 / span 2; grid-row: 7 / span 3; }
+    .pos-F { grid-column: 6 / span 2; grid-row: 7 / span 3; }
+    .pos-G { grid-column: 1 / span 3; grid-row: 9 / span 3; }
+    .pos-circles { grid-column: 8 / span 1; grid-row: 7 / span 3; }
+    .pos-K { grid-column: 4 / span 5; grid-row: 10 / span 1; }
+
+    .mod.expanded-main{ grid-column:1 / span 8; grid-row:1 / span 6; }
+    .mod.expanded-quarter{ grid-column:1 / span 4; grid-row:1 / span 3; }
   }
 </style>
 </head>
@@ -177,138 +192,121 @@
         <h1>Guardian Command</h1>
         <span class="badge">S!ck on Tuesdays</span>
       </div>
-      <div class="status"><span class="dot"></span>Systems Nominal</div>
+      <div class="status"><span class="dot"></span>Layout Synced</div>
     </header>
 
     <main class="grid" id="grid">
-      <!-- HERO (main “Pond5” sized) -->
-      <section class="mod pos-hero" data-expand="main">
+      <!-- A -->
+      <section class="mod pos-A" data-expand="main" aria-label="Panel A">
         <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">Season Briefing <small>Overview</small></h3>
-        <div class="summary">
-          Current Season: <strong>Echoes</strong><br/>Weekly reset: Tue 17:00 UTC<br/>Pinnacles: 7 sources
+        <h3 class="title">A <small>Briefing</small></h3>
+        <div class="summary">High-level status, quick notes.</div>
+        <div class="details">
+          <ul><li>Detail 1</li><li>Detail 2</li><li>Detail 3</li></ul>
         </div>
+      </section>
+
+      <!-- B -->
+      <section class="mod pos-B" data-expand="main" aria-label="Panel B">
+        <button class="toggle" aria-expanded="false">Expand</button>
+        <h3 class="title">B <small>Assignments</small></h3>
+        <div class="summary">Pending tasks, ops queue.</div>
+        <div class="details">
+          <table class="t"><tbody><tr><td>Op</td><td>Status</td></tr><tr><td>Vault</td><td>Ready</td></tr></tbody></table>
+        </div>
+      </section>
+
+      <!-- C -->
+      <section class="mod pos-C" data-expand="main" aria-label="Panel C">
+        <button class="toggle" aria-expanded="false">Expand</button>
+        <h3 class="title">C <small>Alert Strip</small></h3>
+        <div class="summary">Low-risk advisories.</div>
+        <div class="details">Expanded: show detailed alerts here.</div>
+      </section>
+
+      <!-- D HERO -->
+      <section class="mod pos-D" data-expand="main" aria-label="Panel D (Hero)">
+        <button class="toggle" aria-expanded="false">Expand</button>
+        <h3 class="title">D <small>Season Overview</small></h3>
+        <div class="summary">Main module footprint for expansions.</div>
         <div class="details">
           <table class="t">
             <thead><tr><th>Activity</th><th>Reward</th><th>Notes</th></tr></thead>
             <tbody>
-              <tr><td>Nightfall (Hero+)</td><td>Pinnacle</td><td>Arc Surge • Overload/Unstoppable</td></tr>
-              <tr><td>Raid (Weekly)</td><td>Pinnacle</td><td>Challenge rotation active</td></tr>
-              <tr><td>Dungeon (Weekly)</td><td>Pinnacle</td><td>Artifice armor chance</td></tr>
+              <tr><td>Nightfall</td><td>Pinnacle</td><td>Arc Surge • Champs</td></tr>
+              <tr><td>Raid</td><td>Pinnacle</td><td>Challenge rotation</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <!-- RIGHT STACK -->
-      <section class="mod pos-tools" data-expand="main">
+      <!-- H (tall) -->
+      <section class="mod pos-H" data-expand="main" aria-label="Panel H">
         <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">Tools <small>Links</small></h3>
-        <div class="summary">DIM, light.gg, TodayInDestiny, D2 Foundry…</div>
+        <h3 class="title">H <small>Right Column</small></h3>
+        <div class="summary">Static intel column.</div>
+        <div class="details">Expanded: vendor rolls, rotations, etc.</div>
+      </section>
+
+      <!-- E -->
+      <section class="mod pos-E" data-expand="main" aria-label="Panel E">
+        <button class="toggle" aria-expanded="false">Expand</button>
+        <h3 class="title">E <small>Tools</small></h3>
+        <div class="summary">DIM • light.gg • TiD</div>
         <div class="details">
           <ul>
             <li><a href="https://app.destinyitemmanager.com/" target="_blank" rel="noopener">DIM</a></li>
             <li><a href="https://www.light.gg/" target="_blank" rel="noopener">light.gg</a></li>
             <li><a href="https://www.todayindestiny.com/" target="_blank" rel="noopener">Today in Destiny</a></li>
-            <li><a href="https://d2foundry.gg/" target="_blank" rel="noopener">D2 Foundry</a></li>
           </ul>
         </div>
       </section>
 
-      <section class="mod pos-rotators" data-expand="main">
+      <!-- F -->
+      <section class="mod pos-F" data-expand="main" aria-label="Panel F">
         <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">Rotators <small>Weekly</small></h3>
-        <div class="summary">Raid: Last Wish • Dungeon: Shattered Throne</div>
+        <h3 class="title">F <small>Builds</small></h3>
+        <div class="summary">Warlock/Titan/Hunter</div>
         <div class="details">
-          <ul>
-            <li>Crucible: Momentum Control</li>
-            <li>Exotic Mission: Rotator</li>
-          </ul>
+          <ul><li>Warlock: Arc Soul</li><li>Titan: Banner</li><li>Hunter: Strand</li></ul>
         </div>
       </section>
 
-      <section class="mod pos-vendors" data-expand="main">
+      <!-- G -->
+      <section class="mod pos-G" data-expand="main" aria-label="Panel G">
         <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">Vendors <small>Quick Look</small></h3>
-        <div class="summary">Xûr: Winding Cove • Banshee: Pulse (RF/HS)</div>
-        <div class="details">
-          <ul>
-            <li>Xûr armor spikes on legs</li>
-            <li>Banshee daily: HC targeting</li>
-          </ul>
-        </div>
+        <h3 class="title">G <small>Activity</small></h3>
+        <div class="summary">Nightfall • Dungeon • Crucible</div>
+        <div class="details">Expanded: modifiers & challenges.</div>
       </section>
 
-      <!-- BOTTOM STRIP UNDER HERO -->
-      <section class="mod pos-build" data-expand="main">
+      <!-- Circles I/J (no boxes) -->
+      <section class="mod pos-circles" data-expand="quarter" id="circlesMod" aria-label="Circles I & J">
         <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">Build Spotlight <small>Warlock Arc</small></h3>
-        <div class="summary"><strong>Amplified Stormcaller</strong> — Crown of Tempests</div>
-        <div class="details">
-          <ul>
-            <li>Fragments: Ions, Magnitude, Resistance, Feedback</li>
-            <li>Mods: Arc Siphon, Arc Surge, Time Dilation</li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="mod pos-mods" data-expand="main">
-        <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">Modifiers <small>Today</small></h3>
-        <div class="summary">Surges: Arc/Strand • Threat: Solar • Overcharge: MG</div>
-        <div class="details">
-          Champions: Overload/Unstoppable • Shields: Solar/Void
-        </div>
-      </section>
-
-      <section class="mod pos-clan" data-expand="main">
-        <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">Clan Ops <small>Roster</small></h3>
-        <div class="summary">Online: 7 • Fireteams: 2 • Invites: 1</div>
-        <div class="details">
-          <table class="t">
-            <thead><tr><th>Guardian</th><th>Class</th><th>Power</th></tr></thead>
-            <tbody>
-              <tr><td>ArcSeer</td><td>Warlock</td><td>1988</td></tr>
-              <tr><td>ShieldWall</td><td>Titan</td><td>1992</td></tr>
-              <tr><td>ShadowStep</td><td>Hunter</td><td>1991</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- CIRCLES (special 1/4 expansion) -->
-      <section class="mod pos-circles" data-expand="quarter">
-        <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">Telemetry <small>Circuits</small></h3>
+        <h3 class="title">I &amp; J <small>Signals</small></h3>
         <div class="summary">
-          <div class="circle-field">
-            <div class="circle ok"></div><div class="circle ok"></div><div class="circle warn"></div>
-            <div class="circle ok"></div><div class="circle bad"></div><div class="circle ok"></div>
+          <div class="circle-stack" id="circleStack">
+            <div class="circle" title="I"></div>
+            <div class="circle" title="J"></div>
           </div>
         </div>
         <div class="details">
-          <p>Status: <span class="tag">Nominal</span></p>
-          <ul><li>API latency: 142 ms</li><li>Manifest age: 2 days</li></ul>
+          <p>Expanded: telemetry details for each signal.</p>
         </div>
       </section>
 
-      <section class="mod pos-intel" data-expand="main">
+      <!-- K bottom bar -->
+      <section class="mod pos-K" data-expand="main" aria-label="Panel K">
         <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">Intel Feed <small>Comms</small></h3>
-        <div class="summary">Announcements & patch highlights.</div>
-        <div class="details">
-          <ul>
-            <li>Raid night Fri 8pm — sign-ups in #ops</li>
-            <li>Build contest: “Storm & Strand”</li>
-          </ul>
-        </div>
+        <h3 class="title">K <small>Footer Bar</small></h3>
+        <div class="summary">Status, links, or ticker.</div>
+        <div class="details">Expanded: extended footer content.</div>
       </section>
     </main>
   </div>
 
 <script>
-/* Expand/Collapse logic — keeps other tiles visible by reflowing them around the expanded one */
+/* Expand/Collapse logic + circle auto-sizing */
 document.addEventListener('DOMContentLoaded', () => {
   const grid = document.getElementById('grid');
   const modules = [...document.querySelectorAll('.mod')];
@@ -322,6 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const s = m.querySelector('.summary'); if (s) s.style.display = '';
       const d = m.querySelector('.details'); if (d) d.style.display = 'none';
     });
+    sizeCircles(); // recalc after layout change
   }
 
   function expand(mod) {
@@ -338,9 +337,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btn = mod.querySelector('.toggle');
     if (btn) { btn.setAttribute('aria-expanded','true'); btn.textContent = 'Collapse'; }
+
+    sizeCircles(); // recalc after layout change
   }
 
-  // One listener for all tiles
   grid.addEventListener('click', (e) => {
     const btn = e.target.closest('.toggle');
     if (!btn) return;
@@ -348,10 +348,35 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mod) expand(mod);
   });
 
-  // Click outside to collapse (optional)
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.mod')) collapseAll();
   });
+
+  // --- Circle sizing: fill available column height/width neatly (keeps perfect circles)
+  function sizeCircles(){
+    const mod = document.getElementById('circlesMod');
+    if (!mod) return;
+    const stack = document.getElementById('circleStack');
+    if (!stack) return;
+
+    // Available inner box size
+    const modStyles = getComputedStyle(mod);
+    const padV = parseFloat(modStyles.paddingTop) + parseFloat(modStyles.paddingBottom);
+    const padH = parseFloat(modStyles.paddingLeft) + parseFloat(modStyles.paddingRight);
+
+    const rect = mod.getBoundingClientRect();
+    const innerH = rect.height - padV - 36;   // - approx header & margin height
+    const innerW = rect.width  - padH;
+
+    const gap = parseFloat(getComputedStyle(stack).getPropertyValue('--gap')) || 12;
+
+    // Two circles stacked: diameter fits min(width, (innerH - gap)/2)
+    const diameter = Math.max(24, Math.min(innerW, (innerH - gap) / 2));
+    mod.style.setProperty('--circle-d', `${diameter}px`);
+  }
+
+  sizeCircles();
+  window.addEventListener('resize', sizeCircles);
 });
 </script>
 </body>
