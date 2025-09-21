@@ -3,27 +3,28 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>S!ck on Tuesdays — Guardian Command Layout</title>
-<meta name="description" content="Destiny 2 command-center layout matching reference mosaic." />
+<title>S!ck on Tuesdays — Command Grid (Draggable/Resizable)</title>
+<meta name="description" content="Destiny 2 command-center grid with drag and resize, collision handling." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    /* Palette */
+    /* Destiny-ish palette */
     --bg:#0a0e13; --panel:#0f1520; --panel2:#121a28;
     --ink:#e7eefc; --muted:#94a7c4; --border:#1f2b3e;
     --arc:#7dd3fc; --arc2:#60a5fa; --good:#34d399;
     --radius:14px; --shadow:0 6px 24px rgba(2,10,20,.35);
 
-    /* Grid unit sizing */
-    --colW: 82px;   /* base column width */
-    --rowH: 82px;   /* base row height */
-    --gap: 14px;    /* grid gap & internal spacing */
+    /* GRID TUNING */
+    --cols: 12;            /* number of columns */
+    --colW: 90px;          /* base column width */
+    --rowH: 90px;          /* base row height */
+    --gap: 14px;           /* space between cells/cards */
   }
-  @media (max-width:1300px){ :root{ --colW:76px; --rowH:78px; } }
-  @media (max-width:1100px){ :root{ --colW:70px; --rowH:74px; } }
-  @media (max-width:900px){  :root{ --colW:62px; --rowH:68px; } }
+  @media (max-width: 1300px){ :root{ --colW:84px; --rowH:86px; } }
+  @media (max-width: 1100px){ :root{ --colW:78px; --rowH:80px; } }
+  @media (max-width:  900px){ :root{ --colW:70px; --rowH:74px; } }
 
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -35,7 +36,6 @@
       radial-gradient(900px 500px at -20% 110%, rgba(24,40,62,.55), transparent 60%),
       linear-gradient(180deg, #081018 0%, #060a10 100%);
   }
-  /* subtle HUD grid */
   body::before{
     content:""; position:fixed; inset:0; pointer-events:none;
     background:
@@ -45,10 +45,7 @@
     mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
   }
 
-  .wrap{
-    width: min(2000px, 80vw);              /* ← ~80% of browser width */
-    margin: 20px auto 60px;
-  }
+  .wrap{ width:min(2000px, 80vw); margin:20px auto 60px; }
 
   header{
     display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:14px;
@@ -59,130 +56,54 @@
   .status{color:var(--muted); font-size:14px}
   .status .dot{display:inline-block; width:9px; height:9px; border-radius:999px; background:var(--good); box-shadow:0 0 12px var(--good); margin-right:8px}
 
-  /* ==== GRID LAYOUT ==== 
-     14 columns x 10 rows to match the reference mosaic precisely.
-     Left column group (A/B/C) = cols 1–3
-     Main hero D = cols 4–12, rows 1–6
-     Right tall H = col 13, rows 1–6
-     Circles I/J column = col 14, rows 7–9
-     E/F/G row under D = cols 4–12, rows 7–9 (three equal squares)
-     K bottom bar = cols 10–14, row 10
-  */
+  /* ===== GRID ===== */
   .grid{
+    position:relative; /* for dragging overlay math */
     display:grid;
-    grid-template-columns: repeat(14, minmax(var(--colW), 1fr));
+    grid-template-columns: repeat(var(--cols), minmax(var(--colW), 1fr));
     grid-auto-rows: var(--rowH);
     gap: var(--gap);
   }
 
-  /* Module base */
-  .mod{
+  /* ===== CARDS ===== */
+  .card{
     position:relative;
     background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 140%);
     border:1px solid var(--border);
     border-radius:var(--radius);
     box-shadow:var(--shadow);
-    padding:14px 14px 12px;
     overflow:hidden;
-    transition: border-color .2s ease, transform .08s ease;
+    user-select:none;
   }
-  .mod:hover{ border-color:#2a3a52; transform: translateY(-1px); }
-  .title{
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-    margin:0 0 8px; font-size:18px; letter-spacing:.03em;
-  }
-  .title small{color:var(--muted); font-size:12px; letter-spacing:.12em; text-transform:uppercase}
-  .toggle{
-    position:absolute; top:8px; right:8px;
-    border:1px solid var(--border); border-radius:10px;
+  .card:focus-within{ outline:2px solid #2a3a52; outline-offset:2px }
+
+  .bar{
+    height:38px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 10px; border-bottom:1px solid var(--border);
     background:linear-gradient(180deg,#132033,#0e1726);
-    color:var(--ink); padding:6px 10px; cursor:pointer;
-    font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase;
+    cursor:grab;
   }
-  .toggle:hover{border-color:#2a3a52}
-  .summary{color:var(--muted); font-size:14px}
-  .details{display:none; color:var(--ink); font-size:14px}
+  .bar:active{ cursor:grabbing; }
+  .title{ font-weight:700; letter-spacing:.04em }
+  .handle{ font-weight:700; letter-spacing:.2em; color:var(--muted); user-select:none }
+
+  .content{ padding:12px; color:var(--muted); font-size:14px }
   a{color:var(--arc); text-decoration:none}
   a:hover{text-decoration:underline}
-  .t{width:100%; border-collapse:collapse; margin-top:8px; font-size:14px}
-  .t th,.t td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left}
-  .tag{display:inline-block; padding:2px 8px; border:1px solid var(--border); border-radius:999px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 
-  /* ==== EXACT INITIAL POSITIONS (from your sketch) ==== */
-  /* Left stack */
-  .pos-A { grid-column: 1 / span 3; grid-row: 1 / span 3; }  /* square */
-  .pos-B { grid-column: 1 / span 3; grid-row: 4 / span 3; }  /* square */
-  .pos-C { grid-column: 1 / span 3; grid-row: 7 / span 1; }  /* slim bar */
-
-  /* Top center hero & right column */
-  .pos-D { grid-column: 4 / span 9; grid-row: 1 / span 6; }  /* hero */
-  .pos-H { grid-column: 13 / span 1; grid-row: 1 / span 6; } /* tall bar */
-
-  /* Bottom row under D: E F G squares */
-  .pos-E { grid-column: 4 / span 3; grid-row: 7 / span 3; }
-  .pos-F { grid-column: 7 / span 3; grid-row: 7 / span 3; }
-  .pos-G { grid-column: 10 / span 3; grid-row: 7 / span 3; }
-
-  /* Rightmost circles column (I over J) */
-  .pos-circles { grid-column: 14 / span 1; grid-row: 7 / span 3; padding: 12px; }
-
-  /* Bottom right bar */
-  .pos-K { grid-column: 10 / span 5; grid-row: 10 / span 1; }
-
-  /* ==== EXPANSION BEHAVIOR ==== */
-  .mod.expanded-main    { grid-column: 4 / span 9; grid-row: 1 / span 6; }  /* grows to D footprint */
-  .mod.expanded-quarter { grid-column: 4 / span 4; grid-row: 1 / span 3; }  /* ~¼ of D */
-
-  .mod.expanded-main,
-  .mod.expanded-quarter { z-index: 10; }
-
-  .grid.has-expanded { grid-auto-flow: dense; }
-  .grid.has-expanded .mod:not(.expanded-main):not(.expanded-quarter){
-    grid-column: auto / span 2;
-    grid-row: auto / span 1;
-    padding: 12px;
-  }
-  .grid.has-expanded .mod:not(.expanded-main):not(.expanded-quarter) .summary{ font-size:13px }
-
-  /* ==== Circles module (true circles, no boxes) ==== */
-  .circle-stack{
-    --gap: 12px;
-    display:grid;
-    grid-template-rows: 1fr 1fr;
-    align-content: stretch;
-    justify-items: center;
-    gap: var(--gap);
-    height: 100%;
-  }
-  .circle{
-    width: var(--circle-d, 60px);        /* JS computes this to fill the space */
-    height: var(--circle-d, 60px);
-    border-radius: 50%;
-    border: 3px solid #2a3a52;           /* outline only (no box) */
-    background: radial-gradient(circle at 30% 35%, rgba(125,211,252,.12), transparent 55%),
-                #0c1320;
-    box-shadow: inset 0 0 12px rgba(125,211,252,.12);
+  /* Resize handle */
+  .resize{
+    position:absolute; width:16px; height:16px; right:6px; bottom:6px;
+    border:1px solid var(--border); border-radius:3px;
+    background:linear-gradient(135deg, #0e1726 0%, #132033 100%);
+    cursor:nwse-resize;
   }
 
-  /* Responsive fallback stack (keeps proportions while narrower) */
-  @media (max-width: 880px){
-    .wrap{ width: min(1100px, 94vw); }
-    .grid{ grid-template-columns: repeat(8, minmax(70px, 1fr)); }
-    /* Reasonable stacked approximation for small screens */
-    .pos-A { grid-column: 1 / span 3; grid-row: 1 / span 3; }
-    .pos-B { grid-column: 1 / span 3; grid-row: 4 / span 3; }
-    .pos-C { grid-column: 1 / span 3; grid-row: 7 / span 1; }
-    .pos-D { grid-column: 4 / span 5; grid-row: 1 / span 6; }
-    .pos-H { grid-column: 8 / span 1; grid-row: 1 / span 6; }
-    .pos-E { grid-column: 4 / span 2; grid-row: 7 / span 3; }
-    .pos-F { grid-column: 6 / span 2; grid-row: 7 / span 3; }
-    .pos-G { grid-column: 1 / span 3; grid-row: 9 / span 3; }
-    .pos-circles { grid-column: 8 / span 1; grid-row: 7 / span 3; }
-    .pos-K { grid-column: 4 / span 5; grid-row: 10 / span 1; }
+  /* While dragging/resizing, show a subtle “ghost” */
+  .dragging{ opacity:.85; box-shadow:0 10px 26px rgba(0,0,0,.45); }
 
-    .mod.expanded-main{ grid-column:1 / span 8; grid-row:1 / span 6; }
-    .mod.expanded-quarter{ grid-column:1 / span 4; grid-row:1 / span 3; }
-  }
+  /* Utility */
+  .muted{ color:var(--muted) }
 </style>
 </head>
 <body>
@@ -192,192 +113,257 @@
         <h1>Guardian Command</h1>
         <span class="badge">S!ck on Tuesdays</span>
       </div>
-      <div class="status"><span class="dot"></span>Layout Synced</div>
+      <div class="status"><span class="dot"></span>Drag & Resize enabled</div>
     </header>
 
     <main class="grid" id="grid">
-      <!-- A -->
-      <section class="mod pos-A" data-expand="main" aria-label="Panel A">
-        <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">A <small>Briefing</small></h3>
-        <div class="summary">High-level status, quick notes.</div>
-        <div class="details">
-          <ul><li>Detail 1</li><li>Detail 2</li><li>Detail 3</li></ul>
-        </div>
+      <!-- Initial layout = pattern from earlier (12-col mosaic). 
+           data-x/y = column/row start (0-based)
+           data-w/h = span width/height in grid units -->
+      <section class="card" data-id="D" data-x="0" data-y="0" data-w="8" data-h="6">
+        <div class="bar"><div class="title">Season Overview</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Main “hero” area. Other boxes can grow/shrink as you arrange.</div>
+        <div class="resize" aria-hidden="true"></div>
       </section>
 
-      <!-- B -->
-      <section class="mod pos-B" data-expand="main" aria-label="Panel B">
-        <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">B <small>Assignments</small></h3>
-        <div class="summary">Pending tasks, ops queue.</div>
-        <div class="details">
-          <table class="t"><tbody><tr><td>Op</td><td>Status</td></tr><tr><td>Vault</td><td>Ready</td></tr></tbody></table>
-        </div>
+      <section class="card" data-id="Tools" data-x="8" data-y="0" data-w="4" data-h="2">
+        <div class="bar"><div class="title">Tools</div><div class="handle">⋮⋮</div></div>
+        <div class="content">DIM • light.gg • TodayInDestiny • D2 Foundry</div>
+        <div class="resize" aria-hidden="true"></div>
       </section>
 
-      <!-- C -->
-      <section class="mod pos-C" data-expand="main" aria-label="Panel C">
-        <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">C <small>Alert Strip</small></h3>
-        <div class="summary">Low-risk advisories.</div>
-        <div class="details">Expanded: show detailed alerts here.</div>
+      <section class="card" data-id="Rotators" data-x="8" data-y="2" data-w="4" data-h="2">
+        <div class="bar"><div class="title">Rotators</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Raid: Last Wish • Dungeon: Shattered Throne • Crucible: Momentum</div>
+        <div class="resize" aria-hidden="true"></div>
       </section>
 
-      <!-- D HERO -->
-      <section class="mod pos-D" data-expand="main" aria-label="Panel D (Hero)">
-        <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">D <small>Season Overview</small></h3>
-        <div class="summary">Main module footprint for expansions.</div>
-        <div class="details">
-          <table class="t">
-            <thead><tr><th>Activity</th><th>Reward</th><th>Notes</th></tr></thead>
-            <tbody>
-              <tr><td>Nightfall</td><td>Pinnacle</td><td>Arc Surge • Champs</td></tr>
-              <tr><td>Raid</td><td>Pinnacle</td><td>Challenge rotation</td></tr>
-            </tbody>
-          </table>
-        </div>
+      <section class="card" data-id="Vendors" data-x="8" data-y="4" data-w="4" data-h="2">
+        <div class="bar"><div class="title">Vendors</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Xûr & Banshee quick look.</div>
+        <div class="resize" aria-hidden="true"></div>
       </section>
 
-      <!-- H (tall) -->
-      <section class="mod pos-H" data-expand="main" aria-label="Panel H">
-        <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">H <small>Right Column</small></h3>
-        <div class="summary">Static intel column.</div>
-        <div class="details">Expanded: vendor rolls, rotations, etc.</div>
+      <section class="card" data-id="Build" data-x="0" data-y="6" data-w="4" data-h="3">
+        <div class="bar"><div class="title">Build Spotlight</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Warlock/Titan/Hunter builds.</div>
+        <div class="resize" aria-hidden="true"></div>
       </section>
 
-      <!-- E -->
-      <section class="mod pos-E" data-expand="main" aria-label="Panel E">
-        <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">E <small>Tools</small></h3>
-        <div class="summary">DIM • light.gg • TiD</div>
-        <div class="details">
-          <ul>
-            <li><a href="https://app.destinyitemmanager.com/" target="_blank" rel="noopener">DIM</a></li>
-            <li><a href="https://www.light.gg/" target="_blank" rel="noopener">light.gg</a></li>
-            <li><a href="https://www.todayindestiny.com/" target="_blank" rel="noopener">Today in Destiny</a></li>
-          </ul>
-        </div>
+      <section class="card" data-id="Mods" data-x="4" data-y="6" data-w="4" data-h="3">
+        <div class="bar"><div class="title">Modifiers</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Surges, threats, champions.</div>
+        <div class="resize" aria-hidden="true"></div>
       </section>
 
-      <!-- F -->
-      <section class="mod pos-F" data-expand="main" aria-label="Panel F">
-        <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">F <small>Builds</small></h3>
-        <div class="summary">Warlock/Titan/Hunter</div>
-        <div class="details">
-          <ul><li>Warlock: Arc Soul</li><li>Titan: Banner</li><li>Hunter: Strand</li></ul>
-        </div>
+      <section class="card" data-id="Clan" data-x="8" data-y="6" data-w="4" data-h="3">
+        <div class="bar"><div class="title">Clan Ops</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Roster, fireteams, invites.</div>
+        <div class="resize" aria-hidden="true"></div>
       </section>
 
-      <!-- G -->
-      <section class="mod pos-G" data-expand="main" aria-label="Panel G">
-        <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">G <small>Activity</small></h3>
-        <div class="summary">Nightfall • Dungeon • Crucible</div>
-        <div class="details">Expanded: modifiers & challenges.</div>
+      <section class="card" data-id="Telemetry" data-x="0" data-y="9" data-w="4" data-h="2">
+        <div class="bar"><div class="title">Telemetry</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Status pings and simple stats (formerly circles).</div>
+        <div class="resize" aria-hidden="true"></div>
       </section>
 
-      <!-- Circles I/J (no boxes) -->
-      <section class="mod pos-circles" data-expand="quarter" id="circlesMod" aria-label="Circles I & J">
-        <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">I &amp; J <small>Signals</small></h3>
-        <div class="summary">
-          <div class="circle-stack" id="circleStack">
-            <div class="circle" title="I"></div>
-            <div class="circle" title="J"></div>
-          </div>
-        </div>
-        <div class="details">
-          <p>Expanded: telemetry details for each signal.</p>
-        </div>
-      </section>
-
-      <!-- K bottom bar -->
-      <section class="mod pos-K" data-expand="main" aria-label="Panel K">
-        <button class="toggle" aria-expanded="false">Expand</button>
-        <h3 class="title">K <small>Footer Bar</small></h3>
-        <div class="summary">Status, links, or ticker.</div>
-        <div class="details">Expanded: extended footer content.</div>
+      <section class="card" data-id="Intel" data-x="4" data-y="9" data-w="8" data-h="2">
+        <div class="bar"><div class="title">Intel Feed</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Announcements & patch highlights.</div>
+        <div class="resize" aria-hidden="true"></div>
       </section>
     </main>
   </div>
 
 <script>
-/* Expand/Collapse logic + circle auto-sizing */
-document.addEventListener('DOMContentLoaded', () => {
-  const grid = document.getElementById('grid');
-  const modules = [...document.querySelectorAll('.mod')];
+/* ------------- DRAG/RESIZE GRID ENGINE (no libraries) -------------
+   - Grid is 12 columns (configurable). Each item has x,y,w,h in grid units.
+   - Dragging/resizing snaps to grid.
+   - On drop/resize we resolve collisions by pushing collided items DOWN
+     until there is space (Gridster-style). If no space in that row segment,
+     we scan subsequent rows. The grid grows vertically as needed.
+-------------------------------------------------------------------- */
+(function(){
+  const gridEl = document.getElementById('grid');
+  const COLS = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols')) || 12;
 
-  function collapseAll() {
-    grid.classList.remove('has-expanded');
-    modules.forEach(m => {
-      m.classList.remove('expanded-main','expanded-quarter');
-      const btn = m.querySelector('.toggle');
-      if (btn) { btn.setAttribute('aria-expanded','false'); btn.textContent = 'Expand'; }
-      const s = m.querySelector('.summary'); if (s) s.style.display = '';
-      const d = m.querySelector('.details'); if (d) d.style.display = 'none';
+  const GAP = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 14;
+  const COLW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--colW')) || 90;
+  const ROWH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || 90;
+
+  // ---- MODEL ----
+  const items = [...gridEl.querySelectorAll('.card')].map(el => ({
+    el,
+    id: el.dataset.id,
+    x: +el.dataset.x, y: +el.dataset.y,
+    w: +el.dataset.w, h: +el.dataset.h,
+    minW: 1, minH: 1, maxW: COLS
+  }));
+
+  function applyLayout(){
+    // Set CSS Grid position for each item
+    items.forEach(it => {
+      it.el.style.gridColumn = `${it.x + 1} / span ${it.w}`;
+      it.el.style.gridRow    = `${it.y + 1} / span ${it.h}`;
+      // sync data-* (handy for debugging)
+      it.el.dataset.x = it.x; it.el.dataset.y = it.y;
+      it.el.dataset.w = it.w; it.el.dataset.h = it.h;
     });
-    sizeCircles(); // recalc after layout change
   }
 
-  function expand(mod) {
-    const cls = (mod.dataset.expand === 'quarter') ? 'expanded-quarter' : 'expanded-main';
-    const already = mod.classList.contains('expanded-main') || mod.classList.contains('expanded-quarter');
-    if (already) { collapseAll(); return; }
-
-    collapseAll();
-    mod.classList.add(cls);
-    grid.classList.add('has-expanded');
-
-    const s = mod.querySelector('.summary'); if (s) s.style.display = 'none';
-    const d = mod.querySelector('.details'); if (d) d.style.display = 'block';
-
-    const btn = mod.querySelector('.toggle');
-    if (btn) { btn.setAttribute('aria-expanded','true'); btn.textContent = 'Collapse'; }
-
-    sizeCircles(); // recalc after layout change
+  function rectsOverlap(a,b){
+    return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
   }
 
-  grid.addEventListener('click', (e) => {
-    const btn = e.target.closest('.toggle');
-    if (!btn) return;
-    const mod = btn.closest('.mod');
-    if (mod) expand(mod);
+  function getCollisions(target, ignoreId=null){
+    return items.filter(it => it.id !== target.id && it.id !== ignoreId && rectsOverlap(target, it));
+  }
+
+  // Push an item down until it no longer collides (scan rows; keep same x,w if possible)
+  function pushDown(item, avoidId=null){
+    let changed = false;
+    let colliders = getCollisions(item, avoidId);
+    while (colliders.length){
+      for (const c of colliders){
+        c.y = item.y + item.h; // place directly below the pushing item
+        changed = true;
+      }
+      // after moving colliders, we must also resolve any chain-collisions
+      colliders = getCollisions(item, avoidId);
+    }
+    return changed;
+  }
+
+  // After each mutation, resolve collisions for all (in y-order)
+  function resolveAll(avoidId=null){
+    // Sort by y then x to push lower items first
+    const ordered = items.slice().sort((a,b)=> (a.y - b.y) || (a.x - b.x));
+    let changed = false;
+    for (const it of ordered){
+      if (pushDown(it, avoidId)) changed = true;
+    }
+    return changed;
+  }
+
+  // Optional "compaction": pull items up if there is free space above them
+  function compact(){
+    const ordered = items.slice().sort((a,b)=> (a.y - b.y) || (a.x - b.x));
+    for (const it of ordered){
+      let newY = it.y;
+      while (newY > 0){
+        const test = { ...it, y: newY - 1 };
+        if (!getCollisions(test).length){
+          it.y = newY - 1;
+          newY--;
+        } else { break; }
+      }
+    }
+  }
+
+  // Keep within bounds horizontally
+  function clampToCols(it){
+    if (it.w > COLS) it.w = COLS;
+    if (it.x < 0) it.x = 0;
+    if (it.x + it.w > COLS) it.x = COLS - it.w;
+  }
+
+  // ---- DRAGGING ----
+  let dragging = null;
+  let startMouse = null;
+  let startPos = null;
+
+  gridEl.addEventListener('mousedown', e => {
+    const bar = e.target.closest('.bar');
+    if (!bar) return;
+    const el = bar.closest('.card');
+    const it = items.find(i => i.el === el);
+    dragging = it;
+    startMouse = { x: e.clientX, y: e.clientY };
+    startPos   = { x: it.x, y: it.y };
+    it.el.classList.add('dragging');
+    e.preventDefault();
   });
 
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.mod')) collapseAll();
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - startMouse.x;
+    const dy = e.clientY - startMouse.y;
+    // convert px delta to grid units (snap)
+    const gx = Math.round(dx / (COLW + (GAP*(COLS-1)/COLS? 0 : 0)) ); // simple snap
+    const gy = Math.round(dy / (ROWH) );
+    dragging.x = startPos.x + gx;
+    dragging.y = Math.max(0, startPos.y + gy);
+    clampToCols(dragging);
+    resolveAll(dragging.id);
+    applyLayout();
   });
 
-  // --- Circle sizing: fill available column height/width neatly (keeps perfect circles)
-  function sizeCircles(){
-    const mod = document.getElementById('circlesMod');
-    if (!mod) return;
-    const stack = document.getElementById('circleStack');
-    if (!stack) return;
+  window.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging.el.classList.remove('dragging');
+    dragging = null;
+    compact(); resolveAll(); applyLayout();
+  });
 
-    // Available inner box size
-    const modStyles = getComputedStyle(mod);
-    const padV = parseFloat(modStyles.paddingTop) + parseFloat(modStyles.paddingBottom);
-    const padH = parseFloat(modStyles.paddingLeft) + parseFloat(modStyles.paddingRight);
+  // ---- RESIZING ----
+  let resizing = null;
+  let startSize = null;
 
-    const rect = mod.getBoundingClientRect();
-    const innerH = rect.height - padV - 36;   // - approx header & margin height
-    const innerW = rect.width  - padH;
+  gridEl.addEventListener('mousedown', e => {
+    const h = e.target.closest('.resize');
+    if (!h) return;
+    const el = h.closest('.card');
+    const it = items.find(i => i.el === el);
+    resizing = it;
+    startMouse = { x: e.clientX, y: e.clientY };
+    startSize  = { w: it.w, h: it.h };
+    it.el.classList.add('dragging');
+    e.preventDefault();
+    e.stopPropagation();
+  });
 
-    const gap = parseFloat(getComputedStyle(stack).getPropertyValue('--gap')) || 12;
+  window.addEventListener('mousemove', e => {
+    if (!resizing) return;
+    const dx = e.clientX - startMouse.x;
+    const dy = e.clientY - startMouse.y;
+    const dw = Math.round(dx / (COLW) );
+    const dh = Math.round(dy / (ROWH) );
+    resizing.w = Math.max(resizing.minW, Math.min(resizing.maxW, startSize.w + dw));
+    resizing.h = Math.max(resizing.minH, startSize.h + dh);
+    clampToCols(resizing);
+    resolveAll(resizing.id);
+    applyLayout();
+  });
 
-    // Two circles stacked: diameter fits min(width, (innerH - gap)/2)
-    const diameter = Math.max(24, Math.min(innerW, (innerH - gap) / 2));
-    mod.style.setProperty('--circle-d', `${diameter}px`);
-  }
+  window.addEventListener('mouseup', () => {
+    if (!resizing) return;
+    resizing.el.classList.remove('dragging');
+    resizing = null;
+    compact(); resolveAll(); applyLayout();
+  });
 
-  sizeCircles();
-  window.addEventListener('resize', sizeCircles);
-});
+  // Initial paint
+  resolveAll(); applyLayout();
+
+  // Optional: keyboard nudging (arrow keys while focused on a card)
+  gridEl.addEventListener('keydown', (e) => {
+    const el = e.target.closest('.card'); if (!el) return;
+    const it = items.find(i => i.el === el);
+    if (!it) return;
+    let used = true;
+    switch(e.key){
+      case 'ArrowLeft': it.x -= 1; break;
+      case 'ArrowRight': it.x += 1; break;
+      case 'ArrowUp': it.y = Math.max(0, it.y - 1); break;
+      case 'ArrowDown': it.y += 1; break;
+      default: used = false;
+    }
+    if (used){
+      clampToCols(it); resolveAll(it.id); applyLayout(); e.preventDefault();
+    }
+  });
+})();
 </script>
 </body>
 </html>
