@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>S!ck on Tuesdays — Command Grid (Full-Width, Live Push, Top Controls)</title>
-<meta name="description" content="Destiny 2 command-center grid with full-width layout, responsive left tabs, centered lock + right visibility controls, smooth drag with live collision, and snap on drop.">
+<title>S!ck on Tuesdays — Command Grid (Smooth Reflow + Overlay Dropdown + Responsive Stack)</title>
+<meta name="description" content="Destiny 2 command-center grid with full-width layout, overlay controls, smooth FLIP reflow during drag, and responsive single-column stacking on small windows.">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,12 +16,13 @@
     --ink:#e7eefc; --muted:#94a7c4; --border:#1f2b3e;
     --arc:#7dd3fc; --arc2:#60a5fa; --good:#34d399; --bad:#fb7185;
 
-    --cols: 12;
-    --colW: 90px;   /* grid column width unit */
-    --rowH: 90px;   /* grid row height unit */
-    --gap: 14px;    /* grid gap */
-    --leftTabsW: 260px;     /* fixed width for layouts panel */
-    --maxPageW: 100vw;      /* full-width as requested */
+    --cols: 12;            /* logical grid columns in wide mode */
+    --colW: 90px;          /* base column width */
+    --rowH: 90px;          /* base row height */
+    --gap: 14px;           /* grid gap */
+    --leftTabsW: 260px;    /* fixed width for layouts panel */
+    --maxPageW: 100vw;     /* full window width */
+    --overlayZ: 200;       /* overlay menus z-index */
   }
   @media (max-width:1300px){ :root{ --colW:84px; --rowH:86px; } }
   @media (max-width:1100px){ :root{ --colW:78px; --rowH:80px; } }
@@ -30,7 +31,7 @@
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
-    margin:0; overflow-x:hidden; /* no horizontal scroll */
+    margin:0; overflow-x:hidden;  /* never horizontal scroll */
     font:16px/1.55 Rajdhani, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     color:var(--ink);
     background:
@@ -48,9 +49,9 @@
   }
 
   .wrap{
-    width: min(2000px, var(--maxPageW)); /* full window width */
+    width: min(2200px, var(--maxPageW));
     margin: 16px auto 60px;
-    padding: 0 12px; /* tiny side padding to avoid accidental overflow */
+    padding: 0 12px;
   }
 
   header{
@@ -60,11 +61,7 @@
   .brand h1{margin:0; font-size:28px; font-weight:700; letter-spacing:.04em}
   .brand .badge{color:var(--muted); font-size:13px; letter-spacing:.14em; text-transform:uppercase}
 
-  /* ============== PAGE LAYOUT ==============
-     Two columns that use the full width:
-     - Column 1: Left tabs (fixed width)
-     - Column 2: Controls bar (top) + Grid (below) occupy remaining width
-  */
+  /* ===== Page layout: Left tabs | Controls+Grid (full width, no overlap) ===== */
   .layout{
     display:grid;
     grid-template-columns: var(--leftTabsW) 1fr;
@@ -115,11 +112,11 @@
   .deleteBtn.enabled{ opacity:1; pointer-events:auto; }
   .tabFooter{ padding:8px 12px; color:var(--muted); font-size:12px }
 
-  /* ===== Controls above the Grid (center + right) ===== */
-  .controls{ grid-area:controls; display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  /* ===== Controls above Grid (center lock; right dropdown) ===== */
+  .controls{ grid-area:controls; display:flex; align-items:center; gap:12px; margin-bottom:12px; position:relative; }
   .controls .spacer{ flex:1 1 auto; }
   .controls .center{ flex:0 0 auto; }
-  .controls .right{ flex:0 0 auto; margin-left:auto; }
+  .controls .right{ flex:0 0 auto; margin-left:auto; position:relative; }
 
   /* Lock toggle: centered */
   #lockToggle{
@@ -136,12 +133,13 @@
   body.locked .bar{ cursor:default; }
   body.locked .resize{ display:none; }
 
-  /* Panel visibility dropdown: right aligned */
+  /* Panels dropdown: overlay popover (no push-down) */
   .controlBox{
     border:1px solid var(--border); border-radius:12px;
     background:linear-gradient(180deg,#0f1520,#101a28);
     box-shadow:0 8px 28px rgba(0,0,0,.35);
-    overflow:hidden; min-width:240px;
+    overflow:visible; min-width:240px;
+    position:relative; /* anchor for absolute dropdown */
   }
   .controlHeader{
     padding:10px 12px; font-weight:700; letter-spacing:.06em; cursor:pointer;
@@ -150,13 +148,27 @@
   }
   .controlHeader:hover{ background:#111b2a; }
   .caret{ transition: transform .15s ease; }
-  .controlBody{ display:none; max-height:420px; overflow:auto; }
+
+  /* Overlay body */
+  .controlBody{
+    position:absolute;
+    right:0; top:100%;
+    width: min(320px, 60vw);
+    max-height: 60vh;
+    display:none;
+    overflow:auto;
+    border:1px solid var(--border);
+    border-radius:12px;
+    background:linear-gradient(180deg,#0f1520,#101a28);
+    box-shadow:0 16px 48px rgba(0,0,0,.55);
+    z-index: var(--overlayZ);
+  }
   .controlBox.open .controlBody{ display:block; }
   .controlBox.open .caret{ transform: rotate(180deg); }
   .checkRow{ display:flex; align-items:center; gap:8px; padding:8px 12px; font-size:14px; color:var(--muted) }
   .checkRow input{ transform: translateY(1px); }
 
-  /* ===== The Grid (information panels) ===== */
+  /* ===== Grid (info panels) ===== */
   .grid{ grid-area:grid;
     position:relative;
     display:grid;
@@ -195,7 +207,16 @@
   }
   .dragging{ opacity:.96; box-shadow:0 16px 36px rgba(0,0,0,.6); z-index:5; }
 
-  /* ====== Narrow screens: place Layout tabs ABOVE the grid horizontally ====== */
+  /* ===== Stacked mode (narrow windows) ===== */
+  .grid.stacked{
+    grid-template-columns: 1fr;              /* single column */
+    grid-auto-rows: auto;                    /* let height flow; we still respect h rows via CSS var if wanted */
+  }
+  .grid.stacked .card{
+    width:100%;                              /* panel fits the viewport width */
+  }
+
+  /* ===== When the whole page is narrow, move the left tabs above the grid ===== */
   @media (max-width: 1200px){
     .layout{
       grid-template-columns: 1fr;
@@ -214,7 +235,7 @@
 
   /* Popover (rename/color) */
   .popover{
-    position:fixed; z-index:50; width:240px; border:1px solid var(--border); border-radius:10px;
+    position:fixed; z-index:var(--overlayZ); width:240px; border:1px solid var(--border); border-radius:10px;
     background:linear-gradient(180deg,#0f1520,#101a28);
     box-shadow:0 12px 40px rgba(0,0,0,.5); padding:10px; display:none;
   }
@@ -236,8 +257,8 @@
   .popover .danger{ margin-top:8px; width:100%; background:linear-gradient(180deg,#2b0f14,#370c12);
     border-color:#4a1018; color:#ffb3bd; }
 
-  /* Confirm modal + Undo snackbar reused from previous build */
-  .modal{ position:fixed; inset:0; display:none; z-index:60; }
+  /* Confirm modal + Undo snackbar (unchanged) */
+  .modal{ position:fixed; inset:0; display:none; z-index:calc(var(--overlayZ) + 1); }
   .modal.open{ display:block; }
   .modal .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55); backdrop-filter: blur(2px); }
   .modal .dialog{
@@ -255,7 +276,7 @@
   .dialog .danger{ background:linear-gradient(180deg,#2b0f14,#370c12); border-color:#4a1018; color:#ffb3bd; }
 
   .snackbar{
-    position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:70;
+    position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:calc(var(--overlayZ) + 2);
     display:none; align-items:center; gap:12px; padding:10px 14px; border:1px solid var(--border); border-radius:12px;
     background:linear-gradient(180deg,#0f1520,#101a28); box-shadow:0 12px 40px rgba(0,0,0,.5); color:var(--ink);
   }
@@ -288,7 +309,7 @@
         </div>
       </aside>
 
-      <!-- TOP of GRID: controls (center lock, right visibility) -->
+      <!-- TOP of GRID: controls (center lock, right visibility overlay) -->
       <div class="controls">
         <div class="spacer"></div>
         <div class="center">
@@ -390,24 +411,24 @@
 <script>
 (function(){
   const gridEl = document.getElementById('grid');
-  const COLS = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols')) || 12;
-  const COLW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--colW')) || 90;
-  const ROWH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || 90;
+  const COLS = () => parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols')) || 12;
+  const COLW = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--colW')) || 90;
+  const ROWH = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || 90;
+  const GAP  = () => parseFloat(getComputedStyle(gridEl).gap) || 0;
 
-  /* ===== Cards ===== */
+  /* ===== Items ===== */
   const items = [...gridEl.querySelectorAll('.card')].map(el => ({
     el, id: el.dataset.id,
     x:+el.dataset.x, y:+el.dataset.y, w:+el.dataset.w, h:+el.dataset.h,
-    hidden:false, minW:1, minH:1, maxW:COLS
+    hidden:false, minW:1, minH:1, maxW:9999
   }));
   const DEFAULT_LAYOUT = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
 
-  /* ===== Storage keys ===== */
-  const TABS_KEY='sot_tabs_meta_full';
+  /* ===== Storage ===== */
+  const TABS_KEY='sot_tabs_meta_smooth';
   const LAYOUT_KEY_PREFIX='sot_layout_';
-  const ACTIVE_TAB_KEY='sot_active_tab_id_full';
+  const ACTIVE_TAB_KEY='sot_active_tab_id_smooth';
 
-  /* ===== Tabs meta ===== */
   function loadTabsMeta(){
     const raw = localStorage.getItem(TABS_KEY);
     if (raw){ try{ const p=JSON.parse(raw); if(Array.isArray(p)&&p.length) return p; }catch{} }
@@ -420,7 +441,7 @@
   let tabs = loadTabsMeta();
   let activeTabId = localStorage.getItem(ACTIVE_TAB_KEY) || tabs[0].id;
 
-  /* ===== Accent color per tab ===== */
+  /* ===== Accent ===== */
   function setActiveAccent(hex){
     try{
       const {h,s,l}=hexToHsl(hex);
@@ -445,7 +466,7 @@
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
 
-  /* ===== Save/Load layout per tab (no auto-compact; preserves gaps) ===== */
+  /* ===== Save/Load layout (keep gaps) ===== */
   function saveLayout(tabId){
     const data = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
     localStorage.setItem(LAYOUT_KEY_PREFIX + tabId, JSON.stringify(data));
@@ -458,26 +479,75 @@
       if (f) Object.assign(it,{x:f.x,y:f.y,w:f.w,h:f.h,hidden:!!f.hidden});
       else { const d=DEFAULT_LAYOUT.find(x=>x.id===it.id); Object.assign(it,d||{x:0,y:0,w:3,h:2,hidden:false}); }
     }
-    resolveAll(items); applyLayout(items);
+    resolveAll(items); applyLayout(items, {animate:false});
   }
 
-  /* ===== Apply positions to DOM (for either real items or a shadow copy) ===== */
-  function applyLayout(list){
+  /* ===== Helpers: capture rects for FLIP ===== */
+  function captureRects(list){
+    const map = new Map();
     list.forEach(it=>{
-      const node = items.find(i=>i.id===it.id).el;  // use real node
-      node.classList.toggle('hide', !!it.hidden);
-      if(!it.hidden){
-        node.style.transform=''; // clear any drag transform (caller may set it)
-        node.style.gridColumn = `${it.x + 1} / span ${it.w}`;
-        node.style.gridRow    = `${it.y + 1} / span ${it.h}`;
+      if(it.hidden) return;
+      const r = it.el.getBoundingClientRect();
+      map.set(it.id, r);
+    });
+    return map;
+  }
+  function flipAnimate(prevRects, nextList, excludeId){
+    // Apply “FLIP” for smoother movement of non-dragging items
+    nextList.forEach(it=>{
+      if(it.hidden || it.id===excludeId) return;
+      const el = it.el;
+      const nextR = el.getBoundingClientRect();
+      const prevR = prevRects.get(it.id);
+      if(!prevR) return;
+      const dx = prevR.left - nextR.left;
+      const dy = prevR.top  - nextR.top;
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5){
+        el.style.transition = 'none';
+        el.style.transform = `translate(${dx}px, ${dy}px)`;
+        el.offsetWidth; // reflow
+        el.style.transition = 'transform 140ms ease';
+        el.style.transform = 'translate(0,0)';
+        // clean up after transition
+        el.addEventListener('transitionend', function handler(){
+          el.style.transition = '';
+          el.style.transform = '';
+          el.removeEventListener('transitionend', handler);
+        });
       }
-      // update data-* only when applying to the real items list
+    });
+  }
+
+  /* ===== Apply positions to DOM ===== */
+  function applyLayout(list, {animate=true, excludeId=null}={}){
+    let prev=null;
+    if(animate){ prev = captureRects(items); }
+
+    const stacked = gridEl.classList.contains('stacked');
+    // Order by y then x for stacking
+    const order = list.slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
+    order.forEach((it, idx)=>{
+      const node = items.find(i=>i.id===it.id).el;
+      node.classList.toggle('hide', !!it.hidden);
+      node.style.transform = node.style.transform || '';
+      if(!it.hidden){
+        if(stacked){
+          node.style.gridColumn = `1 / -1`;
+          node.style.gridRow    = `${idx+1}`;
+        }else{
+          node.style.gridColumn = `${it.x + 1} / span ${it.w}`;
+          node.style.gridRow    = `${it.y + 1} / span ${it.h}`;
+        }
+      }
+      // only commit dataset to source-of-truth list
       if (list === items) Object.assign(node.dataset, {x:it.x, y:it.y, w:it.w, h:it.h});
     });
+
+    if(animate && prev){ flipAnimate(prev, order, excludeId); }
     renderPanelList();
   }
 
-  /* ===== Collision helpers (downward push only) ===== */
+  /* ===== Collision (downward push only) ===== */
   function rectsOverlap(a,b){ if(a.hidden||b.hidden) return false;
     return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
   }
@@ -490,22 +560,24 @@
     }
   }
   function resolveAll(list){
-    // Process top-to-bottom, left-to-right
     const ordered = list.slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
     for (const it of ordered){ pushDown(it, list); }
     return list;
   }
   function clampToCols(it){
-    if (it.w > COLS) it.w = COLS;
+    const cols = COLS();
+    if (it.w > cols) it.w = cols;
     if (it.x < 0) it.x = 0;
-    if (it.x + it.w > COLS) it.x = COLS - it.w;
+    if (it.x + it.w > cols) it.x = cols - it.w;
     if (it.y < 0) it.y = 0;
   }
 
-  /* ===== Right: Panel visibility ===== */
+  /* ===== Panel visibility (overlay popover) ===== */
   const panelControl=document.getElementById('panelControl');
   const panelList=document.getElementById('panelList');
-  panelControl.querySelector('.controlHeader').addEventListener('click', ()=> panelControl.classList.toggle('open'));
+  panelControl.querySelector('.controlHeader').addEventListener('click', ()=>{
+    panelControl.classList.toggle('open');
+  });
   function renderPanelList(){
     panelList.innerHTML='';
     for(const it of items){
@@ -517,25 +589,54 @@
   panelList.addEventListener('change', e=>{
     const cb=e.target.closest('input[type="checkbox"]'); if(!cb) return;
     const it=items.find(i=>i.id===cb.dataset.id); it.hidden=!cb.checked;
-    resolveAll(items); applyLayout(items); saveLayout(activeTabId);
+    resolveAll(items); applyLayout(items, {animate:true});
+    saveLayout(activeTabId);
   });
 
-  /* ===== Lock toggle (centered) ===== */
+  /* ===== Lock toggle ===== */
   const lockToggle=document.getElementById('lockToggle');
   let isLocked=false;
   function setLocked(v){ isLocked=!!v; document.body.classList.toggle('locked', isLocked); lockToggle.setAttribute('aria-pressed', String(isLocked)); }
   lockToggle.addEventListener('click', ()=>setLocked(!isLocked));
   lockToggle.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setLocked(!isLocked); } });
 
-  /* ===== Smooth Drag with LIVE push =====
-     - While dragging: card follows cursor smoothly (transform)
-     - We run a SHADOW layout based on the original positions to push others live
-     - If you move back, others return (because each move recalculates from baseline)
-     - On drop: snap to nearest grid, commit the shadow to real items
-  */
+  /* ===== Smooth Drag with LIVE push + FLIP (throttled via rAF) ===== */
   let dragging=null, startMouse=null, startPos=null;
-  let dragBaseline=null;   // array of {id,x,y,w,h,hidden} at drag start
-  let dragShadow=null;     // working copy updated on mousemove
+  let dragBaseline=null;   // snapshot at drag start
+  let dragShadow=null;     // working copy during move
+
+  let frameReq = null;
+  let pendingMove = null;
+
+  function onDragFrame(){
+    if(!pendingMove || !dragging) { frameReq=null; return; }
+    const {dx, dy} = pendingMove; pendingMove=null;
+
+    const prevRects = captureRects(items);
+
+    // Grid-snapped candidate for shadow reflow (so neighbors respond)
+    const gx = Math.round(dx / COLW());
+    const gy = Math.round(dy / ROWH());
+    const targetX = Math.max(0, startPos.x + gx);
+    const targetY = Math.max(0, startPos.y + gy);
+
+    dragShadow = dragBaseline.map(o => ({ ...o }));
+    const sDrag = dragShadow.find(o => o.id === dragging.id);
+    sDrag.x = targetX; sDrag.y = targetY;
+    clampToCols(sDrag);
+    resolveAll(dragShadow);
+
+    // Apply the shadow layout (neighbors glide via FLIP)
+    applyLayout(dragShadow, {animate:false}); // set positions first
+    flipAnimate(prevRects, dragShadow, dragging.id);
+
+    // Keep dragged card following exact cursor inside its snapped cell
+    const residualX = dx - gx * COLW();
+    const residualY = dy - gy * ROWH();
+    dragging.el.style.transform = `translate(${residualX}px, ${residualY}px)`;
+
+    frameReq = requestAnimationFrame(onDragFrame);
+  }
 
   gridEl.addEventListener('mousedown', e=>{
     if (isLocked) return;
@@ -544,11 +645,8 @@
     dragging   = it;
     startMouse = {x:e.clientX, y:e.clientY};
     startPos   = {x:it.x, y:it.y};
-
-    // snapshot baseline
     dragBaseline = items.map(o => ({ id:o.id, x:o.x, y:o.y, w:o.w, h:o.h, hidden:o.hidden }));
     dragShadow   = dragBaseline.map(o => ({ ...o }));
-
     it.el.classList.add('dragging');
     it.el.style.transform = `translate(0px,0px)`;
     e.preventDefault();
@@ -556,39 +654,19 @@
 
   window.addEventListener('mousemove', e=>{
     if (!dragging) return;
-    const dx = e.clientX - startMouse.x;
-    const dy = e.clientY - startMouse.y;
-
-    // Snap candidate for SHADOW reflow (so others can respond live)
-    const gx = Math.round(dx / COLW);
-    const gy = Math.round(dy / ROWH);
-    const targetX = Math.max(0, startPos.x + gx);
-    const targetY = Math.max(0, startPos.y + gy);
-
-    // Rebuild shadow from baseline on every move (so moving back restores)
-    dragShadow = dragBaseline.map(o => ({ ...o }));
-    const sDrag = dragShadow.find(o => o.id === dragging.id);
-    sDrag.x = targetX; sDrag.y = targetY;
-    clampToCols(sDrag);
-    resolveAll(dragShadow);
-
-    // Apply shadow to DOM so neighbors move out of the way live
-    applyLayout(dragShadow);
-
-    // Keep the dragged card visually following the exact cursor (residual inside the snapped cell)
-    const residualX = dx - gx * COLW;
-    const residualY = dy - gy * ROWH;
-    dragging.el.style.transform = `translate(${residualX}px, ${residualY}px)`;
+    pendingMove = {dx: e.clientX - startMouse.x, dy: e.clientY - startMouse.y};
+    if(!frameReq) frameReq = requestAnimationFrame(onDragFrame);
   });
 
   window.addEventListener('mouseup', e=>{
     if (!dragging) return;
+    cancelAnimationFrame(frameReq); frameReq=null; pendingMove=null;
+
     const dx = e.clientX - startMouse.x;
     const dy = e.clientY - startMouse.y;
 
-    // Final snap (already used for shadow); commit shadow to real items
-    const gx = Math.round(dx / COLW);
-    const gy = Math.round(dy / ROWH);
+    const gx = Math.round(dx / COLW());
+    const gy = Math.round(dy / ROWH());
     const targetX = Math.max(0, startPos.x + gx);
     const targetY = Math.max(0, startPos.y + gy);
 
@@ -598,21 +676,20 @@
     clampToCols(sDrag);
     resolveAll(dragShadow);
 
-    // Commit to items
+    // Commit
     for (const sh of dragShadow){
       const real = items.find(i => i.id === sh.id);
       Object.assign(real, { x:sh.x, y:sh.y, w:sh.w, h:sh.h, hidden:sh.hidden });
     }
-    // Clear drag visuals and apply final layout
     dragging.el.classList.remove('dragging');
     dragging.el.style.transform = '';
     dragging = null; dragBaseline = null; dragShadow = null;
 
-    applyLayout(items);
+    applyLayout(items, {animate:true});
     saveLayout(activeTabId);
   });
 
-  /* ===== Resizing (snap while resizing; can switch to smooth later) ===== */
+  /* ===== Resizing (snap while resizing) ===== */
   let resizing=null, startMouseR=null, startSize=null;
   gridEl.addEventListener('mousedown', e=>{
     if (isLocked) return;
@@ -624,18 +701,39 @@
   window.addEventListener('mousemove', e=>{
     if (!resizing) return;
     const dx=e.clientX-startMouseR.x, dy=e.clientY-startMouseR.y;
-    const dw=Math.round(dx/COLW), dh=Math.round(dy/ROWH);
+    const dw=Math.round(dx/COLW()), dh=Math.round(dy/ROWH());
     resizing.w=Math.max(resizing.minW, Math.min(resizing.maxW, startSize.w+dw));
     resizing.h=Math.max(resizing.minH, startSize.h+dh);
-    clampToCols(resizing); resolveAll(items); applyLayout(items);
+    clampToCols(resizing); resolveAll(items); applyLayout(items, {animate:true});
   });
   window.addEventListener('mouseup', ()=>{
     if (!resizing) return;
     resizing.el.classList.remove('dragging'); resizing=null;
-    applyLayout(items); saveLayout(activeTabId);
+    applyLayout(items, {animate:true}); saveLayout(activeTabId);
   });
 
-  /* ===== Left Tabs (with bulk delete) ===== */
+  /* ===== Responsive: stacked mode when not enough room =====
+     Rule of thumb: if the grid's content width cannot fit 12 * colW + gaps, switch to .stacked.
+  */
+  function shouldStack(){
+    const contentW = gridEl.clientWidth;
+    const needed = COLS()*COLW() + (COLS()-1)*GAP();
+    return contentW < needed;
+  }
+  function updateStack(){
+    const stack = shouldStack();
+    gridEl.classList.toggle('stacked', stack);
+    // In stacked mode, each panel is full-width and ordered vertically; apply without animation to avoid bounce
+    applyLayout(items, {animate:false});
+  }
+
+  window.addEventListener('resize', updateStack);
+  // also update when opening/closing the overlay dropdown (width may change)
+  const controlsEl = document.querySelector('.controls');
+  const ro = new ResizeObserver(updateStack);
+  ro.observe(gridEl); ro.observe(controlsEl);
+
+  /* ===== Tabs / bulk delete (unchanged logic) ===== */
   const tabsEl=document.getElementById('layoutTabs');
   const addTabBtn=document.getElementById('addTabBtn');
   let bulkMode=false;
@@ -707,7 +805,7 @@
     bulkDeleteBtn.title = canDelete ? `Delete ${selCount} selected` : (selCount===allCount ? 'Keep at least one layout' : 'Select layouts to enable');
   }
 
-  /* ===== Single tab popover ===== */
+  /* ===== Color/Rename Popover & Deletion with Undo ===== */
   const pop=document.getElementById('colorPopover');
   const nameInput=document.getElementById('tabName');
   const colorInput=document.getElementById('tabColor');
@@ -735,7 +833,6 @@
   });
   cancelBtn.addEventListener('click', closePopover);
 
-  /* ===== Confirm + Undo (bulk/single) ===== */
   const confirmModal=document.getElementById('confirmModal');
   const confirmText=document.getElementById('confirmText');
   const confirmDeleteBtn=document.getElementById('confirmDelete');
@@ -768,18 +865,6 @@
     undoBar.classList.add('show'); clearTimeout(undoTimer);
     undoTimer=setTimeout(()=>{ undoBar.classList.remove('show'); undoPayload=null; }, 8000);
   }
-
-  undoBtn.addEventListener('click', ()=>{
-    if(!undoPayload) return;
-    const { metas, layouts, indices, prevActiveId } = undoPayload;
-    metas.forEach((m, i)=> tabs.splice(indices[i], 0, m));
-    saveTabsMeta(tabs);
-    for(const id in layouts){ localStorage.setItem(LAYOUT_KEY_PREFIX + id, layouts[id]); }
-    renderTabs();
-    const restoreId = tabs.find(t=>t.id===prevActiveId)?.id || metas[0].id;
-    setActiveTab(restoreId);
-    undoBar.classList.remove('show'); undoPayload=null;
-  });
 
   document.getElementById('bulkDelete').addEventListener('click', ()=>{
     const sel=[...selectedIds];
@@ -821,17 +906,35 @@
     closeConfirm();
   });
 
+  undoBtn.addEventListener('click', ()=>{
+    if(!undoPayload) return;
+    const { metas, layouts, indices, prevActiveId } = undoPayload;
+    metas.forEach((m, i)=> tabs.splice(indices[i], 0, m));
+    saveTabsMeta(tabs);
+    for(const id in layouts){ localStorage.setItem(LAYOUT_KEY_PREFIX + id, layouts[id]); }
+    renderTabs();
+    const restoreId = tabs.find(t=>t.id===prevActiveId)?.id || metas[0].id;
+    setActiveTab(restoreId);
+    undoBar.classList.remove('show'); undoPayload=null;
+  });
+
   document.addEventListener('keydown', e=>{
     if(e.key==='Escape'){
       if(document.getElementById('confirmModal').classList.contains('open')) closeConfirm();
       if(document.getElementById('colorPopover').classList.contains('open')) closePopover();
+      if(panelControl.classList.contains('open')) panelControl.classList.remove('open');
     }
   });
   document.addEventListener('click', e=>{
+    // close color popover when clicking outside
     const popEl=document.getElementById('colorPopover');
-    if(!popEl.classList.contains('open')) return;
-    if(e.target.closest('#colorPopover') || e.target.closest('.colorChip')) return;
-    closePopover();
+    if(popEl.classList.contains('open')){
+      if(!(e.target.closest('#colorPopover') || e.target.closest('.colorChip'))) closePopover();
+    }
+    // close panels overlay if click outside of it (but not the header)
+    if(panelControl.classList.contains('open')){
+      if(!(e.target.closest('#panelControl'))) panelControl.classList.remove('open');
+    }
   });
 
   /* ===== Init ===== */
@@ -842,6 +945,7 @@
   renderTabs();
   renderPanelList();
   setLocked(false);
+  updateStack();
 })();
 </script>
 </body>
