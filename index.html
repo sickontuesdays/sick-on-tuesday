@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>S!ck on Tuesdays — Command Grid (Tabs: Add/Color/Rename/Delete + Lock-aware + In-page Confirm + Undo)</title>
-<meta name="description" content="Destiny 2 command-center grid with per-tab layouts, color chip + rename/delete popover, drag/resize, lock, hide/unhide, in-page confirm and undo.">
+<title>S!ck on Tuesdays — Command Grid (Bulk Delete Layout Tabs)</title>
+<meta name="description" content="Destiny 2 command-center grid with per-tab layouts, color/rename, single & bulk delete with confirm + undo, lock, and hide/unhide.">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,23 +12,16 @@
 
 <style>
   :root{
-    /* Base palette; --arc will be overridden per-tab in JS */
     --bg:#0a0e13; --panel:#0f1520; --panel2:#121a28;
     --ink:#e7eefc; --muted:#94a7c4; --border:#1f2b3e;
     --arc:#7dd3fc; --arc2:#60a5fa; --good:#34d399; --bad:#fb7185;
 
-    /* Grid tuning */
-    --cols: 12;      /* number of columns */
-    --colW: 90px;    /* base column width */
-    --rowH: 90px;    /* base row height */
-    --gap: 14px;     /* gutters */
-
-    /* Center width (margins used for left/right docks) */
+    --cols: 12; --colW: 90px; --rowH: 90px; --gap: 14px;
     --wrapW: 80vw;
   }
-  @media (max-width: 1300px){ :root{ --colW:84px; --rowH:86px; } }
-  @media (max-width: 1100px){ :root{ --colW:78px; --rowH:80px; } }
-  @media (max-width:  900px){ :root{ --colW:70px; --rowH:74px; } }
+  @media (max-width:1300px){ :root{ --colW:84px; --rowH:86px; } }
+  @media (max-width:1100px){ :root{ --colW:78px; --rowH:80px; } }
+  @media (max-width: 900px){ :root{ --colW:70px; --rowH:74px; } }
 
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -58,7 +51,7 @@
   .brand h1{margin:0; font-size:28px; font-weight:700; letter-spacing:.04em}
   .brand .badge{color:var(--muted); font-size:13px; letter-spacing:.14em; text-transform:uppercase}
 
-  /* Lock toggle (clickable) */
+  /* Lock toggle */
   #lockToggle{
     display:flex; align-items:center; gap:10px;
     border:1px solid var(--border); border-radius:12px;
@@ -66,17 +59,14 @@
     padding:8px 12px; cursor:pointer; user-select:none;
     font-size:14px; color:var(--ink);
   }
-  #lockToggle .dot{
-    width:12px; height:12px; border-radius:999px;
-    background:var(--good); box-shadow:0 0 12px var(--good);
-  }
+  #lockToggle .dot{ width:12px; height:12px; border-radius:999px; background:var(--good); box-shadow:0 0 12px var(--good); }
   body.locked #lockToggle .dot{ background:#9b1c1c; box-shadow:0 0 10px #9b1c1c; }
-  body.locked #lockToggle span.text::after{ content:"Layout Locked"; }
-  #lockToggle span.text::after{ content:"Editing Enabled"; }
+  body.locked #lockToggle .text::after{ content:"Layout Locked"; }
+  #lockToggle .text::after{ content:"Editing Enabled"; }
   body.locked .bar{ cursor:default; }
   body.locked .resize{ display:none; }
 
-  /* ===== GRID ===== */
+  /* Grid */
   .grid{
     position:relative;
     display:grid;
@@ -85,15 +75,11 @@
     gap: var(--gap);
   }
 
-  /* ===== CARDS ===== */
+  /* Cards */
   .card{
-    position:relative;
-    background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 140%);
-    border:1px solid var(--border);
-    border-radius:14px;
-    box-shadow:0 6px 24px rgba(2,10,20,.35);
-    overflow:hidden;
-    user-select:none;
+    position:relative; background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 140%);
+    border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 24px rgba(2,10,20,.35);
+    overflow:hidden; user-select:none;
   }
   .card.hide{ display:none !important; }
 
@@ -119,18 +105,16 @@
   }
   .dragging{ opacity:.85; box-shadow:0 10px 26px rgba(0,0,0,.45); }
 
-  /* ===== Right controls (hide/unhide) ===== */
+  /* Right controls (hide/unhide) */
   .rightDock{
-    position:fixed; z-index:20;
-    top:86px;
-    right:max(10px, calc((100vw - var(--wrapW)) / 2 - 240px)); /* in right margin */
+    position:fixed; z-index:20; top:86px;
+    right:max(10px, calc((100vw - var(--wrapW)) / 2 - 240px));
     width:220px;
   }
   .controlBox{
     border:1px solid var(--border); border-radius:12px;
     background:linear-gradient(180deg,#0f1520,#101a28);
-    box-shadow:0 8px 28px rgba(0,0,0,.35);
-    overflow:hidden;
+    box-shadow:0 8px 28px rgba(0,0,0,.35); overflow:hidden;
   }
   .controlHeader{
     padding:10px 12px; font-weight:700; letter-spacing:.06em; cursor:pointer;
@@ -145,28 +129,27 @@
   .checkRow{ display:flex; align-items:center; gap:8px; padding:8px 12px; font-size:14px; color:var(--muted) }
   .checkRow input{ transform: translateY(1px); }
 
-  /* ===== Left tabs ===== */
+  /* Left tabs */
   .leftTabs{
-    position:fixed; z-index:20;
-    top:86px;
-    left:max(10px, calc((100vw - var(--wrapW)) / 2 - 160px)); /* in left margin */
-    width:160px;
+    position:fixed; z-index:20; top:86px;
+    left:max(10px, calc((100vw - var(--wrapW)) / 2 - 180px));
+    width:180px;
   }
   .tabs{
     border:1px solid var(--border); border-radius:12px; overflow:hidden;
     background:linear-gradient(180deg,#0f1520,#101a28);
     box-shadow:0 8px 28px rgba(0,0,0,.35);
   }
-
-  .tabRow{
-    display:flex; align-items:center; gap:8px; padding:0; border-bottom:1px solid var(--border);
-  }
+  .tabRow{ display:flex; align-items:center; gap:8px; padding:0; border-bottom:1px solid var(--border); }
   .colorChip{
     width:16px; height:16px; border-radius:4px; margin-left:10px;
     border:1px solid var(--border); cursor:pointer; flex:0 0 auto;
     box-shadow: inset 0 0 0 2px rgba(0,0,0,.15);
   }
   body.locked .colorChip{ cursor:not-allowed; opacity:.6; pointer-events:none; }
+  .tabCheck{
+    margin-left:10px; width:16px; height:16px; flex:0 0 auto; accent-color: var(--arc);
+  }
 
   .tabBtn{
     flex:1 1 auto; text-align:left; padding:10px 12px; border:0; background:transparent; color:var(--ink);
@@ -182,13 +165,29 @@
   }
   .addBtn:hover{ background:#111b2a; }
 
-  /* Color/Rename/Delete popover */
+  /* Bottom controls (bulk mode) */
+  .bulkBar{
+    display:flex; align-items:center; gap:8px; padding:8px; border-top:1px solid var(--border);
+    background:#0e1726;
+  }
+  .toggleBtn{
+    flex:1 1 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
+    background:#0e1726; color:var(--ink); font-weight:700; text-align:left;
+  }
+  .toggleBtn[aria-pressed="true"]{ background:#122132; }
+  .deleteBtn{
+    flex:0 0 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
+    background:linear-gradient(180deg,#2b0f14,#370c12); border-color:#4a1018; color:#ffb3bd; font-weight:700;
+    opacity:.55; pointer-events:none;
+  }
+  .deleteBtn.enabled{ opacity:1; pointer-events:auto; }
+  .deleteBtn:disabled{ filter:grayscale(40%); opacity:.5; cursor:not-allowed; }
+
+  /* Popover (color/rename/delete single) */
   .popover{
-    position:fixed; z-index:50; width:220px;
-    border:1px solid var(--border); border-radius:10px;
+    position:fixed; z-index:50; width:220px; border:1px solid var(--border); border-radius:10px;
     background:linear-gradient(180deg,#0f1520,#101a28);
-    box-shadow:0 12px 40px rgba(0,0,0,.5);
-    padding:10px; display:none;
+    box-shadow:0 12px 40px rgba(0,0,0,.5); padding:10px; display:none;
   }
   .popover.open{ display:block; }
   .popover label{ display:block; font-size:12px; color:var(--muted); margin:6px 0 4px }
@@ -197,65 +196,45 @@
     background:#0e1726; color:var(--ink);
   }
   .popover input[type="color"]{
-    width:100%; height:36px; border:1px solid var(--border); border-radius:8px; background:transparent;
-    padding:0;
+    width:100%; height:36px; border:1px solid var(--border); border-radius:8px; background:transparent; padding:0;
   }
   .popover .row{ display:flex; gap:8px; margin-top:10px }
   .popover button{
-    flex:1 1 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
+    flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
     background:#0e1726; color:var(--ink); font-weight:700;
   }
   .popover button:hover{ background:#111b2a; }
-  .popover .danger{
-    margin-top:8px; width:100%; background:linear-gradient(180deg,#2b0f14,#370c12);
-    border-color:#4a1018; color:#ffb3bd;
-  }
+  .popover .danger{ margin-top:8px; width:100%; background:linear-gradient(180deg,#2b0f14,#370c12);
+    border-color:#4a1018; color:#ffb3bd; }
   .popover .danger:hover{ background:linear-gradient(180deg,#3a131a,#4a1118); }
   .popover .danger:disabled{ opacity:.6; cursor:not-allowed; filter:grayscale(40%); }
 
-  /* ===== In-page confirm modal (not blockable) ===== */
-  .modal{
-    position:fixed; inset:0; display:none; z-index:60;
-  }
+  /* Modal confirm (popup-safe) */
+  .modal{ position:fixed; inset:0; display:none; z-index:60; }
   .modal.open{ display:block; }
-  .modal .backdrop{
-    position:absolute; inset:0; background:rgba(0,0,0,.55);
-    backdrop-filter: blur(2px);
-  }
+  .modal .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55); backdrop-filter: blur(2px); }
   .modal .dialog{
     position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-    width:min(420px, 92vw);
-    border:1px solid var(--border); border-radius:12px;
-    background:linear-gradient(180deg,#0f1520,#101a28);
-    box-shadow:0 18px 60px rgba(0,0,0,.55);
-    padding:16px;
+    width:min(480px, 92vw); border:1px solid var(--border); border-radius:12px;
+    background:linear-gradient(180deg,#0f1520,#101a28); box-shadow:0 18px 60px rgba(0,0,0,.55); padding:16px;
   }
   .dialog h3{ margin:0 0 6px; font-size:18px }
   .dialog p{ margin:0 0 12px; color:var(--muted) }
-  .dialog .row{ display:flex; gap:10px; justify-content:flex-end }
+  .dialog .row{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
   .dialog button{
-    padding:8px 12px; border:1px solid var(--border); border-radius:8px;
-    background:#0e1726; color:var(--ink); font-weight:700; cursor:pointer;
+    padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#0e1726; color:var(--ink); font-weight:700; cursor:pointer;
   }
   .dialog button:hover{ background:#111b2a; }
   .dialog .danger{ background:linear-gradient(180deg,#2b0f14,#370c12); border-color:#4a1018; color:#ffb3bd; }
-  .dialog .danger:hover{ background:linear-gradient(180deg,#3a131a,#4a1118); }
 
-  /* ===== Undo snackbar ===== */
+  /* Snackbar (Undo) */
   .snackbar{
-    position:fixed; left:50%; transform:translateX(-50%);
-    bottom:16px; z-index:70;
-    display:none; align-items:center; gap:12px;
-    padding:10px 14px; border:1px solid var(--border); border-radius:12px;
-    background:linear-gradient(180deg,#0f1520,#101a28);
-    box-shadow:0 12px 40px rgba(0,0,0,.5);
-    color:var(--ink);
+    position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:70;
+    display:none; align-items:center; gap:12px; padding:10px 14px; border:1px solid var(--border); border-radius:12px;
+    background:linear-gradient(180deg,#0f1520,#101a28); box-shadow:0 12px 40px rgba(0,0,0,.5); color:var(--ink);
   }
   .snackbar.show{ display:flex; }
-  .snackbar button{
-    padding:6px 10px; border:1px solid var(--border); border-radius:8px;
-    background:#0e1726; color:var(--ink); font-weight:700; cursor:pointer;
-  }
+  .snackbar button{ padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:#0e1726; color:var(--ink); font-weight:700; cursor:pointer; }
   .snackbar button:hover{ background:#111b2a; }
   .snackbar .muted{ color:var(--muted); }
 </style>
@@ -267,64 +246,52 @@
         <h1>Guardian Command</h1>
         <span class="badge">S!ck on Tuesdays</span>
       </div>
-
-      <!-- Lock toggle -->
       <div id="lockToggle" role="button" tabindex="0" aria-pressed="false" title="Click to lock/unlock layout">
-        <span class="dot" aria-hidden="true"></span>
-        <span class="text"></span>
+        <span class="dot" aria-hidden="true"></span><span class="text"></span>
       </div>
     </header>
 
     <main class="grid" id="grid">
-      <!-- Initial cards -->
       <section class="card" data-id="D" data-x="0" data-y="0" data-w="8" data-h="6">
         <div class="bar"><div class="title">Season Overview</div><div class="handle">⋮⋮</div></div>
         <div class="content">Main “hero” area. Other boxes can grow/shrink as you arrange.</div>
         <div class="resize" aria-hidden="true"></div>
       </section>
-
       <section class="card" data-id="Tools" data-x="8" data-y="0" data-w="4" data-h="2">
         <div class="bar"><div class="title">Tools</div><div class="handle">⋮⋮</div></div>
         <div class="content">DIM • light.gg • TodayInDestiny • D2 Foundry</div>
         <div class="resize" aria-hidden="true"></div>
       </section>
-
       <section class="card" data-id="Rotators" data-x="8" data-y="2" data-w="4" data-h="2">
         <div class="bar"><div class="title">Rotators</div><div class="handle">⋮⋮</div></div>
         <div class="content">Raid: Last Wish • Dungeon: Shattered Throne • Crucible: Momentum</div>
         <div class="resize" aria-hidden="true"></div>
       </section>
-
       <section class="card" data-id="Vendors" data-x="8" data-y="4" data-w="4" data-h="2">
         <div class="bar"><div class="title">Vendors</div><div class="handle">⋮⋮</div></div>
         <div class="content">Xûr & Banshee quick look.</div>
         <div class="resize" aria-hidden="true"></div>
       </section>
-
       <section class="card" data-id="Build" data-x="0" data-y="6" data-w="4" data-h="3">
         <div class="bar"><div class="title">Build Spotlight</div><div class="handle">⋮⋮</div></div>
         <div class="content">Warlock/Titan/Hunter builds.</div>
         <div class="resize" aria-hidden="true"></div>
       </section>
-
       <section class="card" data-id="Mods" data-x="4" data-y="6" data-w="4" data-h="3">
         <div class="bar"><div class="title">Modifiers</div><div class="handle">⋮⋮</div></div>
         <div class="content">Surges, threats, champions.</div>
         <div class="resize" aria-hidden="true"></div>
       </section>
-
       <section class="card" data-id="Clan" data-x="8" data-y="6" data-w="4" data-h="3">
         <div class="bar"><div class="title">Clan Ops</div><div class="handle">⋮⋮</div></div>
         <div class="content">Roster, fireteams, invites.</div>
         <div class="resize" aria-hidden="true"></div>
       </section>
-
       <section class="card" data-id="Telemetry" data-x="0" data-y="9" data-w="4" data-h="2">
         <div class="bar"><div class="title">Telemetry</div><div class="handle">⋮⋮</div></div>
         <div class="content">Status pings and simple stats.</div>
         <div class="resize" aria-hidden="true"></div>
       </section>
-
       <section class="card" data-id="Intel" data-x="4" data-y="9" data-w="8" data-h="2">
         <div class="bar"><div class="title">Intel Feed</div><div class="handle">⋮⋮</div></div>
         <div class="content">Announcements & patch highlights.</div>
@@ -336,24 +303,25 @@
   <!-- Right hide/unhide control -->
   <aside class="rightDock">
     <div class="controlBox" id="panelControl">
-      <div class="controlHeader">
-        <span>Panels</span>
-        <span class="caret">▾</span>
-      </div>
-      <div class="controlBody" id="panelList"><!-- populated by JS --></div>
+      <div class="controlHeader"><span>Panels</span><span class="caret">▾</span></div>
+      <div class="controlBody" id="panelList"></div>
     </div>
   </aside>
 
-  <!-- Left layout tabs (dynamic, starts with one) -->
+  <!-- Left layout tabs -->
   <aside class="leftTabs">
     <div class="tabs" id="layoutTabs">
-      <!-- rows injected here -->
+      <!-- tab rows injected here -->
       <button class="addBtn" id="addTabBtn">+ Add Tab</button>
-      <div class="tabFooter muted">Each tab saves its own positions, sizes, visibility & color.</div>
+      <div class="bulkBar">
+        <button class="toggleBtn" id="bulkToggle" aria-pressed="false" title="Select multiple layouts to delete">Select layouts</button>
+        <button class="deleteBtn" id="bulkDelete" disabled title="Select layouts to enable">Delete selected</button>
+      </div>
+      <div class="tabFooter muted">Each tab saves positions, sizes, visibility & color.</div>
     </div>
   </aside>
 
-  <!-- Color / Rename / Delete popover -->
+  <!-- Color / Rename / Delete (single) -->
   <div class="popover" id="colorPopover" role="dialog" aria-modal="true" aria-hidden="true">
     <label for="tabName">Tab name</label>
     <input id="tabName" type="text" maxlength="30" />
@@ -366,12 +334,12 @@
     <button class="danger" id="colorDelete" title="Delete this tab">Delete Tab</button>
   </div>
 
-  <!-- In-page confirm modal (safe against popup blockers) -->
+  <!-- Confirm modal -->
   <div class="modal" id="confirmModal" aria-hidden="true">
     <div class="backdrop"></div>
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
-      <h3 id="confirmTitle">Delete tab?</h3>
-      <p id="confirmText">This will remove the tab and its saved layout.</p>
+      <h3 id="confirmTitle">Delete tab(s)?</h3>
+      <p id="confirmText">This will remove the selection and their saved layouts.</p>
       <div class="row">
         <button id="confirmCancel">Cancel</button>
         <button id="confirmDelete" class="danger">Delete</button>
@@ -381,88 +349,68 @@
 
   <!-- Undo snackbar -->
   <div class="snackbar" id="undoBar" aria-live="polite">
-    <span id="undoText" class="muted">Tab deleted.</span>
+    <span id="undoText" class="muted">Deleted.</span>
     <button id="undoBtn">Undo</button>
   </div>
 
 <script>
-/* ===================================================================
-   Per-tab system with: dynamic tabs (start with 1), color chip + rename
-   popover (true <input type="color">), Delete Tab using in-page confirm,
-   Undo snackbar, lock-aware, drag/resize, hide/unhide, localStorage.
-   =================================================================== */
 (function(){
   const gridEl = document.getElementById('grid');
   const COLS = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols')) || 12;
   const COLW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--colW')) || 90;
   const ROWH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || 90;
 
-  // ---- Collect initial cards ----
+  // Collect cards
   const items = [...gridEl.querySelectorAll('.card')].map(el => ({
-    el, id: el.dataset.id,
-    x: +el.dataset.x, y: +el.dataset.y,
-    w: +el.dataset.w, h: +el.dataset.h,
-    hidden: false, minW:1, minH:1, maxW: COLS
+    el, id: el.dataset.id, x:+el.dataset.x, y:+el.dataset.y, w:+el.dataset.w, h:+el.dataset.h,
+    hidden:false, minW:1, minH:1, maxW:COLS
   }));
   const DEFAULT_LAYOUT = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
 
-  // ---- Storage keys ----
-  const TABS_KEY = 'sot_tabs_meta_v2';       // [{id,name,color}]
-  const LAYOUT_KEY_PREFIX = 'sot_layout_';   // + tab.id => [{id,x,y,w,h,hidden}]
-  const ACTIVE_TAB_KEY = 'sot_active_tab_id_v2';
+  // Storage keys
+  const TABS_KEY='sot_tabs_meta_v3';
+  const LAYOUT_KEY_PREFIX='sot_layout_';
+  const ACTIVE_TAB_KEY='sot_active_tab_id_v3';
 
-  // ---- Tabs meta ----
+  // Tabs meta
   function loadTabsMeta(){
     const raw = localStorage.getItem(TABS_KEY);
-    if (raw){
-      try { const parsed = JSON.parse(raw); if (Array.isArray(parsed) && parsed.length) return parsed; } catch {}
-    }
-    // Seed with a single default tab
-    const seed = [{ id:'layout1', name:'Layout 1', color:'#7dd3fc' }];
+    if (raw){ try{ const p=JSON.parse(raw); if(Array.isArray(p)&&p.length) return p; }catch{} }
+    const seed=[{id:'layout1', name:'Layout 1', color:'#7dd3fc'}];
     localStorage.setItem(TABS_KEY, JSON.stringify(seed));
     return seed;
   }
   function saveTabsMeta(t){ localStorage.setItem(TABS_KEY, JSON.stringify(t)); }
 
   let tabs = loadTabsMeta();
-  let activeTabId = localStorage.getItem(ACTIVE_TAB_KEY) || tabs[0]?.id || 'layout1';
+  let activeTabId = localStorage.getItem(ACTIVE_TAB_KEY) || tabs[0].id;
 
+  // Accent per tab
   function setActiveAccent(hex){
     try{
-      const {h,s,l} = hexToHsl(hex);
-      const darker = hslToHex(h, s, Math.max(0, l - 10));
+      const {h,s,l}=hexToHsl(hex);
+      const darker=hslToHex(h,s,Math.max(0,l-10));
       document.documentElement.style.setProperty('--arc', hex);
       document.documentElement.style.setProperty('--arc2', darker);
     }catch{}
   }
-  function hexToHsl(H){
-    let r=0,g=0,b=0;
-    if (H.length==4){ r="0x"+H[1]+H[1]; g="0x"+H[2]+H[2]; b="0x"+H[3]+H[3]; }
-    else if (H.length==7){ r="0x"+H[1]+H[2]; g="0x"+H[3]+H[4]; b="0x"+H[5]+H[6]; }
-    r/=255; g/=255; b/=255;
-    let cmin=Math.min(r,g,b), cmax=Math.max(r,g,b), d=cmax-cmin;
-    let h=0,s=0,l=(cmax+cmin)/2;
-    if (d!=0){
-      if (cmax==r) h=((g-b)/d)%6;
-      else if (cmax==g) h=(b-r)/d+2; else h=(r-g)/d+4;
-      h=Math.round(h*60); if (h<0) h+=360;
-      s = d / (1 - Math.abs(2*l-1));
-    }
-    s=Math.round(s*100); l=Math.round(l*100);
-    return {h,s,l};
+  function hexToHsl(H){ let r=0,g=0,b=0;
+    if(H.length==4){r="0x"+H[1]+H[1];g="0x"+H[2]+H[2];b="0x"+H[3]+H[3];}
+    else if(H.length==7){r="0x"+H[1]+H[2];g="0x"+H[3]+H[4];b="0x"+H[5]+H[6];}
+    r/=255;g/=255;b/=255; let cmin=Math.min(r,g,b),cmax=Math.max(r,g,b),d=cmax-cmin,h=0,s=0,l=(cmax+cmin)/2;
+    if(d!=0){ if(cmax==r) h=((g-b)/d)%6; else if(cmax==g) h=(b-r)/d+2; else h=(r-g)/d+4; h=Math.round(h*60); if(h<0)h+=360; s=d/(1-Math.abs(2*l-1));}
+    s=Math.round(s*100); l=Math.round(l*100); return {h,s,l};
   }
-  function hslToHex(h,s,l){
-    s/=100; l/=100;
-    const c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2;
+  function hslToHex(h,s,l){ s/=100;l/=100; const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;
     let r=0,g=0,b=0;
-    if (0<=h&&h<60){r=c;g=x;b=0}else if (60<=h&&h<120){r=x;g=c;b=0}
-    else if (120<=h&&h<180){r=0;g=c;b=x}else if (180<=h&&h<240){r=0;g=x;b=c}
-    else if (240<=h&&h<300){r=x;g=0;b=c}else {r=c;g=0;b=x}
+    if(0<=h&&h<60){r=c;g=x;b=0}else if(60<=h&&h<120){r=x;g=c;b=0}
+    else if(120<=h&&h<180){r=0;g=c;b=x}else if(180<=h&&h<240){r=0;g=x;b=c}
+    else if(240<=h&&h<300){r=x;g=0;b=c}else{r=c;g=0;b=x}
     const toHex=v=>('0'+Math.round((v+m)*255).toString(16)).slice(-2);
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
 
-  // ---- Layout save/load per tab ----
+  // Layout save/load per tab
   function saveLayout(tabId){
     const data = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
     localStorage.setItem(LAYOUT_KEY_PREFIX + tabId, JSON.stringify(data));
@@ -470,357 +418,359 @@
   function loadLayout(tabId){
     const raw = localStorage.getItem(LAYOUT_KEY_PREFIX + tabId);
     const data = raw ? JSON.parse(raw) : DEFAULT_LAYOUT;
-    for (const it of items){
-      const found = data.find(x => x.id === it.id);
-      if (found) Object.assign(it, {x:found.x,y:found.y,w:found.w,h:found.h,hidden:!!found.hidden});
-      else {
-        const def = DEFAULT_LAYOUT.find(x => x.id === it.id);
-        Object.assign(it, def || {x:0,y:0,w:3,h:2,hidden:false});
-      }
+    for(const it of items){
+      const f = data.find(x=>x.id===it.id);
+      if (f) Object.assign(it,{x:f.x,y:f.y,w:f.w,h:f.h,hidden:!!f.hidden});
+      else { const d=DEFAULT_LAYOUT.find(x=>x.id===it.id); Object.assign(it,d||{x:0,y:0,w:3,h:2,hidden:false}); }
     }
     compact(); resolveAll(); applyLayout();
   }
 
-  // ---- Apply layout positions to DOM ----
+  // Apply to DOM
   function applyLayout(){
-    items.forEach(it => {
+    items.forEach(it=>{
       it.el.classList.toggle('hide', !!it.hidden);
-      if (!it.hidden){
-        it.el.style.gridColumn = `${it.x + 1} / span ${it.w}`;
-        it.el.style.gridRow    = `${it.y + 1} / span ${it.h}`;
+      if(!it.hidden){
+        it.el.style.gridColumn=`${it.x+1} / span ${it.w}`;
+        it.el.style.gridRow   =`${it.y+1} / span ${it.h}`;
       }
-      Object.assign(it.el.dataset, {x:it.x, y:it.y, w:it.w, h:it.h});
+      Object.assign(it.el.dataset,{x:it.x,y:it.y,w:it.w,h:it.h});
     });
     renderPanelList();
   }
 
-  function byId(id){ return items.find(i => i.id === id); }
-  function rectsOverlap(a,b){
-    if (a.hidden || b.hidden) return false;
-    return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+  function byId(id){ return items.find(i=>i.id===id); }
+  function rectsOverlap(a,b){ if(a.hidden||b.hidden) return false;
+    return !(a.x+a.w<=b.x || b.x+b.w<=a.x || a.y+a.h<=b.y || b.y+b.h<=a.y);
   }
-  function getCollisions(target){
-    return items.filter(it => it.id !== target.id && rectsOverlap(target, it));
-  }
-  function pushDown(item){
-    let changed=false, colliders=getCollisions(item);
-    while (colliders.length){
-      for (const c of colliders){ c.y = item.y + item.h; changed=true; }
-      colliders=getCollisions(item);
-    }
+  function getCollisions(target){ return items.filter(it=>it.id!==target.id && rectsOverlap(target,it)); }
+  function pushDown(item){ let changed=false, colliders=getCollisions(item);
+    while(colliders.length){ for(const c of colliders){ c.y=item.y+item.h; changed=true; } colliders=getCollisions(item); }
     return changed;
   }
-  function resolveAll(){
-    const ordered = items.slice().sort((a,b)=> (a.y - b.y) || (a.x - b.x));
-    let changed=false; for (const it of ordered){ if (pushDown(it)) changed=true; }
-    return changed;
-  }
-  function compact(){
-    const ordered = items.slice().sort((a,b)=> (a.y - b.y) || (a.x - b.x));
-    for (const it of ordered){
-      if (it.hidden) continue;
-      let ny=it.y;
-      while (ny>0){
-        const test={...it,y:ny-1};
-        if (!getCollisions(test).length){ it.y=ny-1; ny--; } else break;
-      }
+  function resolveAll(){ const ordered=items.slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x)); let changed=false; for(const it of ordered){ if(pushDown(it)) changed=true; } return changed; }
+  function compact(){ const ordered=items.slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
+    for(const it of ordered){ if(it.hidden) continue; let ny=it.y;
+      while(ny>0){ const test={...it,y:ny-1}; if(!getCollisions(test).length){ it.y=ny-1; ny--; } else break; }
     }
   }
-  function clampToCols(it){
-    if (it.w > COLS) it.w = COLS;
-    if (it.x < 0) it.x = 0;
-    if (it.x + it.w > COLS) it.x = COLS - it.w;
-  }
+  function clampToCols(it){ if(it.w>COLS) it.w=COLS; if(it.x<0) it.x=0; if(it.x+it.w>COLS) it.x=COLS-it.w; }
 
-  // ---- Lock toggle ----
-  const lockToggle = document.getElementById('lockToggle');
-  let isLocked = false;
-  function setLocked(v){
-    isLocked = !!v;
-    document.body.classList.toggle('locked', isLocked);
-    lockToggle.setAttribute('aria-pressed', String(!isLocked ? false : true));
-  }
-  lockToggle.addEventListener('click', () => setLocked(!isLocked));
-  lockToggle.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' '){ e.preventDefault(); setLocked(!isLocked); } });
+  /* Lock toggle */
+  const lockToggle=document.getElementById('lockToggle');
+  let isLocked=false;
+  function setLocked(v){ isLocked=!!v; document.body.classList.toggle('locked', isLocked); lockToggle.setAttribute('aria-pressed', String(isLocked)); }
+  lockToggle.addEventListener('click', ()=>setLocked(!isLocked));
+  lockToggle.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setLocked(!isLocked); } });
 
-  // ---- Dragging ----
+  /* Dragging */
   let dragging=null, startMouse=null, startPos=null;
-  gridEl.addEventListener('mousedown', e => {
-    if (isLocked) return;
-    const bar = e.target.closest('.bar'); if (!bar) return;
-    const el = bar.closest('.card'); const it = items.find(i => i.el === el);
-    dragging = it; startMouse = {x:e.clientX,y:e.clientY}; startPos = {x:it.x,y:it.y};
+  gridEl.addEventListener('mousedown', e=>{
+    if(isLocked) return;
+    const bar=e.target.closest('.bar'); if(!bar) return;
+    const el=bar.closest('.card'); const it=items.find(i=>i.el===el);
+    dragging=it; startMouse={x:e.clientX,y:e.clientY}; startPos={x:it.x,y:it.y};
     it.el.classList.add('dragging'); e.preventDefault();
   });
-  window.addEventListener('mousemove', e => {
-    if (!dragging) return;
-    const dx = e.clientX - startMouse.x, dy = e.clientY - startMouse.y;
-    const gx = Math.round(dx / COLW), gy = Math.round(dy / ROWH);
-    dragging.x = startPos.x + gx; dragging.y = Math.max(0, startPos.y + gy);
+  window.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const dx=e.clientX-startMouse.x, dy=e.clientY-startMouse.y;
+    const gx=Math.round(dx/COLW), gy=Math.round(dy/ROWH);
+    dragging.x=startPos.x+gx; dragging.y=Math.max(0, startPos.y+gy);
     clampToCols(dragging); resolveAll(); applyLayout();
   });
-  window.addEventListener('mouseup', () => {
-    if (!dragging) return;
-    dragging.el.classList.remove('dragging');
-    dragging = null; compact(); resolveAll(); applyLayout(); saveLayout(activeTabId);
+  window.addEventListener('mouseup', ()=>{
+    if(!dragging) return;
+    dragging.el.classList.remove('dragging'); dragging=null; compact(); resolveAll(); applyLayout(); saveLayout(activeTabId);
   });
 
-  // ---- Resizing ----
+  /* Resizing */
   let resizing=null, startSize=null;
-  gridEl.addEventListener('mousedown', e => {
-    if (isLocked) return;
-    const h = e.target.closest('.resize'); if (!h) return;
-    const el = h.closest('.card'); const it = items.find(i => i.el === el);
-    resizing = it; startMouse = {x:e.clientX,y:e.clientY}; startSize = {w:it.w,h:it.h};
+  gridEl.addEventListener('mousedown', e=>{
+    if(isLocked) return;
+    const h=e.target.closest('.resize'); if(!h) return;
+    const el=h.closest('.card'); const it=items.find(i=>i.el===el);
+    resizing=it; startMouse={x:e.clientX,y:e.clientY}; startSize={w:it.w,h:it.h};
     it.el.classList.add('dragging'); e.preventDefault(); e.stopPropagation();
   });
-  window.addEventListener('mousemove', e => {
-    if (!resizing) return;
-    const dx = e.clientX - startMouse.x, dy = e.clientY - startMouse.y;
-    const dw = Math.round(dx / COLW), dh = Math.round(dy / ROWH);
-    resizing.w = Math.max(resizing.minW, Math.min(resizing.maxW, startSize.w + dw));
-    resizing.h = Math.max(resizing.minH, startSize.h + dh);
+  window.addEventListener('mousemove', e=>{
+    if(!resizing) return;
+    const dx=e.clientX-startMouse.x, dy=e.clientY-startMouse.y;
+    const dw=Math.round(dx/COLW), dh=Math.round(dy/ROWH);
+    resizing.w=Math.max(resizing.minW, Math.min(resizing.maxW, startSize.w+dw));
+    resizing.h=Math.max(resizing.minH, startSize.h+dh);
     clampToCols(resizing); resolveAll(); applyLayout();
   });
-  window.addEventListener('mouseup', () => {
-    if (!resizing) return;
-    resizing.el.classList.remove('dragging'); resizing = null;
-    compact(); resolveAll(); applyLayout(); saveLayout(activeTabId);
+  window.addEventListener('mouseup', ()=>{
+    if(!resizing) return;
+    resizing.el.classList.remove('dragging'); resizing=null; compact(); resolveAll(); applyLayout(); saveLayout(activeTabId);
   });
 
-  // ---- Right: hide/unhide controls ----
-  const panelControl = document.getElementById('panelControl');
-  const panelList = document.getElementById('panelList');
-  panelControl.querySelector('.controlHeader').addEventListener('click', () => {
-    panelControl.classList.toggle('open');
-  });
+  /* Right: hide/unhide */
+  const panelControl=document.getElementById('panelControl');
+  const panelList=document.getElementById('panelList');
+  panelControl.querySelector('.controlHeader').addEventListener('click', ()=> panelControl.classList.toggle('open'));
   function renderPanelList(){
-    panelList.innerHTML = '';
-    for (const it of items){
-      const row = document.createElement('label');
-      row.className = 'checkRow';
-      row.innerHTML = `<input type="checkbox" ${!it.hidden ? 'checked' : ''} data-id="${it.id}"><span>${it.el.querySelector('.title')?.textContent || it.id}</span>`;
+    panelList.innerHTML='';
+    for(const it of items){
+      const row=document.createElement('label'); row.className='checkRow';
+      row.innerHTML=`<input type="checkbox" ${!it.hidden?'checked':''} data-id="${it.id}"><span>${it.el.querySelector('.title')?.textContent||it.id}</span>`;
       panelList.appendChild(row);
     }
   }
-  panelList.addEventListener('change', (e) => {
-    const cb = e.target.closest('input[type="checkbox"]'); if (!cb) return;
-    const it = byId(cb.dataset.id); it.hidden = !cb.checked;
+  panelList.addEventListener('change', e=>{
+    const cb=e.target.closest('input[type="checkbox"]'); if(!cb) return;
+    const it=byId(cb.dataset.id); it.hidden=!cb.checked;
     compact(); resolveAll(); applyLayout(); saveLayout(activeTabId);
   });
 
-  // ---- Left: tabs (dynamic) ----
-  const tabsEl = document.getElementById('layoutTabs');
-  const addTabBtn = document.getElementById('addTabBtn');
+  /* Left: tabs */
+  const tabsEl=document.getElementById('layoutTabs');
+  const addTabBtn=document.getElementById('addTabBtn');
+
+  // Bulk selection state
+  let bulkMode=false;
+  const bulkToggle=document.getElementById('bulkToggle');
+  const bulkDeleteBtn=document.getElementById('bulkDelete');
+  const selectedIds=new Set();
+
   function renderTabs(){
-    // Remove old rows (keep add button & footer)
-    [...tabsEl.querySelectorAll('.tabRow')].forEach(n => n.remove());
-    const beforeNode = addTabBtn;
-    tabs.forEach(t => {
-      const row = document.createElement('div'); row.className = 'tabRow';
-      const chip = document.createElement('div'); chip.className = 'colorChip'; chip.style.background = t.color; chip.dataset.id = t.id;
-      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'tabBtn'; btn.textContent = t.name; btn.dataset.tab = t.id;
-      if (t.id === activeTabId) btn.classList.add('active');
-      row.appendChild(chip); row.appendChild(btn);
+    // Remove old rows
+    [...tabsEl.querySelectorAll('.tabRow')].forEach(n=>n.remove());
+    const beforeNode=addTabBtn;
+    tabs.forEach(t=>{
+      const row=document.createElement('div'); row.className='tabRow';
+      if(bulkMode){
+        const chk=document.createElement('input'); chk.type='checkbox'; chk.className='tabCheck'; chk.dataset.id=t.id;
+        chk.checked=selectedIds.has(t.id);
+        row.appendChild(chk);
+      }else{
+        const chip=document.createElement('div'); chip.className='colorChip'; chip.style.background=t.color; chip.dataset.id=t.id;
+        row.appendChild(chip);
+      }
+      const btn=document.createElement('button'); btn.type='button'; btn.className='tabBtn'; btn.textContent=t.name; btn.dataset.tab=t.id;
+      if(t.id===activeTabId) btn.classList.add('active');
+      row.appendChild(btn);
       tabsEl.insertBefore(row, beforeNode);
     });
+    updateBulkButtons();
   }
   function updateActiveInUI(){
-    for (const b of tabsEl.querySelectorAll('.tabBtn')){
-      b.classList.toggle('active', b.dataset.tab === activeTabId);
-    }
+    for(const b of tabsEl.querySelectorAll('.tabBtn')) b.classList.toggle('active', b.dataset.tab===activeTabId);
   }
-  function getTabMeta(id){ return tabs.find(t => t.id === id); }
+  function getTabMeta(id){ return tabs.find(t=>t.id===id); }
   function setActiveTab(id){
-    if (!getTabMeta(id)) return;
-    // Save current layout first
+    if(!getTabMeta(id)) return;
     saveLayout(activeTabId);
-    activeTabId = id;
-    localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
-    const meta = getTabMeta(activeTabId);
-    setActiveAccent(meta.color);
-    loadLayout(activeTabId);
-    updateActiveInUI();
+    activeTabId=id; localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
+    const meta=getTabMeta(activeTabId);
+    setActiveAccent(meta.color); loadLayout(activeTabId); updateActiveInUI();
   }
 
-  addTabBtn.addEventListener('click', () => {
-    const nextIndex = (() => {
-      const nums = tabs.map(t => parseInt((t.id.match(/\d+$/) || [1])[0],10));
-      return (Math.max(...nums, 0) + 1);
-    })();
-    const newId = 'layout' + nextIndex;
-    const currentMeta = getTabMeta(activeTabId);
-    const newMeta = { id:newId, name:`Layout ${nextIndex}`, color: currentMeta?.color || '#7dd3fc' };
-    tabs.push(newMeta); saveTabsMeta(tabs);
-    // duplicate current layout into new tab
-    saveLayout(newId);
-    setActiveTab(newId);
-    renderTabs(); updateActiveInUI();
+  // Add tab
+  addTabBtn.addEventListener('click', ()=>{
+    const nextIndex=(()=>{ const nums=tabs.map(t=>parseInt((t.id.match(/\d+$/)||[1])[0],10)); return Math.max(...nums,0)+1; })();
+    const newId='layout'+nextIndex;
+    const cur=getTabMeta(activeTabId);
+    const meta={id:newId, name:`Layout ${nextIndex}`, color:cur?.color||'#7dd3fc'};
+    tabs.push(meta); saveTabsMeta(tabs);
+    saveLayout(newId); // duplicate current layout for convenience
+    setActiveTab(newId); renderTabs(); updateActiveInUI();
   });
 
-  tabsEl.addEventListener('click', (e) => {
-    const btn = e.target.closest('.tabBtn'); if (!btn) return;
-    if (btn.dataset.tab === activeTabId) return;
-    setActiveTab(btn.dataset.tab);
+  // Tab click behavior
+  tabsEl.addEventListener('click', e=>{
+    const btn=e.target.closest('.tabBtn');
+    if (btn){
+      if (bulkMode) return; // don't switch layouts in selection mode
+      if (btn.dataset.tab===activeTabId) return;
+      setActiveTab(btn.dataset.tab); return;
+    }
+    const chip=e.target.closest('.colorChip'); if(chip){ openPopoverFor(chip.dataset.id, chip); }
   });
 
-  // ---- Color / Rename / Delete popover ----
-  const pop = document.getElementById('colorPopover');
-  const nameInput = document.getElementById('tabName');
-  const colorInput = document.getElementById('tabColor');
-  const saveBtn = document.getElementById('colorSave');
-  const cancelBtn = document.getElementById('colorCancel');
-  const deleteBtn = document.getElementById('colorDelete');
-  let popTargetId = null;
+  // Bulk toggle
+  bulkToggle.addEventListener('click', ()=>{
+    bulkMode = !bulkMode;
+    bulkToggle.setAttribute('aria-pressed', String(bulkMode));
+    if (bulkMode) { closePopover(); } // hide popover if open
+    selectedIds.clear(); renderTabs();
+  });
+
+  // Bulk checkbox changes
+  tabsEl.addEventListener('change', e=>{
+    const chk=e.target.closest('.tabCheck'); if(!chk) return;
+    const id=chk.dataset.id;
+    if(chk.checked) selectedIds.add(id); else selectedIds.delete(id);
+    updateBulkButtons();
+  });
+
+  function updateBulkButtons(){
+    const allCount=tabs.length, selCount=selectedIds.size;
+    const canDelete = selCount>0 && selCount<allCount;
+    bulkDeleteBtn.disabled = !canDelete;
+    bulkDeleteBtn.classList.toggle('enabled', canDelete);
+    bulkDeleteBtn.title = canDelete ? `Delete ${selCount} selected` : (selCount===allCount ? 'Keep at least one layout' : 'Select layouts to enable');
+  }
+
+  // Single popover (color/rename/delete)
+  const pop=document.getElementById('colorPopover');
+  const nameInput=document.getElementById('tabName');
+  const colorInput=document.getElementById('tabColor');
+  const saveBtn=document.getElementById('colorSave');
+  const cancelBtn=document.getElementById('colorCancel');
+  const deleteBtn=document.getElementById('colorDelete');
+  let popTargetId=null;
 
   function openPopoverFor(tabId, anchorEl){
-    if (document.body.classList.contains('locked')) return; // lock blocks picker
-    const meta = getTabMeta(tabId); if (!meta) return;
-    popTargetId = tabId;
-    nameInput.value = meta.name;
-    colorInput.value = meta.color;
-    deleteBtn.disabled = (tabs.length <= 1);
-
-    // Position near chip
-    const r = anchorEl.getBoundingClientRect();
-    pop.style.top = `${r.bottom + 8}px`;
-    pop.style.left = `${Math.max(12, r.left - 20)}px`;
-    pop.classList.add('open');
-    pop.setAttribute('aria-hidden','false');
-    setTimeout(()=> nameInput.focus(), 0);
+    if (bulkMode) return;                     // in bulk mode we don't show color picker
+    if (document.body.classList.contains('locked')) return; // respect lock
+    const meta=getTabMeta(tabId); if(!meta) return;
+    popTargetId=tabId; nameInput.value=meta.name; colorInput.value=meta.color; deleteBtn.disabled=(tabs.length<=1);
+    const r=anchorEl.getBoundingClientRect();
+    pop.style.top=`${r.bottom+8}px`; pop.style.left=`${Math.max(12, r.left-20)}px`;
+    pop.classList.add('open'); pop.setAttribute('aria-hidden','false'); setTimeout(()=>nameInput.focus(),0);
   }
-  function closePopover(){
-    pop.classList.remove('open');
-    pop.setAttribute('aria-hidden','true');
-    popTargetId = null;
-  }
+  function closePopover(){ pop.classList.remove('open'); pop.setAttribute('aria-hidden','true'); popTargetId=null; }
 
-  tabsEl.addEventListener('click', (e) => {
-    const chip = e.target.closest('.colorChip'); if (!chip) return;
-    openPopoverFor(chip.dataset.id, chip);
-  });
-
-  saveBtn.addEventListener('click', () => {
-    const meta = getTabMeta(popTargetId); if (!meta) return;
+  saveBtn.addEventListener('click', ()=>{
+    const meta=getTabMeta(popTargetId); if(!meta) return;
     meta.name = nameInput.value.trim() || meta.name;
     meta.color = colorInput.value;
-    saveTabsMeta(tabs);
-    renderTabs(); updateActiveInUI();
-    if (popTargetId === activeTabId) setActiveAccent(meta.color);
-    closePopover();
+    saveTabsMeta(tabs); renderTabs(); updateActiveInUI(); if(popTargetId===activeTabId) setActiveAccent(meta.color); closePopover();
   });
-
   cancelBtn.addEventListener('click', closePopover);
 
-  // ===== In-page confirm + delete flow (no window.confirm) =====
-  const confirmModal = document.getElementById('confirmModal');
-  const confirmText = document.getElementById('confirmText');
-  const confirmDeleteBtn = document.getElementById('confirmDelete');
-  const confirmCancelBtn = document.getElementById('confirmCancel');
-  let confirmTarget = null;
+  // Confirm modal (single or bulk)
+  const confirmModal=document.getElementById('confirmModal');
+  const confirmText=document.getElementById('confirmText');
+  const confirmDeleteBtn=document.getElementById('confirmDelete');
+  const confirmCancelBtn=document.getElementById('confirmCancel');
+  let confirmMode='single'; // 'single' | 'bulk'
+  let confirmIds=[];
 
-  function openConfirm(tabId){
-    const meta = getTabMeta(tabId); if (!meta) return;
-    confirmTarget = { id: tabId, name: meta.name };
-    confirmText.textContent = `This will delete “${meta.name}” and its saved layout.`;
-    confirmModal.classList.add('open');
-    confirmModal.setAttribute('aria-hidden','false');
+  function openConfirm(ids){
+    confirmIds = ids.slice();
+    confirmMode = (ids.length>1) ? 'bulk' : 'single';
+    if (confirmMode==='bulk'){
+      const names = ids.map(id=>getTabMeta(id)?.name||id);
+      const sample = names.slice(0,3).join(', ')+(names.length>3?` +${names.length-3} more`:'');
+      confirmText.textContent = `Delete ${ids.length} layout(s): ${sample}? This will remove them and their saved layouts.`;
+    }else{
+      const meta=getTabMeta(ids[0]); confirmText.textContent=`This will delete “${meta?.name||ids[0]}” and its saved layout.`;
+    }
+    confirmModal.classList.add('open'); confirmModal.setAttribute('aria-hidden','false');
   }
-  function closeConfirm(){
-    confirmModal.classList.remove('open');
-    confirmModal.setAttribute('aria-hidden','true');
-    confirmTarget = null;
-  }
+  function closeConfirm(){ confirmModal.classList.remove('open'); confirmModal.setAttribute('aria-hidden','true'); confirmIds=[]; }
 
-  // Delete button in the popover now opens the in-page confirm
-  deleteBtn.addEventListener('click', () => {
-    if (tabs.length <= 1) return;
-    const id = popTargetId;
-    closePopover();
-    openConfirm(id);
+  // Single delete triggers confirm
+  deleteBtn.addEventListener('click', ()=>{
+    if (tabs.length<=1) return;
+    const id=popTargetId; closePopover(); openConfirm([id]);
   });
+
+  // Bulk delete button
+  bulkDeleteBtn.addEventListener('click', ()=>{
+    const sel=[...selectedIds];
+    if (sel.length===0) return;
+    if (sel.length>=tabs.length){ return; } // guard; UI should disable anyway
+    openConfirm(sel);
+  });
+
   confirmCancelBtn.addEventListener('click', closeConfirm);
   confirmModal.querySelector('.backdrop').addEventListener('click', closeConfirm);
 
-  // ===== Undo snackbar =====
-  const undoBar = document.getElementById('undoBar');
-  const undoText = document.getElementById('undoText');
-  const undoBtn = document.getElementById('undoBtn');
-  let undoTimer = null;
-  let undoPayload = null; // {meta, layoutJSON, index, prevActiveId}
+  // Undo snackbar
+  const undoBar=document.getElementById('undoBar');
+  const undoText=document.getElementById('undoText');
+  const undoBtn=document.getElementById('undoBtn');
+  let undoTimer=null;
+  let undoPayload=null; // { metas:[...], layouts:{id:json}, indices:[...], prevActiveId }
 
   function showUndo(payload){
-    undoPayload = payload;
-    undoText.textContent = `Deleted “${payload.meta.name}”.`;
-    undoBar.classList.add('show');
-    clearTimeout(undoTimer);
-    undoTimer = setTimeout(()=>{ hideUndo(); undoPayload=null; }, 8000);
+    undoPayload=payload;
+    const names=payload.metas.map(m=>m.name);
+    const label = names.length>1 ? `Deleted ${names.length} layouts: ${names.slice(0,3).join(', ')}${names.length>3?` +${names.length-3} more`:''}.` : `Deleted “${names[0]}”.`;
+    undoText.textContent=label;
+    undoBar.classList.add('show'); clearTimeout(undoTimer);
+    undoTimer=setTimeout(()=>{ hideUndo(); undoPayload=null; }, 8000);
   }
-  function hideUndo(){
-    undoBar.classList.remove('show');
-    clearTimeout(undoTimer); undoTimer=null;
-  }
-  function insertAt(arr, index, item){
-    if (index < 0 || index > arr.length) index = arr.length;
-    arr.splice(index, 0, item);
-  }
+  function hideUndo(){ undoBar.classList.remove('show'); clearTimeout(undoTimer); undoTimer=null; }
+  function insertAt(arr,index,item){ if(index<0||index>arr.length) index=arr.length; arr.splice(index,0,item); }
 
-  undoBtn.addEventListener('click', () => {
-    if (!undoPayload) return;
-    const { meta, layoutJSON, index } = undoPayload;
-    // restore meta and layout
-    insertAt(tabs, index, meta);
+  undoBtn.addEventListener('click', ()=>{
+    if(!undoPayload) return;
+    const { metas, layouts, indices, prevActiveId } = undoPayload;
+    // Restore metas in original positions
+    metas.forEach((m, i)=> insertAt(tabs, indices[i], m));
     saveTabsMeta(tabs);
-    if (layoutJSON) localStorage.setItem(LAYOUT_KEY_PREFIX + meta.id, layoutJSON);
+    // Restore layouts
+    for(const id in layouts){ localStorage.setItem(LAYOUT_KEY_PREFIX + id, layouts[id]); }
     renderTabs();
-    setActiveTab(meta.id); // jump back to restored tab
-    hideUndo(); undoPayload = null;
+    // Restore active tab if it still exists, else first restored
+    const restoreId = tabs.find(t=>t.id===prevActiveId)?.id || metas[0].id;
+    setActiveTab(restoreId);
+    hideUndo(); undoPayload=null;
   });
 
-  // Clicking Delete in confirm modal performs the deletion
-  confirmDeleteBtn.addEventListener('click', () => {
-    if (!confirmTarget) return;
-    const id = confirmTarget.id;
-    const meta = getTabMeta(id);
-    if (!meta) { closeConfirm(); return; }
-    if (tabs.length <= 1) { closeConfirm(); return; }
+  // Confirm delete -> perform deletion (single or bulk)
+  confirmDeleteBtn.addEventListener('click', ()=>{
+    if (confirmIds.length===0) { closeConfirm(); return; }
+    const deletingIds = confirmIds.slice();
+    // Build undo payload
+    const metas=[], indices=[], layouts={}, prevActiveId=activeTabId;
+    deletingIds.sort((a,b)=> tabs.findIndex(t=>t.id===a) - tabs.findIndex(t=>t.id===b));
+    deletingIds.forEach(id=>{
+      const idx=tabs.findIndex(t=>t.id===id); const meta=tabs[idx];
+      metas.push({...meta}); indices.push(idx);
+      const key=LAYOUT_KEY_PREFIX+id; const json=localStorage.getItem(key); if(json) layouts[id]=json;
+    });
 
-    // Backup for Undo
-    const layoutKey = LAYOUT_KEY_PREFIX + id;
-    const layoutJSON = localStorage.getItem(layoutKey);
-    const index = tabs.findIndex(t => t.id === id);
-    const prevActiveId = activeTabId;
+    // Compute remaining tabs after deletion
+    const remaining = tabs.filter(t=>!deletingIds.includes(t.id));
+    if (remaining.length<1){
+      // keep guard: must leave at least one
+      closeConfirm();
+      alert('At least one layout must remain. Deselect some and try again.'); // simple in-page alert; not a popup window
+      return;
+    }
 
     // Remove data
-    localStorage.removeItem(layoutKey);
-    tabs = tabs.filter(t => t.id !== id);
-    saveTabsMeta(tabs);
+    deletingIds.forEach(id=> localStorage.removeItem(LAYOUT_KEY_PREFIX+id));
+    tabs = remaining; saveTabsMeta(tabs);
 
-    // If we deleted the active tab, pick a neighbor and load it
-    if (activeTabId === id){
-      const fallback = tabs[Math.max(0, index - 1)] || tabs[0];
-      activeTabId = fallback.id;
-      localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
-      setActiveAccent(fallback.color);
-      loadLayout(activeTabId);
+    // If active tab deleted, pick neighbor (closest former index) or first remaining
+    if (deletingIds.includes(activeTabId)){
+      const fallback = tabs[Math.max(0, (indices[0]-1))] || tabs[0];
+      activeTabId=fallback.id; localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
+      setActiveAccent(fallback.color); loadLayout(activeTabId);
     }
 
     renderTabs(); updateActiveInUI();
-    closeConfirm();
+    // Exit bulk mode & clear selection if it was bulk
+    selectedIds.clear(); if (bulkMode){ bulkMode=false; bulkToggle.setAttribute('aria-pressed','false'); renderTabs(); }
 
-    // Offer undo
-    showUndo({ meta, layoutJSON, index, prevActiveId });
+    // Show undo
+    showUndo({ metas, layouts, indices, prevActiveId });
+
+    closeConfirm();
   });
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape'){
-      if (confirmModal.classList.contains('open')) closeConfirm();
-      if (document.getElementById('colorPopover').classList.contains('open')) closePopover();
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Escape'){
+      if(document.getElementById('confirmModal').classList.contains('open')) closeConfirm();
+      if(document.getElementById('colorPopover').classList.contains('open')) closePopover();
     }
   });
+  document.addEventListener('click', e=>{
+    const popEl=document.getElementById('colorPopover');
+    if(!popEl.classList.contains('open')) return;
+    if(e.target.closest('#colorPopover') || e.target.closest('.colorChip')) return;
+    closePopover();
+  });
 
-  // ---- Init ----
-  if (!tabs.find(t => t.id === activeTabId)) activeTabId = tabs[0].id;
+  // Init
+  if(!tabs.find(t=>t.id===activeTabId)) activeTabId=tabs[0].id;
   localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
   renderTabs();
   setActiveAccent(getTabMeta(activeTabId).color);
