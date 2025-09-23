@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>S!ck on Tuesdays — Command Grid (Bulk Delete Layout Tabs)</title>
-<meta name="description" content="Destiny 2 command-center grid with per-tab layouts, color/rename, single & bulk delete with confirm + undo, lock, and hide/unhide.">
+<title>S!ck on Tuesdays — Command Grid (Responsive Layout Panel + Smooth Drag)</title>
+<meta name="description" content="Destiny 2 command-center grid with responsive layout tabs, bulk delete, smooth drag (no snap during move), and optional vertical gaps.">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,6 +18,7 @@
 
     --cols: 12; --colW: 90px; --rowH: 90px; --gap: 14px;
     --wrapW: 80vw;
+    --leftTabsW: 260px;  /* widened */
   }
   @media (max-width:1300px){ :root{ --colW:84px; --rowH:86px; } }
   @media (max-width:1100px){ :root{ --colW:78px; --rowH:80px; } }
@@ -66,7 +67,15 @@
   body.locked .bar{ cursor:default; }
   body.locked .resize{ display:none; }
 
-  /* Grid */
+  /* Main layout container: left panel + grid + right panel */
+  .layoutRow{
+    display:grid;
+    grid-template-columns: var(--leftTabsW) 1fr auto; /* left tabs | grid | right panel */
+    gap: 16px;
+    align-items:start;
+  }
+
+  /* ===== GRID ===== */
   .grid{
     position:relative;
     display:grid;
@@ -75,11 +84,16 @@
     gap: var(--gap);
   }
 
-  /* Cards */
+  /* ===== CARDS ===== */
   .card{
-    position:relative; background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 140%);
-    border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 24px rgba(2,10,20,.35);
-    overflow:hidden; user-select:none;
+    position:relative;
+    background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 140%);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:0 6px 24px rgba(2,10,20,.35);
+    overflow:hidden;
+    user-select:none;
+    transition: transform 0s; /* we’ll drive transform during drag */
   }
   .card.hide{ display:none !important; }
 
@@ -103,18 +117,19 @@
     background:linear-gradient(135deg, #0e1726 0%, #132033 100%);
     cursor:nwse-resize;
   }
-  .dragging{ opacity:.85; box-shadow:0 10px 26px rgba(0,0,0,.45); }
+  .dragging{ opacity:.95; box-shadow:0 14px 32px rgba(0,0,0,.55); z-index:5; }
 
-  /* Right controls (hide/unhide) */
+  /* ===== Right controls (hide/unhide) ===== */
   .rightDock{
-    position:fixed; z-index:20; top:86px;
-    right:max(10px, calc((100vw - var(--wrapW)) / 2 - 240px));
+    position:sticky;
+    top:86px;
     width:220px;
   }
   .controlBox{
     border:1px solid var(--border); border-radius:12px;
     background:linear-gradient(180deg,#0f1520,#101a28);
-    box-shadow:0 8px 28px rgba(0,0,0,.35); overflow:hidden;
+    box-shadow:0 8px 28px rgba(0,0,0,.35);
+    overflow:hidden;
   }
   .controlHeader{
     padding:10px 12px; font-weight:700; letter-spacing:.06em; cursor:pointer;
@@ -129,11 +144,10 @@
   .checkRow{ display:flex; align-items:center; gap:8px; padding:8px 12px; font-size:14px; color:var(--muted) }
   .checkRow input{ transform: translateY(1px); }
 
-  /* Left tabs */
+  /* ===== Left Layout Tabs (now inside normal flow) ===== */
   .leftTabs{
-    position:fixed; z-index:20; top:86px;
-    left:max(10px, calc((100vw - var(--wrapW)) / 2 - 180px));
-    width:180px;
+    position:sticky; top:86px;
+    width:var(--leftTabsW);
   }
   .tabs{
     border:1px solid var(--border); border-radius:12px; overflow:hidden;
@@ -147,9 +161,7 @@
     box-shadow: inset 0 0 0 2px rgba(0,0,0,.15);
   }
   body.locked .colorChip{ cursor:not-allowed; opacity:.6; pointer-events:none; }
-  .tabCheck{
-    margin-left:10px; width:16px; height:16px; flex:0 0 auto; accent-color: var(--arc);
-  }
+  .tabCheck{ margin-left:10px; width:16px; height:16px; flex:0 0 auto; accent-color: var(--arc); }
 
   .tabBtn{
     flex:1 1 auto; text-align:left; padding:10px 12px; border:0; background:transparent; color:var(--ink);
@@ -157,7 +169,6 @@
   }
   .tabBtn:hover{ background:#111b2a; }
   .tabBtn.active{ background:#122132; }
-  .tabFooter{ padding:8px 12px; color:var(--muted); font-size:12px }
 
   .addBtn{
     width:100%; text-align:left; padding:10px 12px; border:0; background:#0e1726; color:var(--ink);
@@ -165,7 +176,6 @@
   }
   .addBtn:hover{ background:#111b2a; }
 
-  /* Bottom controls (bulk mode) */
   .bulkBar{
     display:flex; align-items:center; gap:8px; padding:8px; border-top:1px solid var(--border);
     background:#0e1726;
@@ -178,14 +188,39 @@
   .deleteBtn{
     flex:0 0 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
     background:linear-gradient(180deg,#2b0f14,#370c12); border-color:#4a1018; color:#ffb3bd; font-weight:700;
-    opacity:.55; pointer-events:none;
+    opacity:.55; pointer-events:none; white-space:nowrap;
   }
   .deleteBtn.enabled{ opacity:1; pointer-events:auto; }
-  .deleteBtn:disabled{ filter:grayscale(40%); opacity:.5; cursor:not-allowed; }
+  .tabFooter{ padding:8px 12px; color:var(--muted); font-size:12px }
 
-  /* Popover (color/rename/delete single) */
+  /* ===== When the window is too narrow, move tabs ABOVE the grid and lay them out horizontally ===== */
+  .layoutRow.isTop{
+    grid-template-columns: 1fr auto; /* grid | right panel */
+  }
+  .layoutRow.isTop .leftTabs{
+    grid-column: 1 / -1;  /* span full width above grid */
+    position:static; width:auto; top:auto;
+    margin-bottom: 12px;
+  }
+  .layoutRow.isTop .tabs{
+    display:flex; flex-wrap:wrap; gap:8px; padding:8px; border-radius:12px;
+  }
+  .layoutRow.isTop .tabRow{
+    border:0; padding:0; gap:8px;
+    background:#0f1520; border:1px solid var(--border); border-radius:10px;
+  }
+  .layoutRow.isTop .tabBtn{ padding:8px 10px; }
+  .layoutRow.isTop .addBtn{ width:auto; padding:8px 10px; }
+  .layoutRow.isTop .bulkBar{
+    border-top:0; background:transparent; padding:0; gap:8px;
+  }
+  .layoutRow.isTop .toggleBtn, .layoutRow.isTop .deleteBtn{
+    padding:8px 10px;
+  }
+
+  /* Color/Rename/Delete popover (single tab) */
   .popover{
-    position:fixed; z-index:50; width:220px; border:1px solid var(--border); border-radius:10px;
+    position:fixed; z-index:50; width:240px; border:1px solid var(--border); border-radius:10px;
     background:linear-gradient(180deg,#0f1520,#101a28);
     box-shadow:0 12px 40px rgba(0,0,0,.5); padding:10px; display:none;
   }
@@ -206,10 +241,8 @@
   .popover button:hover{ background:#111b2a; }
   .popover .danger{ margin-top:8px; width:100%; background:linear-gradient(180deg,#2b0f14,#370c12);
     border-color:#4a1018; color:#ffb3bd; }
-  .popover .danger:hover{ background:linear-gradient(180deg,#3a131a,#4a1118); }
-  .popover .danger:disabled{ opacity:.6; cursor:not-allowed; filter:grayscale(40%); }
 
-  /* Modal confirm (popup-safe) */
+  /* Confirm modal */
   .modal{ position:fixed; inset:0; display:none; z-index:60; }
   .modal.open{ display:block; }
   .modal .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55); backdrop-filter: blur(2px); }
@@ -234,7 +267,7 @@
     background:linear-gradient(180deg,#0f1520,#101a28); box-shadow:0 12px 40px rgba(0,0,0,.5); color:var(--ink);
   }
   .snackbar.show{ display:flex; }
-  .snackbar button{ padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:#0e1726; color:var(--ink); font-weight:700; cursor:pointer; }
+  .snackbar button{ padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:#0e1726; color:#fff; font-weight:700; cursor:pointer; }
   .snackbar button:hover{ background:#111b2a; }
   .snackbar .muted{ color:var(--muted); }
 </style>
@@ -251,75 +284,79 @@
       </div>
     </header>
 
-    <main class="grid" id="grid">
-      <section class="card" data-id="D" data-x="0" data-y="0" data-w="8" data-h="6">
-        <div class="bar"><div class="title">Season Overview</div><div class="handle">⋮⋮</div></div>
-        <div class="content">Main “hero” area. Other boxes can grow/shrink as you arrange.</div>
-        <div class="resize" aria-hidden="true"></div>
-      </section>
-      <section class="card" data-id="Tools" data-x="8" data-y="0" data-w="4" data-h="2">
-        <div class="bar"><div class="title">Tools</div><div class="handle">⋮⋮</div></div>
-        <div class="content">DIM • light.gg • TodayInDestiny • D2 Foundry</div>
-        <div class="resize" aria-hidden="true"></div>
-      </section>
-      <section class="card" data-id="Rotators" data-x="8" data-y="2" data-w="4" data-h="2">
-        <div class="bar"><div class="title">Rotators</div><div class="handle">⋮⋮</div></div>
-        <div class="content">Raid: Last Wish • Dungeon: Shattered Throne • Crucible: Momentum</div>
-        <div class="resize" aria-hidden="true"></div>
-      </section>
-      <section class="card" data-id="Vendors" data-x="8" data-y="4" data-w="4" data-h="2">
-        <div class="bar"><div class="title">Vendors</div><div class="handle">⋮⋮</div></div>
-        <div class="content">Xûr & Banshee quick look.</div>
-        <div class="resize" aria-hidden="true"></div>
-      </section>
-      <section class="card" data-id="Build" data-x="0" data-y="6" data-w="4" data-h="3">
-        <div class="bar"><div class="title">Build Spotlight</div><div class="handle">⋮⋮</div></div>
-        <div class="content">Warlock/Titan/Hunter builds.</div>
-        <div class="resize" aria-hidden="true"></div>
-      </section>
-      <section class="card" data-id="Mods" data-x="4" data-y="6" data-w="4" data-h="3">
-        <div class="bar"><div class="title">Modifiers</div><div class="handle">⋮⋮</div></div>
-        <div class="content">Surges, threats, champions.</div>
-        <div class="resize" aria-hidden="true"></div>
-      </section>
-      <section class="card" data-id="Clan" data-x="8" data-y="6" data-w="4" data-h="3">
-        <div class="bar"><div class="title">Clan Ops</div><div class="handle">⋮⋮</div></div>
-        <div class="content">Roster, fireteams, invites.</div>
-        <div class="resize" aria-hidden="true"></div>
-      </section>
-      <section class="card" data-id="Telemetry" data-x="0" data-y="9" data-w="4" data-h="2">
-        <div class="bar"><div class="title">Telemetry</div><div class="handle">⋮⋮</div></div>
-        <div class="content">Status pings and simple stats.</div>
-        <div class="resize" aria-hidden="true"></div>
-      </section>
-      <section class="card" data-id="Intel" data-x="4" data-y="9" data-w="8" data-h="2">
-        <div class="bar"><div class="title">Intel Feed</div><div class="handle">⋮⋮</div></div>
-        <div class="content">Announcements & patch highlights.</div>
-        <div class="resize" aria-hidden="true"></div>
-      </section>
-    </main>
+    <!-- MAIN ROW: Left Tabs | Grid | Right Dock -->
+    <div class="layoutRow" id="layoutRow">
+      <!-- Left layout tabs (in normal flow now) -->
+      <aside class="leftTabs" id="leftTabs">
+        <div class="tabs" id="layoutTabs">
+          <!-- tab rows injected here -->
+          <button class="addBtn" id="addTabBtn">+ Add Tab</button>
+          <div class="bulkBar">
+            <button class="toggleBtn" id="bulkToggle" aria-pressed="false" title="Select multiple layouts to delete">Select layouts</button>
+            <button class="deleteBtn" id="bulkDelete" disabled title="Select layouts to enable">Delete selected</button>
+          </div>
+          <div class="tabFooter muted">Each tab saves positions, sizes, visibility & color.</div>
+        </div>
+      </aside>
+
+      <!-- GRID -->
+      <main class="grid" id="grid">
+        <section class="card" data-id="D" data-x="0" data-y="0" data-w="8" data-h="6">
+          <div class="bar"><div class="title">Season Overview</div><div class="handle">⋮⋮</div></div>
+          <div class="content">Main “hero” area. Other boxes can grow/shrink as you arrange.</div>
+          <div class="resize" aria-hidden="true"></div>
+        </section>
+        <section class="card" data-id="Tools" data-x="8" data-y="0" data-w="4" data-h="2">
+          <div class="bar"><div class="title">Tools</div><div class="handle">⋮⋮</div></div>
+          <div class="content">DIM • light.gg • TodayInDestiny • D2 Foundry</div>
+          <div class="resize" aria-hidden="true"></div>
+        </section>
+        <section class="card" data-id="Rotators" data-x="8" data-y="2" data-w="4" data-h="2">
+          <div class="bar"><div class="title">Rotators</div><div class="handle">⋮⋮</div></div>
+          <div class="content">Raid: Last Wish • Dungeon: Shattered Throne • Crucible: Momentum</div>
+          <div class="resize" aria-hidden="true"></div>
+        </section>
+        <section class="card" data-id="Vendors" data-x="8" data-y="4" data-w="4" data-h="2">
+          <div class="bar"><div class="title">Vendors</div><div class="handle">⋮⋮</div></div>
+          <div class="content">Xûr & Banshee quick look.</div>
+          <div class="resize" aria-hidden="true"></div>
+        </section>
+        <section class="card" data-id="Build" data-x="0" data-y="6" data-w="4" data-h="3">
+          <div class="bar"><div class="title">Build Spotlight</div><div class="handle">⋮⋮</div></div>
+          <div class="content">Warlock/Titan/Hunter builds.</div>
+          <div class="resize" aria-hidden="true"></div>
+        </section>
+        <section class="card" data-id="Mods" data-x="4" data-y="6" data-w="4" data-h="3">
+          <div class="bar"><div class="title">Modifiers</div><div class="handle">⋮⋮</div></div>
+          <div class="content">Surges, threats, champions.</div>
+          <div class="resize" aria-hidden="true"></div>
+        </section>
+        <section class="card" data-id="Clan" data-x="8" data-y="6" data-w="4" data-h="3">
+          <div class="bar"><div class="title">Clan Ops</div><div class="handle">⋮⋮</div></div>
+          <div class="content">Roster, fireteams, invites.</div>
+          <div class="resize" aria-hidden="true"></div>
+        </section>
+        <section class="card" data-id="Telemetry" data-x="0" data-y="9" data-w="4" data-h="2">
+          <div class="bar"><div class="title">Telemetry</div><div class="handle">⋮⋮</div></div>
+          <div class="content">Status pings and simple stats.</div>
+          <div class="resize" aria-hidden="true"></div>
+        </section>
+        <section class="card" data-id="Intel" data-x="4" data-y="9" data-w="8" data-h="2">
+          <div class="bar"><div class="title">Intel Feed</div><div class="handle">⋮⋮</div></div>
+          <div class="content">Announcements & patch highlights.</div>
+          <div class="resize" aria-hidden="true"></div>
+        </section>
+      </main>
+
+      <!-- Right Dock -->
+      <aside class="rightDock">
+        <div class="controlBox" id="panelControl">
+          <div class="controlHeader"><span>Panels</span><span class="caret">▾</span></div>
+          <div class="controlBody" id="panelList"></div>
+        </div>
+      </aside>
+    </div>
   </div>
-
-  <!-- Right hide/unhide control -->
-  <aside class="rightDock">
-    <div class="controlBox" id="panelControl">
-      <div class="controlHeader"><span>Panels</span><span class="caret">▾</span></div>
-      <div class="controlBody" id="panelList"></div>
-    </div>
-  </aside>
-
-  <!-- Left layout tabs -->
-  <aside class="leftTabs">
-    <div class="tabs" id="layoutTabs">
-      <!-- tab rows injected here -->
-      <button class="addBtn" id="addTabBtn">+ Add Tab</button>
-      <div class="bulkBar">
-        <button class="toggleBtn" id="bulkToggle" aria-pressed="false" title="Select multiple layouts to delete">Select layouts</button>
-        <button class="deleteBtn" id="bulkDelete" disabled title="Select layouts to enable">Delete selected</button>
-      </div>
-      <div class="tabFooter muted">Each tab saves positions, sizes, visibility & color.</div>
-    </div>
-  </aside>
 
   <!-- Color / Rename / Delete (single) -->
   <div class="popover" id="colorPopover" role="dialog" aria-modal="true" aria-hidden="true">
@@ -356,23 +393,34 @@
 <script>
 (function(){
   const gridEl = document.getElementById('grid');
+  const layoutRow = document.getElementById('layoutRow');
   const COLS = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols')) || 12;
   const COLW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--colW')) || 90;
   const ROWH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || 90;
 
-  // Collect cards
+  /* ===== Responsive: move left panel to top when narrow =====
+     Heuristic: if viewport width < 1400px -> top; else left. Also re-evaluate on resize. */
+  function updateLayoutPlacement(){
+    const shouldTop = window.innerWidth < 1400; // tweak if you want earlier/later switch
+    layoutRow.classList.toggle('isTop', shouldTop);
+  }
+  window.addEventListener('resize', updateLayoutPlacement);
+  updateLayoutPlacement();
+
+  /* ===== Collect cards ===== */
   const items = [...gridEl.querySelectorAll('.card')].map(el => ({
-    el, id: el.dataset.id, x:+el.dataset.x, y:+el.dataset.y, w:+el.dataset.w, h:+el.dataset.h,
+    el, id: el.dataset.id,
+    x:+el.dataset.x, y:+el.dataset.y, w:+el.dataset.w, h:+el.dataset.h,
     hidden:false, minW:1, minH:1, maxW:COLS
   }));
   const DEFAULT_LAYOUT = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
 
-  // Storage keys
-  const TABS_KEY='sot_tabs_meta_v3';
+  /* ===== Storage keys ===== */
+  const TABS_KEY='sot_tabs_meta_resp';
   const LAYOUT_KEY_PREFIX='sot_layout_';
-  const ACTIVE_TAB_KEY='sot_active_tab_id_v3';
+  const ACTIVE_TAB_KEY='sot_active_tab_id_resp';
 
-  // Tabs meta
+  /* ===== Tabs meta ===== */
   function loadTabsMeta(){
     const raw = localStorage.getItem(TABS_KEY);
     if (raw){ try{ const p=JSON.parse(raw); if(Array.isArray(p)&&p.length) return p; }catch{} }
@@ -385,7 +433,7 @@
   let tabs = loadTabsMeta();
   let activeTabId = localStorage.getItem(ACTIVE_TAB_KEY) || tabs[0].id;
 
-  // Accent per tab
+  /* ===== Accent color per tab ===== */
   function setActiveAccent(hex){
     try{
       const {h,s,l}=hexToHsl(hex);
@@ -410,7 +458,7 @@
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
 
-  // Layout save/load per tab
+  /* ===== Layout save/load per tab ===== */
   function saveLayout(tabId){
     const data = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
     localStorage.setItem(LAYOUT_KEY_PREFIX + tabId, JSON.stringify(data));
@@ -423,14 +471,16 @@
       if (f) Object.assign(it,{x:f.x,y:f.y,w:f.w,h:f.h,hidden:!!f.hidden});
       else { const d=DEFAULT_LAYOUT.find(x=>x.id===it.id); Object.assign(it,d||{x:0,y:0,w:3,h:2,hidden:false}); }
     }
-    compact(); resolveAll(); applyLayout();
+    // NOTE: no compaction here — we keep user-intended gaps.
+    resolveAll(); applyLayout();
   }
 
-  // Apply to DOM
+  /* ===== Apply to DOM ===== */
   function applyLayout(){
     items.forEach(it=>{
       it.el.classList.toggle('hide', !!it.hidden);
       if(!it.hidden){
+        it.el.style.transform = ''; // clear any drag transforms
         it.el.style.gridColumn=`${it.x+1} / span ${it.w}`;
         it.el.style.gridRow   =`${it.y+1} / span ${it.h}`;
       }
@@ -439,62 +489,100 @@
     renderPanelList();
   }
 
-  function byId(id){ return items.find(i=>i.id===id); }
+  /* ===== Collision engine (no auto-compact upward) ===== */
   function rectsOverlap(a,b){ if(a.hidden||b.hidden) return false;
     return !(a.x+a.w<=b.x || b.x+b.w<=a.x || a.y+a.h<=b.y || b.y+b.h<=a.y);
   }
   function getCollisions(target){ return items.filter(it=>it.id!==target.id && rectsOverlap(target,it)); }
-  function pushDown(item){ let changed=false, colliders=getCollisions(item);
-    while(colliders.length){ for(const c of colliders){ c.y=item.y+item.h; changed=true; } colliders=getCollisions(item); }
+  function pushDown(item){
+    let changed=false, colliders=getCollisions(item);
+    while (colliders.length){
+      for (const c of colliders){ c.y = item.y + item.h; changed=true; }
+      colliders=getCollisions(item);
+    }
     return changed;
   }
-  function resolveAll(){ const ordered=items.slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x)); let changed=false; for(const it of ordered){ if(pushDown(it)) changed=true; } return changed; }
-  function compact(){ const ordered=items.slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
-    for(const it of ordered){ if(it.hidden) continue; let ny=it.y;
-      while(ny>0){ const test={...it,y:ny-1}; if(!getCollisions(test).length){ it.y=ny-1; ny--; } else break; }
-    }
+  function resolveAll(){
+    const ordered = items.slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
+    let changed=false; for (const it of ordered){ if (pushDown(it)) changed=true; }
+    return changed;
   }
-  function clampToCols(it){ if(it.w>COLS) it.w=COLS; if(it.x<0) it.x=0; if(it.x+it.w>COLS) it.x=COLS-it.w; }
+  function clampToCols(it){
+    if (it.w > COLS) it.w = COLS;
+    if (it.x < 0) it.x = 0;
+    if (it.x + it.w > COLS) it.x = COLS - it.w;
+    if (it.y < 0) it.y = 0; // allow gaps, but not negative
+  }
 
-  /* Lock toggle */
+  /* ===== Lock toggle ===== */
   const lockToggle=document.getElementById('lockToggle');
   let isLocked=false;
   function setLocked(v){ isLocked=!!v; document.body.classList.toggle('locked', isLocked); lockToggle.setAttribute('aria-pressed', String(isLocked)); }
   lockToggle.addEventListener('click', ()=>setLocked(!isLocked));
   lockToggle.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setLocked(!isLocked); } });
 
-  /* Dragging */
-  let dragging=null, startMouse=null, startPos=null;
+  /* ===== Smooth Drag (no snapping while moving) ===== */
+  let dragging=null, startMouse=null, startPos=null, startPx=null;
+  // Helper: get the pixel origin for a given grid cell
+  function gridOriginPx(){
+    const rect = gridEl.getBoundingClientRect();
+    return { left: rect.left, top: rect.top };
+  }
+
   gridEl.addEventListener('mousedown', e=>{
-    if(isLocked) return;
-    const bar=e.target.closest('.bar'); if(!bar) return;
-    const el=bar.closest('.card'); const it=items.find(i=>i.el===el);
-    dragging=it; startMouse={x:e.clientX,y:e.clientY}; startPos={x:it.x,y:it.y};
-    it.el.classList.add('dragging'); e.preventDefault();
-  });
-  window.addEventListener('mousemove', e=>{
-    if(!dragging) return;
-    const dx=e.clientX-startMouse.x, dy=e.clientY-startMouse.y;
-    const gx=Math.round(dx/COLW), gy=Math.round(dy/ROWH);
-    dragging.x=startPos.x+gx; dragging.y=Math.max(0, startPos.y+gy);
-    clampToCols(dragging); resolveAll(); applyLayout();
-  });
-  window.addEventListener('mouseup', ()=>{
-    if(!dragging) return;
-    dragging.el.classList.remove('dragging'); dragging=null; compact(); resolveAll(); applyLayout(); saveLayout(activeTabId);
+    if (isLocked) return;
+    const bar = e.target.closest('.bar'); if (!bar) return;
+    const el  = bar.closest('.card'); const it = items.find(i=>i.el===el);
+    dragging = it; startMouse = {x:e.clientX, y:e.clientY};
+    startPos  = {x:it.x, y:it.y};
+    const origin = gridOriginPx();
+    startPx = {
+      // current top-left in pixels based on grid track + gap
+      left: origin.left + it.x * (COLW + parseFloat(getComputedStyle(gridEl).gap)),
+      top:  origin.top  + it.y * (ROWH + parseFloat(getComputedStyle(gridEl).gap))
+    };
+    it.el.classList.add('dragging');
+    // ensure transforms start at 0
+    it.el.style.transform = `translate(0px, 0px)`;
+    e.preventDefault();
   });
 
-  /* Resizing */
+  window.addEventListener('mousemove', e=>{
+    if (!dragging) return;
+    const dx = e.clientX - startMouse.x;
+    const dy = e.clientY - startMouse.y;
+    // Move freely with the mouse using CSS transform (no snapping)
+    dragging.el.style.transform = `translate(${dx}px, ${dy}px)`;
+  });
+
+  window.addEventListener('mouseup', e=>{
+    if (!dragging) return;
+    const dx = e.clientX - startMouse.x;
+    const dy = e.clientY - startMouse.y;
+    // Compute new grid coords by rounding to nearest cell
+    const gx = Math.round(dx / COLW);
+    const gy = Math.round(dy / ROWH);
+    dragging.x = Math.max(0, startPos.x + gx);
+    dragging.y = Math.max(0, startPos.y + gy);
+    clampToCols(dragging);
+    dragging.el.classList.remove('dragging');
+    dragging.el.style.transform = '';
+    dragging = null;
+    // Resolve collisions (downward only), keep gaps (no compaction)
+    resolveAll(); applyLayout(); saveLayout(activeTabId);
+  });
+
+  /* ===== Resizing (kept snapping live; can be changed later) ===== */
   let resizing=null, startSize=null;
   gridEl.addEventListener('mousedown', e=>{
-    if(isLocked) return;
-    const h=e.target.closest('.resize'); if(!h) return;
-    const el=h.closest('.card'); const it=items.find(i=>i.el===el);
-    resizing=it; startMouse={x:e.clientX,y:e.clientY}; startSize={w:it.w,h:it.h};
+    if (isLocked) return;
+    const h = e.target.closest('.resize'); if (!h) return;
+    const el = h.closest('.card'); const it = items.find(i=>i.el===el);
+    resizing = it; startMouse = {x:e.clientX,y:e.clientY}; startSize = {w:it.w,h:it.h};
     it.el.classList.add('dragging'); e.preventDefault(); e.stopPropagation();
   });
   window.addEventListener('mousemove', e=>{
-    if(!resizing) return;
+    if (!resizing) return;
     const dx=e.clientX-startMouse.x, dy=e.clientY-startMouse.y;
     const dw=Math.round(dx/COLW), dh=Math.round(dy/ROWH);
     resizing.w=Math.max(resizing.minW, Math.min(resizing.maxW, startSize.w+dw));
@@ -502,11 +590,12 @@
     clampToCols(resizing); resolveAll(); applyLayout();
   });
   window.addEventListener('mouseup', ()=>{
-    if(!resizing) return;
-    resizing.el.classList.remove('dragging'); resizing=null; compact(); resolveAll(); applyLayout(); saveLayout(activeTabId);
+    if (!resizing) return;
+    resizing.el.classList.remove('dragging'); resizing=null;
+    resolveAll(); applyLayout(); saveLayout(activeTabId);
   });
 
-  /* Right: hide/unhide */
+  /* ===== Right: hide/unhide ===== */
   const panelControl=document.getElementById('panelControl');
   const panelList=document.getElementById('panelList');
   panelControl.querySelector('.controlHeader').addEventListener('click', ()=> panelControl.classList.toggle('open'));
@@ -520,33 +609,28 @@
   }
   panelList.addEventListener('change', e=>{
     const cb=e.target.closest('input[type="checkbox"]'); if(!cb) return;
-    const it=byId(cb.dataset.id); it.hidden=!cb.checked;
-    compact(); resolveAll(); applyLayout(); saveLayout(activeTabId);
+    const it=items.find(i=>i.id===cb.dataset.id); it.hidden=!cb.checked;
+    resolveAll(); applyLayout(); saveLayout(activeTabId);
   });
 
-  /* Left: tabs */
+  /* ===== Left: tabs (with bulk delete) ===== */
   const tabsEl=document.getElementById('layoutTabs');
   const addTabBtn=document.getElementById('addTabBtn');
-
-  // Bulk selection state
   let bulkMode=false;
   const bulkToggle=document.getElementById('bulkToggle');
   const bulkDeleteBtn=document.getElementById('bulkDelete');
   const selectedIds=new Set();
 
   function renderTabs(){
-    // Remove old rows
     [...tabsEl.querySelectorAll('.tabRow')].forEach(n=>n.remove());
     const beforeNode=addTabBtn;
     tabs.forEach(t=>{
       const row=document.createElement('div'); row.className='tabRow';
       if(bulkMode){
-        const chk=document.createElement('input'); chk.type='checkbox'; chk.className='tabCheck'; chk.dataset.id=t.id;
-        chk.checked=selectedIds.has(t.id);
+        const chk=document.createElement('input'); chk.type='checkbox'; chk.className='tabCheck'; chk.dataset.id=t.id; chk.checked=selectedIds.has(t.id);
         row.appendChild(chk);
       }else{
-        const chip=document.createElement('div'); chip.className='colorChip'; chip.style.background=t.color; chip.dataset.id=t.id;
-        row.appendChild(chip);
+        const chip=document.createElement('div'); chip.className='colorChip'; chip.style.background=t.color; chip.dataset.id=t.id; row.appendChild(chip);
       }
       const btn=document.createElement('button'); btn.type='button'; btn.className='tabBtn'; btn.textContent=t.name; btn.dataset.tab=t.id;
       if(t.id===activeTabId) btn.classList.add('active');
@@ -555,9 +639,7 @@
     });
     updateBulkButtons();
   }
-  function updateActiveInUI(){
-    for(const b of tabsEl.querySelectorAll('.tabBtn')) b.classList.toggle('active', b.dataset.tab===activeTabId);
-  }
+  function updateActiveInUI(){ for(const b of tabsEl.querySelectorAll('.tabBtn')) b.classList.toggle('active', b.dataset.tab===activeTabId); }
   function getTabMeta(id){ return tabs.find(t=>t.id===id); }
   function setActiveTab(id){
     if(!getTabMeta(id)) return;
@@ -567,44 +649,35 @@
     setActiveAccent(meta.color); loadLayout(activeTabId); updateActiveInUI();
   }
 
-  // Add tab
   addTabBtn.addEventListener('click', ()=>{
     const nextIndex=(()=>{ const nums=tabs.map(t=>parseInt((t.id.match(/\d+$/)||[1])[0],10)); return Math.max(...nums,0)+1; })();
     const newId='layout'+nextIndex;
     const cur=getTabMeta(activeTabId);
     const meta={id:newId, name:`Layout ${nextIndex}`, color:cur?.color||'#7dd3fc'};
     tabs.push(meta); saveTabsMeta(tabs);
-    saveLayout(newId); // duplicate current layout for convenience
-    setActiveTab(newId); renderTabs(); updateActiveInUI();
+    saveLayout(newId); setActiveTab(newId); renderTabs(); updateActiveInUI();
   });
 
-  // Tab click behavior
   tabsEl.addEventListener('click', e=>{
     const btn=e.target.closest('.tabBtn');
     if (btn){
-      if (bulkMode) return; // don't switch layouts in selection mode
+      if (bulkMode) return;
       if (btn.dataset.tab===activeTabId) return;
       setActiveTab(btn.dataset.tab); return;
     }
     const chip=e.target.closest('.colorChip'); if(chip){ openPopoverFor(chip.dataset.id, chip); }
   });
 
-  // Bulk toggle
   bulkToggle.addEventListener('click', ()=>{
     bulkMode = !bulkMode;
     bulkToggle.setAttribute('aria-pressed', String(bulkMode));
-    if (bulkMode) { closePopover(); } // hide popover if open
-    selectedIds.clear(); renderTabs();
+    selectedIds.clear(); closePopover(); renderTabs();
   });
-
-  // Bulk checkbox changes
   tabsEl.addEventListener('change', e=>{
     const chk=e.target.closest('.tabCheck'); if(!chk) return;
-    const id=chk.dataset.id;
-    if(chk.checked) selectedIds.add(id); else selectedIds.delete(id);
+    if(chk.checked) selectedIds.add(chk.dataset.id); else selectedIds.delete(chk.dataset.id);
     updateBulkButtons();
   });
-
   function updateBulkButtons(){
     const allCount=tabs.length, selCount=selectedIds.size;
     const canDelete = selCount>0 && selCount<allCount;
@@ -613,7 +686,7 @@
     bulkDeleteBtn.title = canDelete ? `Delete ${selCount} selected` : (selCount===allCount ? 'Keep at least one layout' : 'Select layouts to enable');
   }
 
-  // Single popover (color/rename/delete)
+  /* ===== Single tab popover (color/rename/delete -> confirm) ===== */
   const pop=document.getElementById('colorPopover');
   const nameInput=document.getElementById('tabName');
   const colorInput=document.getElementById('tabColor');
@@ -623,8 +696,8 @@
   let popTargetId=null;
 
   function openPopoverFor(tabId, anchorEl){
-    if (bulkMode) return;                     // in bulk mode we don't show color picker
-    if (document.body.classList.contains('locked')) return; // respect lock
+    if (bulkMode) return;
+    if (document.body.classList.contains('locked')) return;
     const meta=getTabMeta(tabId); if(!meta) return;
     popTargetId=tabId; nameInput.value=meta.name; colorInput.value=meta.color; deleteBtn.disabled=(tabs.length<=1);
     const r=anchorEl.getBoundingClientRect();
@@ -641,18 +714,21 @@
   });
   cancelBtn.addEventListener('click', closePopover);
 
-  // Confirm modal (single or bulk)
+  /* ===== Confirm modal & Undo (single or bulk) ===== */
   const confirmModal=document.getElementById('confirmModal');
   const confirmText=document.getElementById('confirmText');
   const confirmDeleteBtn=document.getElementById('confirmDelete');
   const confirmCancelBtn=document.getElementById('confirmCancel');
-  let confirmMode='single'; // 'single' | 'bulk'
+  const undoBar=document.getElementById('undoBar');
+  const undoText=document.getElementById('undoText');
+  const undoBtn=document.getElementById('undoBtn');
   let confirmIds=[];
+  let undoTimer=null;
+  let undoPayload=null;
 
   function openConfirm(ids){
     confirmIds = ids.slice();
-    confirmMode = (ids.length>1) ? 'bulk' : 'single';
-    if (confirmMode==='bulk'){
+    if (ids.length>1){
       const names = ids.map(id=>getTabMeta(id)?.name||id);
       const sample = names.slice(0,3).join(', ')+(names.length>3?` +${names.length-3} more`:'');
       confirmText.textContent = `Delete ${ids.length} layout(s): ${sample}? This will remove them and their saved layouts.`;
@@ -663,61 +739,43 @@
   }
   function closeConfirm(){ confirmModal.classList.remove('open'); confirmModal.setAttribute('aria-hidden','true'); confirmIds=[]; }
 
-  // Single delete triggers confirm
-  deleteBtn.addEventListener('click', ()=>{
-    if (tabs.length<=1) return;
-    const id=popTargetId; closePopover(); openConfirm([id]);
-  });
-
-  // Bulk delete button
-  bulkDeleteBtn.addEventListener('click', ()=>{
-    const sel=[...selectedIds];
-    if (sel.length===0) return;
-    if (sel.length>=tabs.length){ return; } // guard; UI should disable anyway
-    openConfirm(sel);
-  });
-
-  confirmCancelBtn.addEventListener('click', closeConfirm);
-  confirmModal.querySelector('.backdrop').addEventListener('click', closeConfirm);
-
-  // Undo snackbar
-  const undoBar=document.getElementById('undoBar');
-  const undoText=document.getElementById('undoText');
-  const undoBtn=document.getElementById('undoBtn');
-  let undoTimer=null;
-  let undoPayload=null; // { metas:[...], layouts:{id:json}, indices:[...], prevActiveId }
-
   function showUndo(payload){
     undoPayload=payload;
     const names=payload.metas.map(m=>m.name);
     const label = names.length>1 ? `Deleted ${names.length} layouts: ${names.slice(0,3).join(', ')}${names.length>3?` +${names.length-3} more`:''}.` : `Deleted “${names[0]}”.`;
     undoText.textContent=label;
     undoBar.classList.add('show'); clearTimeout(undoTimer);
-    undoTimer=setTimeout(()=>{ hideUndo(); undoPayload=null; }, 8000);
+    undoTimer=setTimeout(()=>{ undoBar.classList.remove('show'); undoPayload=null; }, 8000);
   }
-  function hideUndo(){ undoBar.classList.remove('show'); clearTimeout(undoTimer); undoTimer=null; }
-  function insertAt(arr,index,item){ if(index<0||index>arr.length) index=arr.length; arr.splice(index,0,item); }
 
   undoBtn.addEventListener('click', ()=>{
     if(!undoPayload) return;
     const { metas, layouts, indices, prevActiveId } = undoPayload;
-    // Restore metas in original positions
-    metas.forEach((m, i)=> insertAt(tabs, indices[i], m));
+    metas.forEach((m, i)=> tabs.splice(indices[i], 0, m));
     saveTabsMeta(tabs);
-    // Restore layouts
     for(const id in layouts){ localStorage.setItem(LAYOUT_KEY_PREFIX + id, layouts[id]); }
     renderTabs();
-    // Restore active tab if it still exists, else first restored
     const restoreId = tabs.find(t=>t.id===prevActiveId)?.id || metas[0].id;
     setActiveTab(restoreId);
-    hideUndo(); undoPayload=null;
+    undoBar.classList.remove('show'); undoPayload=null;
   });
 
-  // Confirm delete -> perform deletion (single or bulk)
+  document.getElementById('bulkDelete').addEventListener('click', ()=>{
+    const sel=[...selectedIds];
+    if (sel.length===0) return;
+    if (sel.length>=tabs.length) return;
+    openConfirm(sel);
+  });
+  deleteBtn.addEventListener('click', ()=>{
+    if (tabs.length<=1) return;
+    const id=popTargetId; closePopover(); openConfirm([id]);
+  });
+  confirmCancelBtn.addEventListener('click', closeConfirm);
+  document.querySelector('#confirmModal .backdrop').addEventListener('click', closeConfirm);
+
   confirmDeleteBtn.addEventListener('click', ()=>{
     if (confirmIds.length===0) { closeConfirm(); return; }
     const deletingIds = confirmIds.slice();
-    // Build undo payload
     const metas=[], indices=[], layouts={}, prevActiveId=activeTabId;
     deletingIds.sort((a,b)=> tabs.findIndex(t=>t.id===a) - tabs.findIndex(t=>t.id===b));
     deletingIds.forEach(id=>{
@@ -725,34 +783,20 @@
       metas.push({...meta}); indices.push(idx);
       const key=LAYOUT_KEY_PREFIX+id; const json=localStorage.getItem(key); if(json) layouts[id]=json;
     });
-
-    // Compute remaining tabs after deletion
     const remaining = tabs.filter(t=>!deletingIds.includes(t.id));
-    if (remaining.length<1){
-      // keep guard: must leave at least one
-      closeConfirm();
-      alert('At least one layout must remain. Deselect some and try again.'); // simple in-page alert; not a popup window
-      return;
-    }
+    if (remaining.length<1){ closeConfirm(); alert('At least one layout must remain.'); return; }
 
-    // Remove data
     deletingIds.forEach(id=> localStorage.removeItem(LAYOUT_KEY_PREFIX+id));
     tabs = remaining; saveTabsMeta(tabs);
 
-    // If active tab deleted, pick neighbor (closest former index) or first remaining
     if (deletingIds.includes(activeTabId)){
       const fallback = tabs[Math.max(0, (indices[0]-1))] || tabs[0];
       activeTabId=fallback.id; localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
       setActiveAccent(fallback.color); loadLayout(activeTabId);
     }
-
     renderTabs(); updateActiveInUI();
-    // Exit bulk mode & clear selection if it was bulk
     selectedIds.clear(); if (bulkMode){ bulkMode=false; bulkToggle.setAttribute('aria-pressed','false'); renderTabs(); }
-
-    // Show undo
     showUndo({ metas, layouts, indices, prevActiveId });
-
     closeConfirm();
   });
 
@@ -769,14 +813,14 @@
     closePopover();
   });
 
-  // Init
+  /* ===== Init ===== */
   if(!tabs.find(t=>t.id===activeTabId)) activeTabId=tabs[0].id;
   localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
-  renderTabs();
-  setActiveAccent(getTabMeta(activeTabId).color);
+  (function setInitialAccent(){ const meta=tabs.find(t=>t.id===activeTabId) || tabs[0]; if (meta) setActiveAccent(meta.color); })();
   loadLayout(activeTabId);
-  setLocked(false);
+  renderTabs();
   renderPanelList();
+  setLocked(false);
 })();
 </script>
 </body>
