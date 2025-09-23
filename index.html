@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>S!ck on Tuesdays — Command Grid (Responsive Layout Panel + Smooth Drag)</title>
-<meta name="description" content="Destiny 2 command-center grid with responsive layout tabs, bulk delete, smooth drag (no snap during move), and optional vertical gaps.">
+<title>S!ck on Tuesdays — Command Grid (Full-Width, Live Push, Top Controls)</title>
+<meta name="description" content="Destiny 2 command-center grid with full-width layout, responsive left tabs, centered lock + right visibility controls, smooth drag with live collision, and snap on drop.">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,9 +16,12 @@
     --ink:#e7eefc; --muted:#94a7c4; --border:#1f2b3e;
     --arc:#7dd3fc; --arc2:#60a5fa; --good:#34d399; --bad:#fb7185;
 
-    --cols: 12; --colW: 90px; --rowH: 90px; --gap: 14px;
-    --wrapW: 80vw;
-    --leftTabsW: 260px;  /* widened */
+    --cols: 12;
+    --colW: 90px;   /* grid column width unit */
+    --rowH: 90px;   /* grid row height unit */
+    --gap: 14px;    /* grid gap */
+    --leftTabsW: 260px;     /* fixed width for layouts panel */
+    --maxPageW: 100vw;      /* full-width as requested */
   }
   @media (max-width:1300px){ :root{ --colW:84px; --rowH:86px; } }
   @media (max-width:1100px){ :root{ --colW:78px; --rowH:80px; } }
@@ -27,7 +30,8 @@
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
-    margin:0; font:16px/1.55 Rajdhani, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    margin:0; overflow-x:hidden; /* no horizontal scroll */
+    font:16px/1.55 Rajdhani, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     color:var(--ink);
     background:
       radial-gradient(1100px 600px at 100% -10%, rgba(18,34,56,.55), transparent 60%),
@@ -43,7 +47,11 @@
     mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
   }
 
-  .wrap{ width:min(2000px, var(--wrapW)); margin:20px auto 60px; }
+  .wrap{
+    width: min(2000px, var(--maxPageW)); /* full window width */
+    margin: 16px auto 60px;
+    padding: 0 12px; /* tiny side padding to avoid accidental overflow */
+  }
 
   header{
     display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px;
@@ -52,9 +60,70 @@
   .brand h1{margin:0; font-size:28px; font-weight:700; letter-spacing:.04em}
   .brand .badge{color:var(--muted); font-size:13px; letter-spacing:.14em; text-transform:uppercase}
 
-  /* Lock toggle */
+  /* ============== PAGE LAYOUT ==============
+     Two columns that use the full width:
+     - Column 1: Left tabs (fixed width)
+     - Column 2: Controls bar (top) + Grid (below) occupy remaining width
+  */
+  .layout{
+    display:grid;
+    grid-template-columns: var(--leftTabsW) 1fr;
+    grid-template-areas:
+      "left controls"
+      "left grid";
+    column-gap: 16px;
+    align-items:start;
+  }
+
+  /* ===== Left Layout Tabs ===== */
+  .leftTabs{ grid-area:left; position:sticky; top:86px; width:var(--leftTabsW); }
+  .tabs{
+    border:1px solid var(--border); border-radius:12px; overflow:hidden;
+    background:linear-gradient(180deg,#0f1520,#101a28);
+    box-shadow:0 8px 28px rgba(0,0,0,.35);
+  }
+  .tabRow{ display:flex; align-items:center; gap:8px; padding:0; border-bottom:1px solid var(--border); }
+  .colorChip{
+    width:16px; height:16px; border-radius:4px; margin-left:10px;
+    border:1px solid var(--border); cursor:pointer; flex:0 0 auto;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.15);
+  }
+  body.locked .colorChip{ cursor:not-allowed; opacity:.6; pointer-events:none; }
+  .tabCheck{ margin-left:10px; width:16px; height:16px; flex:0 0 auto; accent-color: var(--arc); }
+  .tabBtn{
+    flex:1 1 auto; text-align:left; padding:10px 12px; border:0; background:transparent; color:var(--ink);
+    cursor:pointer; font-weight:700; letter-spacing:.04em;
+  }
+  .tabBtn:hover{ background:#111b2a; }
+  .tabBtn.active{ background:#122132; }
+  .addBtn{
+    width:100%; text-align:left; padding:10px 12px; border:0; background:#0e1726; color:var(--ink);
+    cursor:pointer; font-weight:700; letter-spacing:.04em;
+  }
+  .addBtn:hover{ background:#111b2a; }
+  .bulkBar{ display:flex; align-items:center; gap:8px; padding:8px; border-top:1px solid var(--border); background:#0e1726; }
+  .toggleBtn{
+    flex:1 1 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
+    background:#0e1726; color:var(--ink); font-weight:700; text-align:left;
+  }
+  .toggleBtn[aria-pressed="true"]{ background:#122132; }
+  .deleteBtn{
+    flex:0 0 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
+    background:linear-gradient(180deg,#2b0f14,#370c12); border-color:#4a1018; color:#ffb3bd; font-weight:700;
+    opacity:.55; pointer-events:none; white-space:nowrap;
+  }
+  .deleteBtn.enabled{ opacity:1; pointer-events:auto; }
+  .tabFooter{ padding:8px 12px; color:var(--muted); font-size:12px }
+
+  /* ===== Controls above the Grid (center + right) ===== */
+  .controls{ grid-area:controls; display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .controls .spacer{ flex:1 1 auto; }
+  .controls .center{ flex:0 0 auto; }
+  .controls .right{ flex:0 0 auto; margin-left:auto; }
+
+  /* Lock toggle: centered */
   #lockToggle{
-    display:flex; align-items:center; gap:10px;
+    display:inline-flex; align-items:center; gap:10px;
     border:1px solid var(--border); border-radius:12px;
     background:linear-gradient(180deg,#132033,#0e1726);
     padding:8px 12px; cursor:pointer; user-select:none;
@@ -67,69 +136,12 @@
   body.locked .bar{ cursor:default; }
   body.locked .resize{ display:none; }
 
-  /* Main layout container: left panel + grid + right panel */
-  .layoutRow{
-    display:grid;
-    grid-template-columns: var(--leftTabsW) 1fr auto; /* left tabs | grid | right panel */
-    gap: 16px;
-    align-items:start;
-  }
-
-  /* ===== GRID ===== */
-  .grid{
-    position:relative;
-    display:grid;
-    grid-template-columns: repeat(var(--cols), minmax(var(--colW), 1fr));
-    grid-auto-rows: var(--rowH);
-    gap: var(--gap);
-  }
-
-  /* ===== CARDS ===== */
-  .card{
-    position:relative;
-    background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 140%);
-    border:1px solid var(--border);
-    border-radius:14px;
-    box-shadow:0 6px 24px rgba(2,10,20,.35);
-    overflow:hidden;
-    user-select:none;
-    transition: transform 0s; /* we’ll drive transform during drag */
-  }
-  .card.hide{ display:none !important; }
-
-  .bar{
-    height:38px; display:flex; align-items:center; justify-content:space-between;
-    padding:0 10px; border-bottom:1px solid var(--border);
-    background:linear-gradient(180deg,#132033,#0e1726);
-    cursor:grab;
-  }
-  .bar:active{ cursor:grabbing; }
-  .title{ font-weight:700; letter-spacing:.04em }
-  .handle{ font-weight:700; letter-spacing:.2em; color:var(--muted); user-select:none }
-
-  .content{ padding:12px; color:var(--muted); font-size:14px }
-  a{color:var(--arc); text-decoration:none}
-  a:hover{text-decoration:underline}
-
-  .resize{
-    position:absolute; width:16px; height:16px; right:6px; bottom:6px;
-    border:1px solid var(--border); border-radius:3px;
-    background:linear-gradient(135deg, #0e1726 0%, #132033 100%);
-    cursor:nwse-resize;
-  }
-  .dragging{ opacity:.95; box-shadow:0 14px 32px rgba(0,0,0,.55); z-index:5; }
-
-  /* ===== Right controls (hide/unhide) ===== */
-  .rightDock{
-    position:sticky;
-    top:86px;
-    width:220px;
-  }
+  /* Panel visibility dropdown: right aligned */
   .controlBox{
     border:1px solid var(--border); border-radius:12px;
     background:linear-gradient(180deg,#0f1520,#101a28);
     box-shadow:0 8px 28px rgba(0,0,0,.35);
-    overflow:hidden;
+    overflow:hidden; min-width:240px;
   }
   .controlHeader{
     padding:10px 12px; font-weight:700; letter-spacing:.06em; cursor:pointer;
@@ -144,81 +156,63 @@
   .checkRow{ display:flex; align-items:center; gap:8px; padding:8px 12px; font-size:14px; color:var(--muted) }
   .checkRow input{ transform: translateY(1px); }
 
-  /* ===== Left Layout Tabs (now inside normal flow) ===== */
-  .leftTabs{
-    position:sticky; top:86px;
-    width:var(--leftTabsW);
+  /* ===== The Grid (information panels) ===== */
+  .grid{ grid-area:grid;
+    position:relative;
+    display:grid;
+    grid-template-columns: repeat(var(--cols), minmax(var(--colW), 1fr));
+    grid-auto-rows: var(--rowH);
+    gap: var(--gap);
   }
-  .tabs{
-    border:1px solid var(--border); border-radius:12px; overflow:hidden;
-    background:linear-gradient(180deg,#0f1520,#101a28);
-    box-shadow:0 8px 28px rgba(0,0,0,.35);
+  .card{
+    position:relative;
+    background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 140%);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:0 6px 24px rgba(2,10,20,.35);
+    overflow:hidden;
+    user-select:none;
+    will-change: transform;
   }
-  .tabRow{ display:flex; align-items:center; gap:8px; padding:0; border-bottom:1px solid var(--border); }
-  .colorChip{
-    width:16px; height:16px; border-radius:4px; margin-left:10px;
-    border:1px solid var(--border); cursor:pointer; flex:0 0 auto;
-    box-shadow: inset 0 0 0 2px rgba(0,0,0,.15);
+  .card.hide{ display:none !important; }
+  .bar{
+    height:38px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 10px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,#132033,#0e1726);
+    cursor:grab;
   }
-  body.locked .colorChip{ cursor:not-allowed; opacity:.6; pointer-events:none; }
-  .tabCheck{ margin-left:10px; width:16px; height:16px; flex:0 0 auto; accent-color: var(--arc); }
+  .bar:active{ cursor:grabbing; }
+  .title{ font-weight:700; letter-spacing:.04em }
+  .handle{ font-weight:700; letter-spacing:.2em; color:var(--muted); user-select:none }
+  .content{ padding:12px; color:var(--muted); font-size:14px }
+  a{color:var(--arc); text-decoration:none}
+  a:hover{text-decoration:underline}
+  .resize{
+    position:absolute; width:16px; height:16px; right:6px; bottom:6px;
+    border:1px solid var(--border); border-radius:3px;
+    background:linear-gradient(135deg, #0e1726 0%, #132033 100%);
+    cursor:nwse-resize;
+  }
+  .dragging{ opacity:.96; box-shadow:0 16px 36px rgba(0,0,0,.6); z-index:5; }
 
-  .tabBtn{
-    flex:1 1 auto; text-align:left; padding:10px 12px; border:0; background:transparent; color:var(--ink);
-    cursor:pointer; font-weight:700; letter-spacing:.04em;
-  }
-  .tabBtn:hover{ background:#111b2a; }
-  .tabBtn.active{ background:#122132; }
-
-  .addBtn{
-    width:100%; text-align:left; padding:10px 12px; border:0; background:#0e1726; color:var(--ink);
-    cursor:pointer; font-weight:700; letter-spacing:.04em;
-  }
-  .addBtn:hover{ background:#111b2a; }
-
-  .bulkBar{
-    display:flex; align-items:center; gap:8px; padding:8px; border-top:1px solid var(--border);
-    background:#0e1726;
-  }
-  .toggleBtn{
-    flex:1 1 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
-    background:#0e1726; color:var(--ink); font-weight:700; text-align:left;
-  }
-  .toggleBtn[aria-pressed="true"]{ background:#122132; }
-  .deleteBtn{
-    flex:0 0 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
-    background:linear-gradient(180deg,#2b0f14,#370c12); border-color:#4a1018; color:#ffb3bd; font-weight:700;
-    opacity:.55; pointer-events:none; white-space:nowrap;
-  }
-  .deleteBtn.enabled{ opacity:1; pointer-events:auto; }
-  .tabFooter{ padding:8px 12px; color:var(--muted); font-size:12px }
-
-  /* ===== When the window is too narrow, move tabs ABOVE the grid and lay them out horizontally ===== */
-  .layoutRow.isTop{
-    grid-template-columns: 1fr auto; /* grid | right panel */
-  }
-  .layoutRow.isTop .leftTabs{
-    grid-column: 1 / -1;  /* span full width above grid */
-    position:static; width:auto; top:auto;
-    margin-bottom: 12px;
-  }
-  .layoutRow.isTop .tabs{
-    display:flex; flex-wrap:wrap; gap:8px; padding:8px; border-radius:12px;
-  }
-  .layoutRow.isTop .tabRow{
-    border:0; padding:0; gap:8px;
-    background:#0f1520; border:1px solid var(--border); border-radius:10px;
-  }
-  .layoutRow.isTop .tabBtn{ padding:8px 10px; }
-  .layoutRow.isTop .addBtn{ width:auto; padding:8px 10px; }
-  .layoutRow.isTop .bulkBar{
-    border-top:0; background:transparent; padding:0; gap:8px;
-  }
-  .layoutRow.isTop .toggleBtn, .layoutRow.isTop .deleteBtn{
-    padding:8px 10px;
+  /* ====== Narrow screens: place Layout tabs ABOVE the grid horizontally ====== */
+  @media (max-width: 1200px){
+    .layout{
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "controls"
+        "left"
+        "grid";
+    }
+    .leftTabs{ position:static; top:auto; width:auto; margin-bottom:12px; }
+    .tabs{ display:flex; flex-wrap:wrap; gap:8px; padding:8px; border-radius:12px; }
+    .tabRow{ border:0; padding:0; gap:8px; background:#0f1520; border:1px solid var(--border); border-radius:10px; }
+    .tabBtn{ padding:8px 10px; }
+    .addBtn{ width:auto; padding:8px 10px; }
+    .bulkBar{ border-top:0; background:transparent; padding:0; gap:8px; }
   }
 
-  /* Color/Rename/Delete popover (single tab) */
+  /* Popover (rename/color) */
   .popover{
     position:fixed; z-index:50; width:240px; border:1px solid var(--border); border-radius:10px;
     background:linear-gradient(180deg,#0f1520,#101a28);
@@ -242,7 +236,7 @@
   .popover .danger{ margin-top:8px; width:100%; background:linear-gradient(180deg,#2b0f14,#370c12);
     border-color:#4a1018; color:#ffb3bd; }
 
-  /* Confirm modal */
+  /* Confirm modal + Undo snackbar reused from previous build */
   .modal{ position:fixed; inset:0; display:none; z-index:60; }
   .modal.open{ display:block; }
   .modal .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55); backdrop-filter: blur(2px); }
@@ -255,12 +249,11 @@
   .dialog p{ margin:0 0 12px; color:var(--muted) }
   .dialog .row{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
   .dialog button{
-    padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#0e1726; color:var(--ink); font-weight:700; cursor:pointer;
+    padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#0e1726; color:#fff; font-weight:700; cursor:pointer;
   }
   .dialog button:hover{ background:#111b2a; }
   .dialog .danger{ background:linear-gradient(180deg,#2b0f14,#370c12); border-color:#4a1018; color:#ffb3bd; }
 
-  /* Snackbar (Undo) */
   .snackbar{
     position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:70;
     display:none; align-items:center; gap:12px; padding:10px 14px; border:1px solid var(--border); border-radius:12px;
@@ -279,17 +272,13 @@
         <h1>Guardian Command</h1>
         <span class="badge">S!ck on Tuesdays</span>
       </div>
-      <div id="lockToggle" role="button" tabindex="0" aria-pressed="false" title="Click to lock/unlock layout">
-        <span class="dot" aria-hidden="true"></span><span class="text"></span>
-      </div>
     </header>
 
-    <!-- MAIN ROW: Left Tabs | Grid | Right Dock -->
-    <div class="layoutRow" id="layoutRow">
-      <!-- Left layout tabs (in normal flow now) -->
-      <aside class="leftTabs" id="leftTabs">
+    <div class="layout">
+      <!-- LEFT: Layout tabs -->
+      <aside class="leftTabs">
         <div class="tabs" id="layoutTabs">
-          <!-- tab rows injected here -->
+          <!-- rows injected here -->
           <button class="addBtn" id="addTabBtn">+ Add Tab</button>
           <div class="bulkBar">
             <button class="toggleBtn" id="bulkToggle" aria-pressed="false" title="Select multiple layouts to delete">Select layouts</button>
@@ -299,7 +288,23 @@
         </div>
       </aside>
 
-      <!-- GRID -->
+      <!-- TOP of GRID: controls (center lock, right visibility) -->
+      <div class="controls">
+        <div class="spacer"></div>
+        <div class="center">
+          <div id="lockToggle" role="button" tabindex="0" aria-pressed="false" title="Click to lock/unlock layout">
+            <span class="dot" aria-hidden="true"></span><span class="text"></span>
+          </div>
+        </div>
+        <div class="right">
+          <div class="controlBox" id="panelControl">
+            <div class="controlHeader"><span>Panels</span><span class="caret">▾</span></div>
+            <div class="controlBody" id="panelList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GRID: information panels -->
       <main class="grid" id="grid">
         <section class="card" data-id="D" data-x="0" data-y="0" data-w="8" data-h="6">
           <div class="bar"><div class="title">Season Overview</div><div class="handle">⋮⋮</div></div>
@@ -347,18 +352,10 @@
           <div class="resize" aria-hidden="true"></div>
         </section>
       </main>
-
-      <!-- Right Dock -->
-      <aside class="rightDock">
-        <div class="controlBox" id="panelControl">
-          <div class="controlHeader"><span>Panels</span><span class="caret">▾</span></div>
-          <div class="controlBody" id="panelList"></div>
-        </div>
-      </aside>
     </div>
   </div>
 
-  <!-- Color / Rename / Delete (single) -->
+  <!-- Popover: color/rename + delete (single) -->
   <div class="popover" id="colorPopover" role="dialog" aria-modal="true" aria-hidden="true">
     <label for="tabName">Tab name</label>
     <input id="tabName" type="text" maxlength="30" />
@@ -393,21 +390,11 @@
 <script>
 (function(){
   const gridEl = document.getElementById('grid');
-  const layoutRow = document.getElementById('layoutRow');
   const COLS = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols')) || 12;
   const COLW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--colW')) || 90;
   const ROWH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || 90;
 
-  /* ===== Responsive: move left panel to top when narrow =====
-     Heuristic: if viewport width < 1400px -> top; else left. Also re-evaluate on resize. */
-  function updateLayoutPlacement(){
-    const shouldTop = window.innerWidth < 1400; // tweak if you want earlier/later switch
-    layoutRow.classList.toggle('isTop', shouldTop);
-  }
-  window.addEventListener('resize', updateLayoutPlacement);
-  updateLayoutPlacement();
-
-  /* ===== Collect cards ===== */
+  /* ===== Cards ===== */
   const items = [...gridEl.querySelectorAll('.card')].map(el => ({
     el, id: el.dataset.id,
     x:+el.dataset.x, y:+el.dataset.y, w:+el.dataset.w, h:+el.dataset.h,
@@ -416,9 +403,9 @@
   const DEFAULT_LAYOUT = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
 
   /* ===== Storage keys ===== */
-  const TABS_KEY='sot_tabs_meta_resp';
+  const TABS_KEY='sot_tabs_meta_full';
   const LAYOUT_KEY_PREFIX='sot_layout_';
-  const ACTIVE_TAB_KEY='sot_active_tab_id_resp';
+  const ACTIVE_TAB_KEY='sot_active_tab_id_full';
 
   /* ===== Tabs meta ===== */
   function loadTabsMeta(){
@@ -458,7 +445,7 @@
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
 
-  /* ===== Layout save/load per tab ===== */
+  /* ===== Save/Load layout per tab (no auto-compact; preserves gaps) ===== */
   function saveLayout(tabId){
     const data = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
     localStorage.setItem(LAYOUT_KEY_PREFIX + tabId, JSON.stringify(data));
@@ -471,131 +458,51 @@
       if (f) Object.assign(it,{x:f.x,y:f.y,w:f.w,h:f.h,hidden:!!f.hidden});
       else { const d=DEFAULT_LAYOUT.find(x=>x.id===it.id); Object.assign(it,d||{x:0,y:0,w:3,h:2,hidden:false}); }
     }
-    // NOTE: no compaction here — we keep user-intended gaps.
-    resolveAll(); applyLayout();
+    resolveAll(items); applyLayout(items);
   }
 
-  /* ===== Apply to DOM ===== */
-  function applyLayout(){
-    items.forEach(it=>{
-      it.el.classList.toggle('hide', !!it.hidden);
+  /* ===== Apply positions to DOM (for either real items or a shadow copy) ===== */
+  function applyLayout(list){
+    list.forEach(it=>{
+      const node = items.find(i=>i.id===it.id).el;  // use real node
+      node.classList.toggle('hide', !!it.hidden);
       if(!it.hidden){
-        it.el.style.transform = ''; // clear any drag transforms
-        it.el.style.gridColumn=`${it.x+1} / span ${it.w}`;
-        it.el.style.gridRow   =`${it.y+1} / span ${it.h}`;
+        node.style.transform=''; // clear any drag transform (caller may set it)
+        node.style.gridColumn = `${it.x + 1} / span ${it.w}`;
+        node.style.gridRow    = `${it.y + 1} / span ${it.h}`;
       }
-      Object.assign(it.el.dataset,{x:it.x,y:it.y,w:it.w,h:it.h});
+      // update data-* only when applying to the real items list
+      if (list === items) Object.assign(node.dataset, {x:it.x, y:it.y, w:it.w, h:it.h});
     });
     renderPanelList();
   }
 
-  /* ===== Collision engine (no auto-compact upward) ===== */
+  /* ===== Collision helpers (downward push only) ===== */
   function rectsOverlap(a,b){ if(a.hidden||b.hidden) return false;
-    return !(a.x+a.w<=b.x || b.x+b.w<=a.x || a.y+a.h<=b.y || b.y+b.h<=a.y);
+    return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
   }
-  function getCollisions(target){ return items.filter(it=>it.id!==target.id && rectsOverlap(target,it)); }
-  function pushDown(item){
-    let changed=false, colliders=getCollisions(item);
+  function getCollisions(target, list){ return list.filter(it=>it.id!==target.id && rectsOverlap(target, it)); }
+  function pushDown(item, list){
+    let colliders=getCollisions(item, list);
     while (colliders.length){
-      for (const c of colliders){ c.y = item.y + item.h; changed=true; }
-      colliders=getCollisions(item);
+      for (const c of colliders){ c.y = item.y + item.h; }
+      colliders=getCollisions(item, list);
     }
-    return changed;
   }
-  function resolveAll(){
-    const ordered = items.slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
-    let changed=false; for (const it of ordered){ if (pushDown(it)) changed=true; }
-    return changed;
+  function resolveAll(list){
+    // Process top-to-bottom, left-to-right
+    const ordered = list.slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
+    for (const it of ordered){ pushDown(it, list); }
+    return list;
   }
   function clampToCols(it){
     if (it.w > COLS) it.w = COLS;
     if (it.x < 0) it.x = 0;
     if (it.x + it.w > COLS) it.x = COLS - it.w;
-    if (it.y < 0) it.y = 0; // allow gaps, but not negative
+    if (it.y < 0) it.y = 0;
   }
 
-  /* ===== Lock toggle ===== */
-  const lockToggle=document.getElementById('lockToggle');
-  let isLocked=false;
-  function setLocked(v){ isLocked=!!v; document.body.classList.toggle('locked', isLocked); lockToggle.setAttribute('aria-pressed', String(isLocked)); }
-  lockToggle.addEventListener('click', ()=>setLocked(!isLocked));
-  lockToggle.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setLocked(!isLocked); } });
-
-  /* ===== Smooth Drag (no snapping while moving) ===== */
-  let dragging=null, startMouse=null, startPos=null, startPx=null;
-  // Helper: get the pixel origin for a given grid cell
-  function gridOriginPx(){
-    const rect = gridEl.getBoundingClientRect();
-    return { left: rect.left, top: rect.top };
-  }
-
-  gridEl.addEventListener('mousedown', e=>{
-    if (isLocked) return;
-    const bar = e.target.closest('.bar'); if (!bar) return;
-    const el  = bar.closest('.card'); const it = items.find(i=>i.el===el);
-    dragging = it; startMouse = {x:e.clientX, y:e.clientY};
-    startPos  = {x:it.x, y:it.y};
-    const origin = gridOriginPx();
-    startPx = {
-      // current top-left in pixels based on grid track + gap
-      left: origin.left + it.x * (COLW + parseFloat(getComputedStyle(gridEl).gap)),
-      top:  origin.top  + it.y * (ROWH + parseFloat(getComputedStyle(gridEl).gap))
-    };
-    it.el.classList.add('dragging');
-    // ensure transforms start at 0
-    it.el.style.transform = `translate(0px, 0px)`;
-    e.preventDefault();
-  });
-
-  window.addEventListener('mousemove', e=>{
-    if (!dragging) return;
-    const dx = e.clientX - startMouse.x;
-    const dy = e.clientY - startMouse.y;
-    // Move freely with the mouse using CSS transform (no snapping)
-    dragging.el.style.transform = `translate(${dx}px, ${dy}px)`;
-  });
-
-  window.addEventListener('mouseup', e=>{
-    if (!dragging) return;
-    const dx = e.clientX - startMouse.x;
-    const dy = e.clientY - startMouse.y;
-    // Compute new grid coords by rounding to nearest cell
-    const gx = Math.round(dx / COLW);
-    const gy = Math.round(dy / ROWH);
-    dragging.x = Math.max(0, startPos.x + gx);
-    dragging.y = Math.max(0, startPos.y + gy);
-    clampToCols(dragging);
-    dragging.el.classList.remove('dragging');
-    dragging.el.style.transform = '';
-    dragging = null;
-    // Resolve collisions (downward only), keep gaps (no compaction)
-    resolveAll(); applyLayout(); saveLayout(activeTabId);
-  });
-
-  /* ===== Resizing (kept snapping live; can be changed later) ===== */
-  let resizing=null, startSize=null;
-  gridEl.addEventListener('mousedown', e=>{
-    if (isLocked) return;
-    const h = e.target.closest('.resize'); if (!h) return;
-    const el = h.closest('.card'); const it = items.find(i=>i.el===el);
-    resizing = it; startMouse = {x:e.clientX,y:e.clientY}; startSize = {w:it.w,h:it.h};
-    it.el.classList.add('dragging'); e.preventDefault(); e.stopPropagation();
-  });
-  window.addEventListener('mousemove', e=>{
-    if (!resizing) return;
-    const dx=e.clientX-startMouse.x, dy=e.clientY-startMouse.y;
-    const dw=Math.round(dx/COLW), dh=Math.round(dy/ROWH);
-    resizing.w=Math.max(resizing.minW, Math.min(resizing.maxW, startSize.w+dw));
-    resizing.h=Math.max(resizing.minH, startSize.h+dh);
-    clampToCols(resizing); resolveAll(); applyLayout();
-  });
-  window.addEventListener('mouseup', ()=>{
-    if (!resizing) return;
-    resizing.el.classList.remove('dragging'); resizing=null;
-    resolveAll(); applyLayout(); saveLayout(activeTabId);
-  });
-
-  /* ===== Right: hide/unhide ===== */
+  /* ===== Right: Panel visibility ===== */
   const panelControl=document.getElementById('panelControl');
   const panelList=document.getElementById('panelList');
   panelControl.querySelector('.controlHeader').addEventListener('click', ()=> panelControl.classList.toggle('open'));
@@ -610,10 +517,125 @@
   panelList.addEventListener('change', e=>{
     const cb=e.target.closest('input[type="checkbox"]'); if(!cb) return;
     const it=items.find(i=>i.id===cb.dataset.id); it.hidden=!cb.checked;
-    resolveAll(); applyLayout(); saveLayout(activeTabId);
+    resolveAll(items); applyLayout(items); saveLayout(activeTabId);
   });
 
-  /* ===== Left: tabs (with bulk delete) ===== */
+  /* ===== Lock toggle (centered) ===== */
+  const lockToggle=document.getElementById('lockToggle');
+  let isLocked=false;
+  function setLocked(v){ isLocked=!!v; document.body.classList.toggle('locked', isLocked); lockToggle.setAttribute('aria-pressed', String(isLocked)); }
+  lockToggle.addEventListener('click', ()=>setLocked(!isLocked));
+  lockToggle.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setLocked(!isLocked); } });
+
+  /* ===== Smooth Drag with LIVE push =====
+     - While dragging: card follows cursor smoothly (transform)
+     - We run a SHADOW layout based on the original positions to push others live
+     - If you move back, others return (because each move recalculates from baseline)
+     - On drop: snap to nearest grid, commit the shadow to real items
+  */
+  let dragging=null, startMouse=null, startPos=null;
+  let dragBaseline=null;   // array of {id,x,y,w,h,hidden} at drag start
+  let dragShadow=null;     // working copy updated on mousemove
+
+  gridEl.addEventListener('mousedown', e=>{
+    if (isLocked) return;
+    const bar = e.target.closest('.bar'); if (!bar) return;
+    const el  = bar.closest('.card'); const it = items.find(i=>i.el===el);
+    dragging   = it;
+    startMouse = {x:e.clientX, y:e.clientY};
+    startPos   = {x:it.x, y:it.y};
+
+    // snapshot baseline
+    dragBaseline = items.map(o => ({ id:o.id, x:o.x, y:o.y, w:o.w, h:o.h, hidden:o.hidden }));
+    dragShadow   = dragBaseline.map(o => ({ ...o }));
+
+    it.el.classList.add('dragging');
+    it.el.style.transform = `translate(0px,0px)`;
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', e=>{
+    if (!dragging) return;
+    const dx = e.clientX - startMouse.x;
+    const dy = e.clientY - startMouse.y;
+
+    // Snap candidate for SHADOW reflow (so others can respond live)
+    const gx = Math.round(dx / COLW);
+    const gy = Math.round(dy / ROWH);
+    const targetX = Math.max(0, startPos.x + gx);
+    const targetY = Math.max(0, startPos.y + gy);
+
+    // Rebuild shadow from baseline on every move (so moving back restores)
+    dragShadow = dragBaseline.map(o => ({ ...o }));
+    const sDrag = dragShadow.find(o => o.id === dragging.id);
+    sDrag.x = targetX; sDrag.y = targetY;
+    clampToCols(sDrag);
+    resolveAll(dragShadow);
+
+    // Apply shadow to DOM so neighbors move out of the way live
+    applyLayout(dragShadow);
+
+    // Keep the dragged card visually following the exact cursor (residual inside the snapped cell)
+    const residualX = dx - gx * COLW;
+    const residualY = dy - gy * ROWH;
+    dragging.el.style.transform = `translate(${residualX}px, ${residualY}px)`;
+  });
+
+  window.addEventListener('mouseup', e=>{
+    if (!dragging) return;
+    const dx = e.clientX - startMouse.x;
+    const dy = e.clientY - startMouse.y;
+
+    // Final snap (already used for shadow); commit shadow to real items
+    const gx = Math.round(dx / COLW);
+    const gy = Math.round(dy / ROWH);
+    const targetX = Math.max(0, startPos.x + gx);
+    const targetY = Math.max(0, startPos.y + gy);
+
+    dragShadow = dragBaseline.map(o => ({ ...o }));
+    const sDrag = dragShadow.find(o => o.id === dragging.id);
+    sDrag.x = targetX; sDrag.y = targetY;
+    clampToCols(sDrag);
+    resolveAll(dragShadow);
+
+    // Commit to items
+    for (const sh of dragShadow){
+      const real = items.find(i => i.id === sh.id);
+      Object.assign(real, { x:sh.x, y:sh.y, w:sh.w, h:sh.h, hidden:sh.hidden });
+    }
+    // Clear drag visuals and apply final layout
+    dragging.el.classList.remove('dragging');
+    dragging.el.style.transform = '';
+    dragging = null; dragBaseline = null; dragShadow = null;
+
+    applyLayout(items);
+    saveLayout(activeTabId);
+  });
+
+  /* ===== Resizing (snap while resizing; can switch to smooth later) ===== */
+  let resizing=null, startMouseR=null, startSize=null;
+  gridEl.addEventListener('mousedown', e=>{
+    if (isLocked) return;
+    const h = e.target.closest('.resize'); if (!h) return;
+    const el = h.closest('.card'); const it = items.find(i=>i.el===el);
+    resizing = it; startMouseR = {x:e.clientX, y:e.clientY}; startSize = {w:it.w, h:it.h};
+    it.el.classList.add('dragging'); e.preventDefault(); e.stopPropagation();
+  });
+  window.addEventListener('mousemove', e=>{
+    if (!resizing) return;
+    const dx=e.clientX-startMouseR.x, dy=e.clientY-startMouseR.y;
+    const dw=Math.round(dx/COLW), dh=Math.round(dy/ROWH);
+    resizing.w=Math.max(resizing.minW, Math.min(resizing.maxW, startSize.w+dw));
+    resizing.h=Math.max(resizing.minH, startSize.h+dh);
+    clampToCols(resizing); resolveAll(items); applyLayout(items);
+  });
+  window.addEventListener('mouseup', ()=>{
+    if (!resizing) return;
+    resizing.el.classList.remove('dragging'); resizing=null;
+    applyLayout(items); saveLayout(activeTabId);
+  });
+
+  /* ===== Left Tabs (with bulk delete) ===== */
   const tabsEl=document.getElementById('layoutTabs');
   const addTabBtn=document.getElementById('addTabBtn');
   let bulkMode=false;
@@ -669,8 +691,7 @@
   });
 
   bulkToggle.addEventListener('click', ()=>{
-    bulkMode = !bulkMode;
-    bulkToggle.setAttribute('aria-pressed', String(bulkMode));
+    bulkMode = !bulkMode; bulkToggle.setAttribute('aria-pressed', String(bulkMode));
     selectedIds.clear(); closePopover(); renderTabs();
   });
   tabsEl.addEventListener('change', e=>{
@@ -686,7 +707,7 @@
     bulkDeleteBtn.title = canDelete ? `Delete ${selCount} selected` : (selCount===allCount ? 'Keep at least one layout' : 'Select layouts to enable');
   }
 
-  /* ===== Single tab popover (color/rename/delete -> confirm) ===== */
+  /* ===== Single tab popover ===== */
   const pop=document.getElementById('colorPopover');
   const nameInput=document.getElementById('tabName');
   const colorInput=document.getElementById('tabColor');
@@ -714,7 +735,7 @@
   });
   cancelBtn.addEventListener('click', closePopover);
 
-  /* ===== Confirm modal & Undo (single or bulk) ===== */
+  /* ===== Confirm + Undo (bulk/single) ===== */
   const confirmModal=document.getElementById('confirmModal');
   const confirmText=document.getElementById('confirmText');
   const confirmDeleteBtn=document.getElementById('confirmDelete');
