@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>S!ck on Tuesdays — Command Grid (Smooth Reflow + Overlay Dropdown + Responsive Stack)</title>
-<meta name="description" content="Destiny 2 command-center grid with full-width layout, overlay controls, smooth FLIP reflow during drag, and responsive single-column stacking on small windows.">
+<title>S!ck on Tuesdays — Command Grid (Smooth Drag + Responsive Tabs Panel)</title>
+<meta name="description" content="Destiny 2 command-center grid with smooth dragging (snap on drop), collision resolve, responsive layouts panel with bulk delete.">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,13 +16,11 @@
     --ink:#e7eefc; --muted:#94a7c4; --border:#1f2b3e;
     --arc:#7dd3fc; --arc2:#60a5fa; --good:#34d399; --bad:#fb7185;
 
-    --cols: 12;            /* logical grid columns in wide mode */
-    --colW: 90px;          /* base column width */
-    --rowH: 90px;          /* base row height */
-    --gap: 14px;           /* grid gap */
-    --leftTabsW: 260px;    /* fixed width for layouts panel */
-    --maxPageW: 100vw;     /* full window width */
-    --overlayZ: 200;       /* overlay menus z-index */
+    --cols: 12; --colW: 90px; --rowH: 90px; --gap: 14px;
+    --wrapW: 80vw;
+
+    /* Left tabs panel width (wider so Delete fits) */
+    --tabsW: 260px;
   }
   @media (max-width:1300px){ :root{ --colW:84px; --rowH:86px; } }
   @media (max-width:1100px){ :root{ --colW:78px; --rowH:80px; } }
@@ -31,8 +29,7 @@
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
-    margin:0; overflow-x:hidden;  /* never horizontal scroll */
-    font:16px/1.55 Rajdhani, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    margin:0; font:16px/1.55 Rajdhani, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     color:var(--ink);
     background:
       radial-gradient(1100px 600px at 100% -10%, rgba(18,34,56,.55), transparent 60%),
@@ -48,11 +45,7 @@
     mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
   }
 
-  .wrap{
-    width: min(2200px, var(--maxPageW));
-    margin: 16px auto 60px;
-    padding: 0 12px;
-  }
+  .wrap{ width:min(2000px, var(--wrapW)); margin:20px auto 60px; }
 
   header{
     display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px;
@@ -61,66 +54,9 @@
   .brand h1{margin:0; font-size:28px; font-weight:700; letter-spacing:.04em}
   .brand .badge{color:var(--muted); font-size:13px; letter-spacing:.14em; text-transform:uppercase}
 
-  /* ===== Page layout: Left tabs | Controls+Grid (full width, no overlap) ===== */
-  .layout{
-    display:grid;
-    grid-template-columns: var(--leftTabsW) 1fr;
-    grid-template-areas:
-      "left controls"
-      "left grid";
-    column-gap: 16px;
-    align-items:start;
-  }
-
-  /* ===== Left Layout Tabs ===== */
-  .leftTabs{ grid-area:left; position:sticky; top:86px; width:var(--leftTabsW); }
-  .tabs{
-    border:1px solid var(--border); border-radius:12px; overflow:hidden;
-    background:linear-gradient(180deg,#0f1520,#101a28);
-    box-shadow:0 8px 28px rgba(0,0,0,.35);
-  }
-  .tabRow{ display:flex; align-items:center; gap:8px; padding:0; border-bottom:1px solid var(--border); }
-  .colorChip{
-    width:16px; height:16px; border-radius:4px; margin-left:10px;
-    border:1px solid var(--border); cursor:pointer; flex:0 0 auto;
-    box-shadow: inset 0 0 0 2px rgba(0,0,0,.15);
-  }
-  body.locked .colorChip{ cursor:not-allowed; opacity:.6; pointer-events:none; }
-  .tabCheck{ margin-left:10px; width:16px; height:16px; flex:0 0 auto; accent-color: var(--arc); }
-  .tabBtn{
-    flex:1 1 auto; text-align:left; padding:10px 12px; border:0; background:transparent; color:var(--ink);
-    cursor:pointer; font-weight:700; letter-spacing:.04em;
-  }
-  .tabBtn:hover{ background:#111b2a; }
-  .tabBtn.active{ background:#122132; }
-  .addBtn{
-    width:100%; text-align:left; padding:10px 12px; border:0; background:#0e1726; color:var(--ink);
-    cursor:pointer; font-weight:700; letter-spacing:.04em;
-  }
-  .addBtn:hover{ background:#111b2a; }
-  .bulkBar{ display:flex; align-items:center; gap:8px; padding:8px; border-top:1px solid var(--border); background:#0e1726; }
-  .toggleBtn{
-    flex:1 1 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
-    background:#0e1726; color:var(--ink); font-weight:700; text-align:left;
-  }
-  .toggleBtn[aria-pressed="true"]{ background:#122132; }
-  .deleteBtn{
-    flex:0 0 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
-    background:linear-gradient(180deg,#2b0f14,#370c12); border-color:#4a1018; color:#ffb3bd; font-weight:700;
-    opacity:.55; pointer-events:none; white-space:nowrap;
-  }
-  .deleteBtn.enabled{ opacity:1; pointer-events:auto; }
-  .tabFooter{ padding:8px 12px; color:var(--muted); font-size:12px }
-
-  /* ===== Controls above Grid (center lock; right dropdown) ===== */
-  .controls{ grid-area:controls; display:flex; align-items:center; gap:12px; margin-bottom:12px; position:relative; }
-  .controls .spacer{ flex:1 1 auto; }
-  .controls .center{ flex:0 0 auto; }
-  .controls .right{ flex:0 0 auto; margin-left:auto; position:relative; }
-
-  /* Lock toggle: centered */
+  /* Lock toggle */
   #lockToggle{
-    display:inline-flex; align-items:center; gap:10px;
+    display:flex; align-items:center; gap:10px;
     border:1px solid var(--border); border-radius:12px;
     background:linear-gradient(180deg,#132033,#0e1726);
     padding:8px 12px; cursor:pointer; user-select:none;
@@ -133,49 +69,16 @@
   body.locked .bar{ cursor:default; }
   body.locked .resize{ display:none; }
 
-  /* Panels dropdown: overlay popover (no push-down) */
-  .controlBox{
-    border:1px solid var(--border); border-radius:12px;
-    background:linear-gradient(180deg,#0f1520,#101a28);
-    box-shadow:0 8px 28px rgba(0,0,0,.35);
-    overflow:visible; min-width:240px;
-    position:relative; /* anchor for absolute dropdown */
-  }
-  .controlHeader{
-    padding:10px 12px; font-weight:700; letter-spacing:.06em; cursor:pointer;
-    border-bottom:1px solid var(--border);
-    display:flex; align-items:center; justify-content:space-between;
-  }
-  .controlHeader:hover{ background:#111b2a; }
-  .caret{ transition: transform .15s ease; }
-
-  /* Overlay body */
-  .controlBody{
-    position:absolute;
-    right:0; top:100%;
-    width: min(320px, 60vw);
-    max-height: 60vh;
-    display:none;
-    overflow:auto;
-    border:1px solid var(--border);
-    border-radius:12px;
-    background:linear-gradient(180deg,#0f1520,#101a28);
-    box-shadow:0 16px 48px rgba(0,0,0,.55);
-    z-index: var(--overlayZ);
-  }
-  .controlBox.open .controlBody{ display:block; }
-  .controlBox.open .caret{ transform: rotate(180deg); }
-  .checkRow{ display:flex; align-items:center; gap:8px; padding:8px 12px; font-size:14px; color:var(--muted) }
-  .checkRow input{ transform: translateY(1px); }
-
-  /* ===== Grid (info panels) ===== */
-  .grid{ grid-area:grid;
+  /* ===== GRID ===== */
+  .grid{
     position:relative;
     display:grid;
     grid-template-columns: repeat(var(--cols), minmax(var(--colW), 1fr));
     grid-auto-rows: var(--rowH);
     gap: var(--gap);
   }
+
+  /* ===== CARDS ===== */
   .card{
     position:relative;
     background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 140%);
@@ -187,6 +90,7 @@
     will-change: transform;
   }
   .card.hide{ display:none !important; }
+
   .bar{
     height:38px; display:flex; align-items:center; justify-content:space-between;
     padding:0 10px; border-bottom:1px solid var(--border);
@@ -196,48 +100,114 @@
   .bar:active{ cursor:grabbing; }
   .title{ font-weight:700; letter-spacing:.04em }
   .handle{ font-weight:700; letter-spacing:.2em; color:var(--muted); user-select:none }
+
   .content{ padding:12px; color:var(--muted); font-size:14px }
   a{color:var(--arc); text-decoration:none}
   a:hover{text-decoration:underline}
+
   .resize{
     position:absolute; width:16px; height:16px; right:6px; bottom:6px;
     border:1px solid var(--border); border-radius:3px;
     background:linear-gradient(135deg, #0e1726 0%, #132033 100%);
     cursor:nwse-resize;
   }
-  .dragging{ opacity:.96; box-shadow:0 16px 36px rgba(0,0,0,.6); z-index:5; }
+  .dragging{ opacity:.95; box-shadow:0 10px 26px rgba(0,0,0,.45); }
 
-  /* ===== Stacked mode (narrow windows) ===== */
-  .grid.stacked{
-    grid-template-columns: 1fr;              /* single column */
-    grid-auto-rows: auto;                    /* let height flow; we still respect h rows via CSS var if wanted */
+  /* ===== Right controls (hide/unhide) ===== */
+  .rightDock{
+    position:fixed; z-index:20; top:86px;
+    right:max(10px, calc((100vw - var(--wrapW)) / 2 - 240px));
+    width:220px;
   }
-  .grid.stacked .card{
-    width:100%;                              /* panel fits the viewport width */
-  }
-
-  /* ===== When the whole page is narrow, move the left tabs above the grid ===== */
-  @media (max-width: 1200px){
-    .layout{
-      grid-template-columns: 1fr;
-      grid-template-areas:
-        "controls"
-        "left"
-        "grid";
-    }
-    .leftTabs{ position:static; top:auto; width:auto; margin-bottom:12px; }
-    .tabs{ display:flex; flex-wrap:wrap; gap:8px; padding:8px; border-radius:12px; }
-    .tabRow{ border:0; padding:0; gap:8px; background:#0f1520; border:1px solid var(--border); border-radius:10px; }
-    .tabBtn{ padding:8px 10px; }
-    .addBtn{ width:auto; padding:8px 10px; }
-    .bulkBar{ border-top:0; background:transparent; padding:0; gap:8px; }
-  }
-
-  /* Popover (rename/color) */
-  .popover{
-    position:fixed; z-index:var(--overlayZ); width:240px; border:1px solid var(--border); border-radius:10px;
+  .controlBox{
+    border:1px solid var(--border); border-radius:12px;
     background:linear-gradient(180deg,#0f1520,#101a28);
-    box-shadow:0 12px 40px rgba(0,0,0,.5); padding:10px; display:none;
+    box-shadow:0 8px 28px rgba(0,0,0,.35); overflow:hidden;
+  }
+  .controlHeader{
+    padding:10px 12px; font-weight:700; letter-spacing:.06em; cursor:pointer;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .controlHeader:hover{ background:#111b2a; }
+  .caret{ transition: transform .15s ease; }
+  .controlBody{ display:none; max-height:420px; overflow:auto; }
+  .controlBox.open .controlBody{ display:block; }
+  .controlBox.open .caret{ transform: rotate(180deg); }
+  .checkRow{ display:flex; align-items:center; gap:8px; padding:8px 12px; font-size:14px; color:var(--muted) }
+  .checkRow input{ transform: translateY(1px); }
+
+  /* ===== Left layouts panel (wide + responsive) ===== */
+  .leftTabs{
+    position:fixed; z-index:20; top:86px;
+    left:max(10px, calc((100vw - var(--wrapW)) / 2 - var(--tabsW) - 10px));
+    width:var(--tabsW);
+  }
+  .tabs{
+    border:1px solid var(--border); border-radius:12px; overflow:hidden;
+    background:linear-gradient(180deg,#0f1520,#101a28);
+    box-shadow:0 8px 28px rgba(0,0,0,.35);
+  }
+
+  .tabRow{ display:flex; align-items:center; gap:10px; padding:0; border-bottom:1px solid var(--border); }
+  .colorChip{
+    width:16px; height:16px; border-radius:4px; margin-left:10px;
+    border:1px solid var(--border); cursor:pointer; flex:0 0 auto;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.15);
+  }
+  body.locked .colorChip{ cursor:not-allowed; opacity:.6; pointer-events:none; }
+  .tabCheck{ margin-left:10px; width:16px; height:16px; flex:0 0 auto; accent-color: var(--arc); }
+  .tabBtn{
+    flex:1 1 auto; text-align:left; padding:10px 12px; border:0; background:transparent; color:var(--ink);
+    cursor:pointer; font-weight:700; letter-spacing:.04em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .tabBtn:hover{ background:#111b2a; }
+  .tabBtn.active{ background:#122132; }
+
+  .addBtn{
+    width:100%; text-align:left; padding:10px 12px; border:0; background:#0e1726; color:var(--ink);
+    cursor:pointer; font-weight:700; letter-spacing:.04em;
+  }
+  .addBtn:hover{ background:#111b2a; }
+
+  .bulkBar{
+    display:flex; align-items:center; gap:8px; padding:8px; border-top:1px solid var(--border);
+    background:#0e1726;
+  }
+  .toggleBtn{
+    flex:1 1 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
+    background:#0e1726; color:var(--ink); font-weight:700; text-align:left;
+  }
+  .toggleBtn[aria-pressed="true"]{ background:#122132; }
+  .deleteBtn{
+    flex:0 0 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
+    background:linear-gradient(180deg,#2b0f14,#370c12); border-color:#4a1018; color:#ffb3bd; font-weight:700;
+    opacity:.55; pointer-events:none;
+  }
+  .deleteBtn.enabled{ opacity:1; pointer-events:auto; }
+  .deleteBtn:disabled{ filter:grayscale(40%); opacity:.5; cursor:not-allowed; }
+
+  .tabFooter{ padding:8px 12px; color:var(--muted); font-size:12px }
+
+  /* Top-mode (when not enough left margin) */
+  body.tabsTop .leftTabs{
+    position:static; width:100%; max-width:100%; margin-bottom:10px; left:auto; top:auto;
+  }
+  body.tabsTop .tabs{
+    display:block;
+  }
+  body.tabsTop .tabs .tabRow{
+    display:inline-flex; border-bottom:0; border-right:1px solid var(--border);
+    padding-right:8px; margin-right:8px;
+  }
+  body.tabsTop .addBtn{ display:inline-block; width:auto; margin:8px; }
+  body.tabsTop .bulkBar{ display:inline-flex; vertical-align:middle; margin:8px; }
+  body.tabsTop .tabFooter{ display:block; }
+
+  /* Popover (color/rename/delete single) */
+  .popover{
+    position:fixed; z-index:50; width:240px; border:1px solid var(--border); border-radius:10px;
+    background:linear-gradient(180deg,#0f1520,#101a28); box-shadow:0 12px 40px rgba(0,0,0,.5); padding:10px; display:none;
   }
   .popover.open{ display:block; }
   .popover label{ display:block; font-size:12px; color:var(--muted); margin:6px 0 4px }
@@ -251,14 +221,16 @@
   .popover .row{ display:flex; gap:8px; margin-top:10px }
   .popover button{
     flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
-    background:#0e1726; color:var(--ink); font-weight:700;
+    background:#0e1726; color:#fff; font-weight:700;
   }
   .popover button:hover{ background:#111b2a; }
   .popover .danger{ margin-top:8px; width:100%; background:linear-gradient(180deg,#2b0f14,#370c12);
     border-color:#4a1018; color:#ffb3bd; }
+  .popover .danger:hover{ background:linear-gradient(180deg,#3a131a,#4a1118); }
+  .popover .danger:disabled{ opacity:.6; cursor:not-allowed; filter:grayscale(40%); }
 
-  /* Confirm modal + Undo snackbar (unchanged) */
-  .modal{ position:fixed; inset:0; display:none; z-index:calc(var(--overlayZ) + 1); }
+  /* Confirm modal */
+  .modal{ position:fixed; inset:0; display:none; z-index:60; }
   .modal.open{ display:block; }
   .modal .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55); backdrop-filter: blur(2px); }
   .modal .dialog{
@@ -270,18 +242,19 @@
   .dialog p{ margin:0 0 12px; color:var(--muted) }
   .dialog .row{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
   .dialog button{
-    padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#0e1726; color:#fff; font-weight:700; cursor:pointer;
+    padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#0e1726; color:var(--ink); font-weight:700; cursor:pointer;
   }
   .dialog button:hover{ background:#111b2a; }
   .dialog .danger{ background:linear-gradient(180deg,#2b0f14,#370c12); border-color:#4a1018; color:#ffb3bd; }
 
+  /* Snackbar (Undo) */
   .snackbar{
-    position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:calc(var(--overlayZ) + 2);
+    position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:70;
     display:none; align-items:center; gap:12px; padding:10px 14px; border:1px solid var(--border); border-radius:12px;
     background:linear-gradient(180deg,#0f1520,#101a28); box-shadow:0 12px 40px rgba(0,0,0,.5); color:var(--ink);
   }
   .snackbar.show{ display:flex; }
-  .snackbar button{ padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:#0e1726; color:#fff; font-weight:700; cursor:pointer; }
+  .snackbar button{ padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:#0e1726; color:var(--ink); font-weight:700; cursor:pointer; }
   .snackbar button:hover{ background:#111b2a; }
   .snackbar .muted{ color:var(--muted); }
 </style>
@@ -293,90 +266,83 @@
         <h1>Guardian Command</h1>
         <span class="badge">S!ck on Tuesdays</span>
       </div>
+      <div id="lockToggle" role="button" tabindex="0" aria-pressed="false" title="Click to lock/unlock layout">
+        <span class="dot" aria-hidden="true"></span><span class="text"></span>
+      </div>
     </header>
 
-    <div class="layout">
-      <!-- LEFT: Layout tabs -->
-      <aside class="leftTabs">
-        <div class="tabs" id="layoutTabs">
-          <!-- rows injected here -->
-          <button class="addBtn" id="addTabBtn">+ Add Tab</button>
-          <div class="bulkBar">
-            <button class="toggleBtn" id="bulkToggle" aria-pressed="false" title="Select multiple layouts to delete">Select layouts</button>
-            <button class="deleteBtn" id="bulkDelete" disabled title="Select layouts to enable">Delete selected</button>
-          </div>
-          <div class="tabFooter muted">Each tab saves positions, sizes, visibility & color.</div>
-        </div>
-      </aside>
-
-      <!-- TOP of GRID: controls (center lock, right visibility overlay) -->
-      <div class="controls">
-        <div class="spacer"></div>
-        <div class="center">
-          <div id="lockToggle" role="button" tabindex="0" aria-pressed="false" title="Click to lock/unlock layout">
-            <span class="dot" aria-hidden="true"></span><span class="text"></span>
-          </div>
-        </div>
-        <div class="right">
-          <div class="controlBox" id="panelControl">
-            <div class="controlHeader"><span>Panels</span><span class="caret">▾</span></div>
-            <div class="controlBody" id="panelList"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- GRID: information panels -->
-      <main class="grid" id="grid">
-        <section class="card" data-id="D" data-x="0" data-y="0" data-w="8" data-h="6">
-          <div class="bar"><div class="title">Season Overview</div><div class="handle">⋮⋮</div></div>
-          <div class="content">Main “hero” area. Other boxes can grow/shrink as you arrange.</div>
-          <div class="resize" aria-hidden="true"></div>
-        </section>
-        <section class="card" data-id="Tools" data-x="8" data-y="0" data-w="4" data-h="2">
-          <div class="bar"><div class="title">Tools</div><div class="handle">⋮⋮</div></div>
-          <div class="content">DIM • light.gg • TodayInDestiny • D2 Foundry</div>
-          <div class="resize" aria-hidden="true"></div>
-        </section>
-        <section class="card" data-id="Rotators" data-x="8" data-y="2" data-w="4" data-h="2">
-          <div class="bar"><div class="title">Rotators</div><div class="handle">⋮⋮</div></div>
-          <div class="content">Raid: Last Wish • Dungeon: Shattered Throne • Crucible: Momentum</div>
-          <div class="resize" aria-hidden="true"></div>
-        </section>
-        <section class="card" data-id="Vendors" data-x="8" data-y="4" data-w="4" data-h="2">
-          <div class="bar"><div class="title">Vendors</div><div class="handle">⋮⋮</div></div>
-          <div class="content">Xûr & Banshee quick look.</div>
-          <div class="resize" aria-hidden="true"></div>
-        </section>
-        <section class="card" data-id="Build" data-x="0" data-y="6" data-w="4" data-h="3">
-          <div class="bar"><div class="title">Build Spotlight</div><div class="handle">⋮⋮</div></div>
-          <div class="content">Warlock/Titan/Hunter builds.</div>
-          <div class="resize" aria-hidden="true"></div>
-        </section>
-        <section class="card" data-id="Mods" data-x="4" data-y="6" data-w="4" data-h="3">
-          <div class="bar"><div class="title">Modifiers</div><div class="handle">⋮⋮</div></div>
-          <div class="content">Surges, threats, champions.</div>
-          <div class="resize" aria-hidden="true"></div>
-        </section>
-        <section class="card" data-id="Clan" data-x="8" data-y="6" data-w="4" data-h="3">
-          <div class="bar"><div class="title">Clan Ops</div><div class="handle">⋮⋮</div></div>
-          <div class="content">Roster, fireteams, invites.</div>
-          <div class="resize" aria-hidden="true"></div>
-        </section>
-        <section class="card" data-id="Telemetry" data-x="0" data-y="9" data-w="4" data-h="2">
-          <div class="bar"><div class="title">Telemetry</div><div class="handle">⋮⋮</div></div>
-          <div class="content">Status pings and simple stats.</div>
-          <div class="resize" aria-hidden="true"></div>
-        </section>
-        <section class="card" data-id="Intel" data-x="4" data-y="9" data-w="8" data-h="2">
-          <div class="bar"><div class="title">Intel Feed</div><div class="handle">⋮⋮</div></div>
-          <div class="content">Announcements & patch highlights.</div>
-          <div class="resize" aria-hidden="true"></div>
-        </section>
-      </main>
-    </div>
+    <!-- When space is tight, the leftTabs block will be moved up here (above main) -->
+    <main class="grid" id="grid">
+      <section class="card" data-id="D" data-x="0" data-y="0" data-w="8" data-h="6">
+        <div class="bar"><div class="title">Season Overview</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Main “hero” area. Other boxes can grow/shrink as you arrange.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
+      <section class="card" data-id="Tools" data-x="8" data-y="0" data-w="4" data-h="2">
+        <div class="bar"><div class="title">Tools</div><div class="handle">⋮⋮</div></div>
+        <div class="content">DIM • light.gg • TodayInDestiny • D2 Foundry</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
+      <section class="card" data-id="Rotators" data-x="8" data-y="2" data-w="4" data-h="2">
+        <div class="bar"><div class="title">Rotators</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Raid: Last Wish • Dungeon: Shattered Throne • Crucible: Momentum</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
+      <section class="card" data-id="Vendors" data-x="8" data-y="4" data-w="4" data-h="2">
+        <div class="bar"><div class="title">Vendors</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Xûr & Banshee quick look.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
+      <section class="card" data-id="Build" data-x="0" data-y="6" data-w="4" data-h="3">
+        <div class="bar"><div class="title">Build Spotlight</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Warlock/Titan/Hunter builds.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
+      <section class="card" data-id="Mods" data-x="4" data-y="6" data-w="4" data-h="3">
+        <div class="bar"><div class="title">Modifiers</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Surges, threats, champions.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
+      <section class="card" data-id="Clan" data-x="8" data-y="6" data-w="4" data-h="3">
+        <div class="bar"><div class="title">Clan Ops</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Roster, fireteams, invites.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
+      <section class="card" data-id="Telemetry" data-x="0" data-y="9" data-w="4" data-h="2">
+        <div class="bar"><div class="title">Telemetry</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Status pings and simple stats.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
+      <section class="card" data-id="Intel" data-x="4" data-y="9" data-w="8" data-h="2">
+        <div class="bar"><div class="title">Intel Feed</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Announcements & patch highlights.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
+    </main>
   </div>
 
-  <!-- Popover: color/rename + delete (single) -->
+  <!-- Right hide/unhide control -->
+  <aside class="rightDock">
+    <div class="controlBox" id="panelControl">
+      <div class="controlHeader"><span>Panels</span><span class="caret">▾</span></div>
+      <div class="controlBody" id="panelList"></div>
+    </div>
+  </aside>
+
+  <!-- Left layouts panel (will move above grid when needed) -->
+  <aside class="leftTabs" id="leftTabs">
+    <div class="tabs" id="layoutTabs">
+      <!-- tab rows injected here -->
+      <button class="addBtn" id="addTabBtn">+ Add Tab</button>
+      <div class="bulkBar">
+        <button class="toggleBtn" id="bulkToggle" aria-pressed="false" title="Select multiple layouts to delete">Select layouts</button>
+        <button class="deleteBtn" id="bulkDelete" disabled title="Select layouts to enable">Delete selected</button>
+      </div>
+      <div class="tabFooter muted">Each tab saves positions, sizes, visibility & color.</div>
+    </div>
+  </aside>
+
+  <!-- Color / Rename / Delete (single) -->
   <div class="popover" id="colorPopover" role="dialog" aria-modal="true" aria-hidden="true">
     <label for="tabName">Tab name</label>
     <input id="tabName" type="text" maxlength="30" />
@@ -411,24 +377,27 @@
 <script>
 (function(){
   const gridEl = document.getElementById('grid');
-  const COLS = () => parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols')) || 12;
-  const COLW = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--colW')) || 90;
-  const ROWH = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || 90;
-  const GAP  = () => parseFloat(getComputedStyle(gridEl).gap) || 0;
+  const wrapEl = document.querySelector('.wrap');
+  const leftTabsEl = document.getElementById('leftTabs');
 
-  /* ===== Items ===== */
+  const COLS = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols')) || 12;
+  const COLW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--colW')) || 90;
+  const ROWH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || 90;
+
+  /* ================== Items ================== */
   const items = [...gridEl.querySelectorAll('.card')].map(el => ({
     el, id: el.dataset.id,
     x:+el.dataset.x, y:+el.dataset.y, w:+el.dataset.w, h:+el.dataset.h,
-    hidden:false, minW:1, minH:1, maxW:9999
+    hidden:false, minW:1, minH:1, maxW:COLS
   }));
   const DEFAULT_LAYOUT = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
 
-  /* ===== Storage ===== */
-  const TABS_KEY='sot_tabs_meta_smooth';
+  /* ================== Storage Keys ================== */
+  const TABS_KEY='sot_tabs_meta_v4';
   const LAYOUT_KEY_PREFIX='sot_layout_';
-  const ACTIVE_TAB_KEY='sot_active_tab_id_smooth';
+  const ACTIVE_TAB_KEY='sot_active_tab_id_v4';
 
+  /* ================== Tabs Meta ================== */
   function loadTabsMeta(){
     const raw = localStorage.getItem(TABS_KEY);
     if (raw){ try{ const p=JSON.parse(raw); if(Array.isArray(p)&&p.length) return p; }catch{} }
@@ -441,7 +410,7 @@
   let tabs = loadTabsMeta();
   let activeTabId = localStorage.getItem(ACTIVE_TAB_KEY) || tabs[0].id;
 
-  /* ===== Accent ===== */
+  /* ================== Accent ================== */
   function setActiveAccent(hex){
     try{
       const {h,s,l}=hexToHsl(hex);
@@ -466,7 +435,7 @@
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
 
-  /* ===== Save/Load layout (keep gaps) ===== */
+  /* ================== Layout Save/Load ================== */
   function saveLayout(tabId){
     const data = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
     localStorage.setItem(LAYOUT_KEY_PREFIX + tabId, JSON.stringify(data));
@@ -479,105 +448,129 @@
       if (f) Object.assign(it,{x:f.x,y:f.y,w:f.w,h:f.h,hidden:!!f.hidden});
       else { const d=DEFAULT_LAYOUT.find(x=>x.id===it.id); Object.assign(it,d||{x:0,y:0,w:3,h:2,hidden:false}); }
     }
-    resolveAll(items); applyLayout(items, {animate:false});
+    // No compaction: respect gaps user left
+    resolveAll(); applyLayout();
   }
 
-  /* ===== Helpers: capture rects for FLIP ===== */
-  function captureRects(list){
-    const map = new Map();
-    list.forEach(it=>{
-      if(it.hidden) return;
-      const r = it.el.getBoundingClientRect();
-      map.set(it.id, r);
-    });
-    return map;
-  }
-  function flipAnimate(prevRects, nextList, excludeId){
-    // Apply “FLIP” for smoother movement of non-dragging items
-    nextList.forEach(it=>{
-      if(it.hidden || it.id===excludeId) return;
-      const el = it.el;
-      const nextR = el.getBoundingClientRect();
-      const prevR = prevRects.get(it.id);
-      if(!prevR) return;
-      const dx = prevR.left - nextR.left;
-      const dy = prevR.top  - nextR.top;
-      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5){
-        el.style.transition = 'none';
-        el.style.transform = `translate(${dx}px, ${dy}px)`;
-        el.offsetWidth; // reflow
-        el.style.transition = 'transform 140ms ease';
-        el.style.transform = 'translate(0,0)';
-        // clean up after transition
-        el.addEventListener('transitionend', function handler(){
-          el.style.transition = '';
-          el.style.transform = '';
-          el.removeEventListener('transitionend', handler);
-        });
-      }
-    });
-  }
-
-  /* ===== Apply positions to DOM ===== */
-  function applyLayout(list, {animate=true, excludeId=null}={}){
-    let prev=null;
-    if(animate){ prev = captureRects(items); }
-
-    const stacked = gridEl.classList.contains('stacked');
-    // Order by y then x for stacking
-    const order = list.slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
-    order.forEach((it, idx)=>{
-      const node = items.find(i=>i.id===it.id).el;
-      node.classList.toggle('hide', !!it.hidden);
-      node.style.transform = node.style.transform || '';
+  /* ================== Apply to DOM ================== */
+  function applyLayout(){
+    items.forEach(it=>{
+      it.el.classList.toggle('hide', !!it.hidden);
       if(!it.hidden){
-        if(stacked){
-          node.style.gridColumn = `1 / -1`;
-          node.style.gridRow    = `${idx+1}`;
-        }else{
-          node.style.gridColumn = `${it.x + 1} / span ${it.w}`;
-          node.style.gridRow    = `${it.y + 1} / span ${it.h}`;
-        }
+        it.el.style.transform = ''; // ensure no residual translate
+        it.el.style.gridColumn=`${it.x+1} / span ${it.w}`;
+        it.el.style.gridRow   =`${it.y+1} / span ${it.h}`;
       }
-      // only commit dataset to source-of-truth list
-      if (list === items) Object.assign(node.dataset, {x:it.x, y:it.y, w:it.w, h:it.h});
+      Object.assign(it.el.dataset,{x:it.x,y:it.y,w:it.w,h:it.h});
     });
-
-    if(animate && prev){ flipAnimate(prev, order, excludeId); }
     renderPanelList();
   }
 
-  /* ===== Collision (downward push only) ===== */
-  function rectsOverlap(a,b){ if(a.hidden||b.hidden) return false;
-    return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+  function byId(id){ return items.find(i=>i.id===id); }
+  function rectsOverlap(a,b){
+    if(a.hidden||b.hidden) return false;
+    return !(a.x+a.w<=b.x || b.x+b.w<=a.x || a.y+a.h<=b.y || b.y+b.h<=a.y);
   }
-  function getCollisions(target, list){ return list.filter(it=>it.id!==target.id && rectsOverlap(target, it)); }
-  function pushDown(item, list){
-    let colliders=getCollisions(item, list);
-    while (colliders.length){
-      for (const c of colliders){ c.y = item.y + item.h; }
-      colliders=getCollisions(item, list);
+  function getCollisions(target){ return items.filter(it=>it.id!==target.id && rectsOverlap(target,it)); }
+  function pushDown(item){
+    let changed=false, colliders=getCollisions(item);
+    while(colliders.length){
+      for(const c of colliders){ c.y = item.y + item.h; changed=true; }
+      colliders=getCollisions(item);
     }
+    return changed;
   }
-  function resolveAll(list){
-    const ordered = list.slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
-    for (const it of ordered){ pushDown(it, list); }
-    return list;
+  function resolveAll(){
+    const ordered=items.slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
+    let changed=false;
+    for(const it of ordered){ if(pushDown(it)) changed=true; }
+    return changed;
   }
   function clampToCols(it){
-    const cols = COLS();
-    if (it.w > cols) it.w = cols;
-    if (it.x < 0) it.x = 0;
-    if (it.x + it.w > cols) it.x = cols - it.w;
-    if (it.y < 0) it.y = 0;
+    if(it.w>COLS) it.w=COLS;
+    if(it.x<0) it.x=0;
+    if(it.x+it.w>COLS) it.x=COLS-it.w;
+    if(it.y<0) it.y=0; // allow gaps above; we won't compact
   }
 
-  /* ===== Panel visibility (overlay popover) ===== */
+  /* ================== Lock ================== */
+  const lockToggle=document.getElementById('lockToggle');
+  let isLocked=false;
+  function setLocked(v){ isLocked=!!v; document.body.classList.toggle('locked', isLocked); lockToggle.setAttribute('aria-pressed', String(isLocked)); }
+  lockToggle.addEventListener('click', ()=>setLocked(!isLocked));
+  lockToggle.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setLocked(!isLocked); } });
+
+  /* ================== Smooth Drag (no snap during drag; snap on drop) ================== */
+  let dragging=null, startMouse=null, startGridPos=null, startRect=null, gridRect=null;
+
+  gridEl.addEventListener('mousedown', e=>{
+    if(isLocked) return;
+    const bar = e.target.closest('.bar'); if(!bar) return;
+    const el = bar.closest('.card'); const it = items.find(i=>i.el===el);
+    dragging = it;
+    gridRect = gridEl.getBoundingClientRect();
+    startRect = it.el.getBoundingClientRect();
+    startMouse = { x:e.clientX, y:e.clientY };
+    startGridPos = { x: it.x, y: it.y };
+    it.el.classList.add('dragging');
+    // Lift visually (translate from its current grid slot)
+    it.el.style.willChange = 'transform';
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const dx = e.clientX - startMouse.x;
+    const dy = e.clientY - startMouse.y;
+    // Smooth follow with pixel translate
+    dragging.el.style.transform = `translate(${dx}px, ${dy}px)`;
+  });
+
+  window.addEventListener('mouseup', e=>{
+    if(!dragging) return;
+    // Compute new grid coords from pixel offset, snap to nearest cell
+    const dx = (e.clientX - startMouse.x);
+    const dy = (e.clientY - startMouse.y);
+    const newX = Math.round(startGridPos.x + dx / COLW);
+    const newY = Math.round(startGridPos.y + dy / ROWH);
+    dragging.x = newX; dragging.y = newY;
+    clampToCols(dragging);
+    // Clear drag visuals
+    dragging.el.classList.remove('dragging');
+    dragging.el.style.transform = '';
+    dragging.el.style.willChange = '';
+    // Resolve collisions and apply (no compaction)
+    resolveAll(); applyLayout(); saveLayout(activeTabId);
+    dragging = null;
+  });
+
+  /* ================== Resize (live), still no compaction ================== */
+  let resizing=null, startMouseR=null, startSize=null;
+  gridEl.addEventListener('mousedown', e=>{
+    if(isLocked) return;
+    const h=e.target.closest('.resize'); if(!h) return;
+    const el=h.closest('.card'); const it=items.find(i=>i.el===el);
+    resizing=it; startMouseR={x:e.clientX,y:e.clientY}; startSize={w:it.w,h:it.h};
+    it.el.classList.add('dragging'); e.preventDefault(); e.stopPropagation();
+  });
+  window.addEventListener('mousemove', e=>{
+    if(!resizing) return;
+    const dx=e.clientX-startMouseR.x, dy=e.clientY-startMouseR.y;
+    const dw=Math.round(dx/COLW), dh=Math.round(dy/ROWH);
+    resizing.w=Math.max(resizing.minW, Math.min(resizing.maxW, startSize.w+dw));
+    resizing.h=Math.max(resizing.minH, startSize.h+dh);
+    clampToCols(resizing); resolveAll(); applyLayout();
+  });
+  window.addEventListener('mouseup', ()=>{
+    if(!resizing) return;
+    resizing.el.classList.remove('dragging'); resizing=null;
+    resolveAll(); applyLayout(); saveLayout(activeTabId);
+  });
+
+  /* ================== Right: hide/unhide ================== */
   const panelControl=document.getElementById('panelControl');
   const panelList=document.getElementById('panelList');
-  panelControl.querySelector('.controlHeader').addEventListener('click', ()=>{
-    panelControl.classList.toggle('open');
-  });
+  panelControl.querySelector('.controlHeader').addEventListener('click', ()=> panelControl.classList.toggle('open'));
   function renderPanelList(){
     panelList.innerHTML='';
     for(const it of items){
@@ -588,154 +581,14 @@
   }
   panelList.addEventListener('change', e=>{
     const cb=e.target.closest('input[type="checkbox"]'); if(!cb) return;
-    const it=items.find(i=>i.id===cb.dataset.id); it.hidden=!cb.checked;
-    resolveAll(items); applyLayout(items, {animate:true});
-    saveLayout(activeTabId);
+    const it=byId(cb.dataset.id); it.hidden=!cb.checked;
+    resolveAll(); applyLayout(); saveLayout(activeTabId);
   });
 
-  /* ===== Lock toggle ===== */
-  const lockToggle=document.getElementById('lockToggle');
-  let isLocked=false;
-  function setLocked(v){ isLocked=!!v; document.body.classList.toggle('locked', isLocked); lockToggle.setAttribute('aria-pressed', String(isLocked)); }
-  lockToggle.addEventListener('click', ()=>setLocked(!isLocked));
-  lockToggle.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setLocked(!isLocked); } });
-
-  /* ===== Smooth Drag with LIVE push + FLIP (throttled via rAF) ===== */
-  let dragging=null, startMouse=null, startPos=null;
-  let dragBaseline=null;   // snapshot at drag start
-  let dragShadow=null;     // working copy during move
-
-  let frameReq = null;
-  let pendingMove = null;
-
-  function onDragFrame(){
-    if(!pendingMove || !dragging) { frameReq=null; return; }
-    const {dx, dy} = pendingMove; pendingMove=null;
-
-    const prevRects = captureRects(items);
-
-    // Grid-snapped candidate for shadow reflow (so neighbors respond)
-    const gx = Math.round(dx / COLW());
-    const gy = Math.round(dy / ROWH());
-    const targetX = Math.max(0, startPos.x + gx);
-    const targetY = Math.max(0, startPos.y + gy);
-
-    dragShadow = dragBaseline.map(o => ({ ...o }));
-    const sDrag = dragShadow.find(o => o.id === dragging.id);
-    sDrag.x = targetX; sDrag.y = targetY;
-    clampToCols(sDrag);
-    resolveAll(dragShadow);
-
-    // Apply the shadow layout (neighbors glide via FLIP)
-    applyLayout(dragShadow, {animate:false}); // set positions first
-    flipAnimate(prevRects, dragShadow, dragging.id);
-
-    // Keep dragged card following exact cursor inside its snapped cell
-    const residualX = dx - gx * COLW();
-    const residualY = dy - gy * ROWH();
-    dragging.el.style.transform = `translate(${residualX}px, ${residualY}px)`;
-
-    frameReq = requestAnimationFrame(onDragFrame);
-  }
-
-  gridEl.addEventListener('mousedown', e=>{
-    if (isLocked) return;
-    const bar = e.target.closest('.bar'); if (!bar) return;
-    const el  = bar.closest('.card'); const it = items.find(i=>i.el===el);
-    dragging   = it;
-    startMouse = {x:e.clientX, y:e.clientY};
-    startPos   = {x:it.x, y:it.y};
-    dragBaseline = items.map(o => ({ id:o.id, x:o.x, y:o.y, w:o.w, h:o.h, hidden:o.hidden }));
-    dragShadow   = dragBaseline.map(o => ({ ...o }));
-    it.el.classList.add('dragging');
-    it.el.style.transform = `translate(0px,0px)`;
-    e.preventDefault();
-  });
-
-  window.addEventListener('mousemove', e=>{
-    if (!dragging) return;
-    pendingMove = {dx: e.clientX - startMouse.x, dy: e.clientY - startMouse.y};
-    if(!frameReq) frameReq = requestAnimationFrame(onDragFrame);
-  });
-
-  window.addEventListener('mouseup', e=>{
-    if (!dragging) return;
-    cancelAnimationFrame(frameReq); frameReq=null; pendingMove=null;
-
-    const dx = e.clientX - startMouse.x;
-    const dy = e.clientY - startMouse.y;
-
-    const gx = Math.round(dx / COLW());
-    const gy = Math.round(dy / ROWH());
-    const targetX = Math.max(0, startPos.x + gx);
-    const targetY = Math.max(0, startPos.y + gy);
-
-    dragShadow = dragBaseline.map(o => ({ ...o }));
-    const sDrag = dragShadow.find(o => o.id === dragging.id);
-    sDrag.x = targetX; sDrag.y = targetY;
-    clampToCols(sDrag);
-    resolveAll(dragShadow);
-
-    // Commit
-    for (const sh of dragShadow){
-      const real = items.find(i => i.id === sh.id);
-      Object.assign(real, { x:sh.x, y:sh.y, w:sh.w, h:sh.h, hidden:sh.hidden });
-    }
-    dragging.el.classList.remove('dragging');
-    dragging.el.style.transform = '';
-    dragging = null; dragBaseline = null; dragShadow = null;
-
-    applyLayout(items, {animate:true});
-    saveLayout(activeTabId);
-  });
-
-  /* ===== Resizing (snap while resizing) ===== */
-  let resizing=null, startMouseR=null, startSize=null;
-  gridEl.addEventListener('mousedown', e=>{
-    if (isLocked) return;
-    const h = e.target.closest('.resize'); if (!h) return;
-    const el = h.closest('.card'); const it = items.find(i=>i.el===el);
-    resizing = it; startMouseR = {x:e.clientX, y:e.clientY}; startSize = {w:it.w, h:it.h};
-    it.el.classList.add('dragging'); e.preventDefault(); e.stopPropagation();
-  });
-  window.addEventListener('mousemove', e=>{
-    if (!resizing) return;
-    const dx=e.clientX-startMouseR.x, dy=e.clientY-startMouseR.y;
-    const dw=Math.round(dx/COLW()), dh=Math.round(dy/ROWH());
-    resizing.w=Math.max(resizing.minW, Math.min(resizing.maxW, startSize.w+dw));
-    resizing.h=Math.max(resizing.minH, startSize.h+dh);
-    clampToCols(resizing); resolveAll(items); applyLayout(items, {animate:true});
-  });
-  window.addEventListener('mouseup', ()=>{
-    if (!resizing) return;
-    resizing.el.classList.remove('dragging'); resizing=null;
-    applyLayout(items, {animate:true}); saveLayout(activeTabId);
-  });
-
-  /* ===== Responsive: stacked mode when not enough room =====
-     Rule of thumb: if the grid's content width cannot fit 12 * colW + gaps, switch to .stacked.
-  */
-  function shouldStack(){
-    const contentW = gridEl.clientWidth;
-    const needed = COLS()*COLW() + (COLS()-1)*GAP();
-    return contentW < needed;
-  }
-  function updateStack(){
-    const stack = shouldStack();
-    gridEl.classList.toggle('stacked', stack);
-    // In stacked mode, each panel is full-width and ordered vertically; apply without animation to avoid bounce
-    applyLayout(items, {animate:false});
-  }
-
-  window.addEventListener('resize', updateStack);
-  // also update when opening/closing the overlay dropdown (width may change)
-  const controlsEl = document.querySelector('.controls');
-  const ro = new ResizeObserver(updateStack);
-  ro.observe(gridEl); ro.observe(controlsEl);
-
-  /* ===== Tabs / bulk delete (unchanged logic) ===== */
+  /* ================== Left: tabs (with bulk delete) ================== */
   const tabsEl=document.getElementById('layoutTabs');
   const addTabBtn=document.getElementById('addTabBtn');
+
   let bulkMode=false;
   const bulkToggle=document.getElementById('bulkToggle');
   const bulkDeleteBtn=document.getElementById('bulkDelete');
@@ -747,10 +600,11 @@
     tabs.forEach(t=>{
       const row=document.createElement('div'); row.className='tabRow';
       if(bulkMode){
-        const chk=document.createElement('input'); chk.type='checkbox'; chk.className='tabCheck'; chk.dataset.id=t.id; chk.checked=selectedIds.has(t.id);
-        row.appendChild(chk);
+        const chk=document.createElement('input'); chk.type='checkbox'; chk.className='tabCheck'; chk.dataset.id=t.id;
+        chk.checked=selectedIds.has(t.id); row.appendChild(chk);
       }else{
-        const chip=document.createElement('div'); chip.className='colorChip'; chip.style.background=t.color; chip.dataset.id=t.id; row.appendChild(chip);
+        const chip=document.createElement('div'); chip.className='colorChip'; chip.style.background=t.color; chip.dataset.id=t.id;
+        row.appendChild(chip);
       }
       const btn=document.createElement('button'); btn.type='button'; btn.className='tabBtn'; btn.textContent=t.name; btn.dataset.tab=t.id;
       if(t.id===activeTabId) btn.classList.add('active');
@@ -789,14 +643,19 @@
   });
 
   bulkToggle.addEventListener('click', ()=>{
-    bulkMode = !bulkMode; bulkToggle.setAttribute('aria-pressed', String(bulkMode));
-    selectedIds.clear(); closePopover(); renderTabs();
+    bulkMode = !bulkMode;
+    bulkToggle.setAttribute('aria-pressed', String(bulkMode));
+    if (bulkMode) { closePopover(); }
+    selectedIds.clear(); renderTabs();
   });
+
   tabsEl.addEventListener('change', e=>{
     const chk=e.target.closest('.tabCheck'); if(!chk) return;
-    if(chk.checked) selectedIds.add(chk.dataset.id); else selectedIds.delete(chk.dataset.id);
+    const id=chk.dataset.id;
+    if(chk.checked) selectedIds.add(id); else selectedIds.delete(id);
     updateBulkButtons();
   });
+
   function updateBulkButtons(){
     const allCount=tabs.length, selCount=selectedIds.size;
     const canDelete = selCount>0 && selCount<allCount;
@@ -805,7 +664,7 @@
     bulkDeleteBtn.title = canDelete ? `Delete ${selCount} selected` : (selCount===allCount ? 'Keep at least one layout' : 'Select layouts to enable');
   }
 
-  /* ===== Color/Rename Popover & Deletion with Undo ===== */
+  /* ===== Popover (single color/rename/delete) ===== */
   const pop=document.getElementById('colorPopover');
   const nameInput=document.getElementById('tabName');
   const colorInput=document.getElementById('tabColor');
@@ -824,7 +683,6 @@
     pop.classList.add('open'); pop.setAttribute('aria-hidden','false'); setTimeout(()=>nameInput.focus(),0);
   }
   function closePopover(){ pop.classList.remove('open'); pop.setAttribute('aria-hidden','true'); popTargetId=null; }
-
   saveBtn.addEventListener('click', ()=>{
     const meta=getTabMeta(popTargetId); if(!meta) return;
     meta.name = nameInput.value.trim() || meta.name;
@@ -833,16 +691,12 @@
   });
   cancelBtn.addEventListener('click', closePopover);
 
+  /* ===== Confirm modal (single/bulk) + Undo ===== */
   const confirmModal=document.getElementById('confirmModal');
   const confirmText=document.getElementById('confirmText');
   const confirmDeleteBtn=document.getElementById('confirmDelete');
   const confirmCancelBtn=document.getElementById('confirmCancel');
-  const undoBar=document.getElementById('undoBar');
-  const undoText=document.getElementById('undoText');
-  const undoBtn=document.getElementById('undoBtn');
   let confirmIds=[];
-  let undoTimer=null;
-  let undoPayload=null;
 
   function openConfirm(ids){
     confirmIds = ids.slice();
@@ -857,27 +711,50 @@
   }
   function closeConfirm(){ confirmModal.classList.remove('open'); confirmModal.setAttribute('aria-hidden','true'); confirmIds=[]; }
 
+  // Single delete via popover
+  deleteBtn.addEventListener('click', ()=>{
+    if (tabs.length<=1) return;
+    const id=popTargetId; closePopover(); openConfirm([id]);
+  });
+
+  // Bulk delete
+  const bulkDeleteBtnEl = document.getElementById('bulkDelete');
+  bulkDeleteBtnEl.addEventListener('click', ()=>{
+    const sel=[...selectedIds]; if (sel.length===0 || sel.length>=tabs.length) return;
+    openConfirm(sel);
+  });
+
+  const undoBar=document.getElementById('undoBar');
+  const undoText=document.getElementById('undoText');
+  const undoBtn=document.getElementById('undoBtn');
+  let undoTimer=null;
+  let undoPayload=null; // { metas:[...], layouts:{id:json}, indices:[...], prevActiveId }
+
   function showUndo(payload){
     undoPayload=payload;
     const names=payload.metas.map(m=>m.name);
     const label = names.length>1 ? `Deleted ${names.length} layouts: ${names.slice(0,3).join(', ')}${names.length>3?` +${names.length-3} more`:''}.` : `Deleted “${names[0]}”.`;
     undoText.textContent=label;
     undoBar.classList.add('show'); clearTimeout(undoTimer);
-    undoTimer=setTimeout(()=>{ undoBar.classList.remove('show'); undoPayload=null; }, 8000);
+    undoTimer=setTimeout(()=>{ hideUndo(); undoPayload=null; }, 8000);
   }
+  function hideUndo(){ undoBar.classList.remove('show'); clearTimeout(undoTimer); undoTimer=null; }
+  function insertAt(arr,index,item){ if(index<0||index>arr.length) index=arr.length; arr.splice(index,0,item); }
 
-  document.getElementById('bulkDelete').addEventListener('click', ()=>{
-    const sel=[...selectedIds];
-    if (sel.length===0) return;
-    if (sel.length>=tabs.length) return;
-    openConfirm(sel);
+  undoBtn.addEventListener('click', ()=>{
+    if(!undoPayload) return;
+    const { metas, layouts, indices, prevActiveId } = undoPayload;
+    metas.forEach((m, i)=> insertAt(tabs, indices[i], m));
+    saveTabsMeta(tabs);
+    for(const id in layouts){ localStorage.setItem(LAYOUT_KEY_PREFIX + id, layouts[id]); }
+    renderTabs();
+    const restoreId = tabs.find(t=>t.id===prevActiveId)?.id || metas[0].id;
+    setActiveTab(restoreId);
+    hideUndo(); undoPayload=null;
   });
-  deleteBtn.addEventListener('click', ()=>{
-    if (tabs.length<=1) return;
-    const id=popTargetId; closePopover(); openConfirm([id]);
-  });
+
   confirmCancelBtn.addEventListener('click', closeConfirm);
-  document.querySelector('#confirmModal .backdrop').addEventListener('click', closeConfirm);
+  confirmModal.querySelector('.backdrop').addEventListener('click', closeConfirm);
 
   confirmDeleteBtn.addEventListener('click', ()=>{
     if (confirmIds.length===0) { closeConfirm(); return; }
@@ -890,11 +767,9 @@
       const key=LAYOUT_KEY_PREFIX+id; const json=localStorage.getItem(key); if(json) layouts[id]=json;
     });
     const remaining = tabs.filter(t=>!deletingIds.includes(t.id));
-    if (remaining.length<1){ closeConfirm(); alert('At least one layout must remain.'); return; }
-
+    if (remaining.length<1){ closeConfirm(); return; }
     deletingIds.forEach(id=> localStorage.removeItem(LAYOUT_KEY_PREFIX+id));
     tabs = remaining; saveTabsMeta(tabs);
-
     if (deletingIds.includes(activeTabId)){
       const fallback = tabs[Math.max(0, (indices[0]-1))] || tabs[0];
       activeTabId=fallback.id; localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
@@ -906,46 +781,53 @@
     closeConfirm();
   });
 
-  undoBtn.addEventListener('click', ()=>{
-    if(!undoPayload) return;
-    const { metas, layouts, indices, prevActiveId } = undoPayload;
-    metas.forEach((m, i)=> tabs.splice(indices[i], 0, m));
-    saveTabsMeta(tabs);
-    for(const id in layouts){ localStorage.setItem(LAYOUT_KEY_PREFIX + id, layouts[id]); }
-    renderTabs();
-    const restoreId = tabs.find(t=>t.id===prevActiveId)?.id || metas[0].id;
-    setActiveTab(restoreId);
-    undoBar.classList.remove('show'); undoPayload=null;
-  });
-
   document.addEventListener('keydown', e=>{
     if(e.key==='Escape'){
       if(document.getElementById('confirmModal').classList.contains('open')) closeConfirm();
       if(document.getElementById('colorPopover').classList.contains('open')) closePopover();
-      if(panelControl.classList.contains('open')) panelControl.classList.remove('open');
     }
   });
   document.addEventListener('click', e=>{
-    // close color popover when clicking outside
     const popEl=document.getElementById('colorPopover');
-    if(popEl.classList.contains('open')){
-      if(!(e.target.closest('#colorPopover') || e.target.closest('.colorChip'))) closePopover();
-    }
-    // close panels overlay if click outside of it (but not the header)
-    if(panelControl.classList.contains('open')){
-      if(!(e.target.closest('#panelControl'))) panelControl.classList.remove('open');
-    }
+    if(!popEl.classList.contains('open')) return;
+    if(e.target.closest('#colorPopover') || e.target.closest('.colorChip')) return;
+    closePopover();
   });
 
-  /* ===== Init ===== */
-  if(!tabs.find(t=>t.id===activeTabId)) activeTabId=tabs[0].id;
-  localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
-  (function setInitialAccent(){ const meta=tabs.find(t=>t.id===activeTabId) || tabs[0]; if (meta) setActiveAccent(meta.color); })();
-  loadLayout(activeTabId);
-  renderTabs();
-  renderPanelList();
-  setLocked(false);
-  updateStack();
+  /* ================== Responsive placement of Layouts panel ================== */
+  function updateTabsPlacement(){
+    const wrapRect = wrapEl.getBoundingClientRect();
+    const spaceLeft = wrapRect.left;           // px space to the left of main wrap
+    const required = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tabsW')) || 260;
+    if (spaceLeft < (required + 20)) {
+      // Not enough space on the left -> move tabs above the grid
+      if (leftTabsEl.parentElement !== wrapEl){
+        wrapEl.insertBefore(leftTabsEl, gridEl);
+      }
+      document.body.classList.add('tabsTop');
+    } else {
+      // Enough space -> dock to left margin (fixed)
+      if (leftTabsEl.parentElement === wrapEl){
+        document.body.appendChild(leftTabsEl);
+      }
+      document.body.classList.remove('tabsTop');
+    }
+  }
+  window.addEventListener('resize', updateTabsPlacement);
+  window.addEventListener('orientationchange', updateTabsPlacement);
+
+  /* ================== Init ================== */
+  function init(){
+    if(!tabs.find(t=>t.id===activeTabId)) activeTabId=tabs[0].id;
+    localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
+    renderTabs();
+    setActiveAccent(getTabMeta(activeTabId).color);
+    loadLayout(activeTabId);
+    setLocked(false);
+    renderPanelList();
+    updateTabsPlacement();
+  }
+  init();
 })();
 </script>
 </body>
