@@ -1,0 +1,12 @@
+# Large manifest data files (hosted separately on GitHub)
+data/manifest/
+
+# Development files
+.DS_Store
+.env
+.env.local
+.vscode/
+node_modules/
+
+# Vercel deployment files
+.vercel

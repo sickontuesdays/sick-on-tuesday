@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Build Crafter Test - Modular System</title>
+<style>
+  body {
+    margin: 0;
+    font-family: 'Rajdhani', system-ui, sans-serif;
+    background: #0a0e13;
+    color: #e7eefc;
+    padding: 20px;
+  }
+
+  .test-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: linear-gradient(180deg, #0f1520 0%, #121a28 100%);
+    border: 1px solid #1f2b3e;
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  h1 {
+    margin: 0 0 24px 0;
+    color: #7dd3fc;
+  }
+
+  .test-section {
+    background: #0a0e13;
+    border: 1px solid #1f2b3e;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .test-section h3 {
+    margin: 0 0 12px 0;
+    color: #94a7c4;
+  }
+
+  .status {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    margin: 4px 0;
+  }
+
+  .status.loading {
+    background: rgba(125, 211, 252, 0.1);
+    color: #7dd3fc;
+  }
+
+  .status.success {
+    background: rgba(52, 211, 153, 0.1);
+    color: #34d399;
+  }
+
+  .status.error {
+    background: rgba(251, 113, 133, 0.1);
+    color: #fb7185;
+  }
+
+  .build-crafter-test {
+    min-height: 300px;
+    border: 2px dashed #1f2b3e;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #94a7c4;
+  }
+
+  #debug-info {
+    background: #0a0e13;
+    border: 1px solid #1f2b3e;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  button {
+    background: linear-gradient(135deg, #7dd3fc 0%, #60a5fa 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-weight: 600;
+    margin: 4px;
+  }
+
+  button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(125, 211, 252, 0.3);
+  }
+</style>
+</head>
+<body>
+
+<div class="test-container">
+  <h1>🎯 Build Crafter - Modular System Test</h1>
+
+  <div class="test-section">
+    <h3>System Status</h3>
+    <div id="module-status" class="status loading">🔄 Loading modules...</div>
+    <div id="manifest-status" class="status loading">📦 Checking manifest data...</div>
+    <div id="analyzer-status" class="status loading">🧬 Initializing build analyzer...</div>
+  </div>
+
+  <div class="test-section">
+    <h3>Build Crafter Widget</h3>
+    <div id="build-crafter-container" class="build-crafter-test">
+      <div>
+        <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+        <div>Initializing Build Crafter...</div>
+      </div>
+    </div>
+
+    <button onclick="testBuildGeneration()">Test Build Generation</button>
+    <button onclick="testManifestData()">Test Manifest Data</button>
+    <button onclick="toggleDebugInfo()">Toggle Debug Info</button>
+  </div>
+
+  <div id="debug-info" style="display: none;">
+    <strong>Debug Console:</strong><br>
+    <div id="debug-log"></div>
+  </div>
+</div>
+
+<script>
+// Debug logging
+function debugLog(message) {
+  console.log(message);
+  const debugEl = document.getElementById('debug-log');
+  if (debugEl) {
+    debugEl.innerHTML += `${new Date().toLocaleTimeString()}: ${message}<br>`;
+    debugEl.scrollTop = debugEl.scrollHeight;
+  }
+}
+
+function setStatus(elementId, status, message) {
+  const el = document.getElementById(elementId);
+  el.className = `status ${status}`;
+  el.innerHTML = message;
+}
+
+function toggleDebugInfo() {
+  const debugEl = document.getElementById('debug-info');
+  debugEl.style.display = debugEl.style.display === 'none' ? 'block' : 'none';
+}
+
+// Test functions
+async function testManifestData() {
+  debugLog('Testing manifest data access...');
+
+  try {
+    const response = await fetch('./data/manifest/DestinyTraitDefinition.json');
+    if (response.ok) {
+      const data = await response.json();
+      debugLog(`Manifest data loaded: ${Object.keys(data).length} traits found`);
+      setStatus('manifest-status', 'success', '✅ Manifest data accessible');
+      return true;
+    } else {
+      throw new Error(`HTTP ${response.status}`);
+    }
+  } catch (error) {
+    debugLog(`Manifest data test failed: ${error.message}`);
+    setStatus('manifest-status', 'error', '❌ Manifest data not accessible');
+    return false;
+  }
+}
+
+async function testBuildGeneration() {
+  debugLog('Testing build generation...');
+
+  if (window.buildAnalyzer) {
+    try {
+      const build = await window.buildAnalyzer.generateBuild('Hunter void build for raids');
+      debugLog(`Build generated: ${build.name || 'Generated Build'}`);
+      displayTestBuild(build);
+    } catch (error) {
+      debugLog(`Build generation failed: ${error.message}`);
+    }
+  } else {
+    debugLog('Build analyzer not available');
+  }
+}
+
+function displayTestBuild(build) {
+  const container = document.getElementById('build-crafter-container');
+  container.innerHTML = `
+    <div style="text-align: left; width: 100%;">
+      <h4>${build.name || 'Generated Build'}</h4>
+      <p>${build.description || 'Test build generated successfully'}</p>
+      <div><strong>Confidence:</strong> ${Math.round((build.confidence || 0.5) * 100)}%</div>
+      <div><strong>Source:</strong> ${build.source || 'unknown'}</div>
+      <div><strong>Synergies:</strong> ${(build.synergies || []).join(', ') || 'None detected'}</div>
+    </div>
+  `;
+}
+
+// Initialize test
+debugLog('Starting modular system test...');
+
+// Test module loading capability
+if ('modules' in HTMLScriptElement.prototype) {
+  debugLog('ES6 modules supported');
+  setStatus('module-status', 'success', '✅ ES6 modules supported');
+
+  // Load modular system
+  import('./js/api/manifest-loader.js').then(module => {
+    debugLog('Manifest loader module loaded');
+
+    const { ManifestLoader } = module;
+    // Use GitHub hosting for production, local for development
+    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    window.manifestLoader = new ManifestLoader(isLocal ? './data/manifest/' : null);
+
+    return import('./js/core/build-analyzer.js');
+  }).then(module => {
+    debugLog('Build analyzer module loaded');
+
+    const { BuildAnalyzer } = module;
+    window.buildAnalyzer = new BuildAnalyzer(window.manifestLoader);
+
+    setStatus('analyzer-status', 'success', '✅ Build analyzer ready');
+
+    // Initialize analyzer
+    return window.buildAnalyzer.initialize();
+  }).then(() => {
+    debugLog('Build analyzer initialized');
+
+    // Test manifest data access
+    testManifestData();
+
+    // Update build crafter container
+    document.getElementById('build-crafter-container').innerHTML = `
+      <div style="text-align: center;">
+        <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+        <div><strong>Build Crafter Ready!</strong></div>
+        <div style="margin-top: 12px; color: #94a7c4;">Click "Test Build Generation" to generate a build</div>
+      </div>
+    `;
+
+  }).catch(error => {
+    debugLog(`Module loading failed: ${error.message}`);
+    setStatus('module-status', 'error', '❌ Module loading failed');
+    setStatus('analyzer-status', 'error', '❌ Build analyzer failed');
+
+    document.getElementById('build-crafter-container').innerHTML = `
+      <div style="text-align: center; color: #fb7185;">
+        <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+        <div><strong>Module Loading Failed</strong></div>
+        <div style="margin-top: 12px; font-size: 14px;">${error.message}</div>
+      </div>
+    `;
+  });
+
+} else {
+  debugLog('ES6 modules not supported');
+  setStatus('module-status', 'error', '❌ ES6 modules not supported');
+  setStatus('analyzer-status', 'error', '❌ Legacy browser - modular system unavailable');
+
+  document.getElementById('build-crafter-container').innerHTML = `
+    <div style="text-align: center; color: #fb7185;">
+      <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+      <div><strong>Legacy Browser Detected</strong></div>
+      <div style="margin-top: 12px; font-size: 14px;">ES6 modules not supported. Please use a modern browser.</div>
+    </div>
+  `;
+}
+</script>
+
+</body>
+</html>
