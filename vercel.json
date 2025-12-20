@@ -2,6 +2,7 @@
   "headers": [
     {
       "source": "/(.*)",
+      "destination": "/tools.html",
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
