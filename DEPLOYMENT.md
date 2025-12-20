@@ -7,25 +7,43 @@ The Build Crafter system requires two separate repositories:
 
 ## Step 1: GitHub Setup
 
-### 1A: Create Manifest Data Repository
-1. Create a new GitHub repository named: `destiny-manifest-data`
-2. Make it **public** (required for GitHub Pages raw file access)
-3. Upload the manifest files from: `c:\Users\mrlit\Desktop\GCC\Resources and Tools\updated manifest\optimized_manifest\`
+### 1A: Push Manifest Data Repository
+The manifest data is already prepared in: `c:\Users\mrlit\Desktop\GCC\destiny-manifest-data\`
 
-**Required files to upload:**
+1. Navigate to the manifest directory:
+   ```bash
+   cd "c:\Users\mrlit\Desktop\GCC\destiny-manifest-data"
+   ```
+
+2. Add all files and push to GitHub:
+   ```bash
+   git add .
+   git commit -m "Initial manifest data upload - 264MB optimized files"
+   git push origin main
+   ```
+
+**Files included (18 total, ~264MB):**
 ```
-optimized_manifest/
-├── weapons.json              (77 MB)
-├── armor.json                (84 MB)
-├── consumables.json          (16 MB)
-├── cosmetics.json            (27 MB)
-├── DestinyStatDefinition.json        (39 KB)
-├── DestinyTraitDefinition.json       (155 KB)
+destiny-manifest-data/
+├── weapons.json              (79.9 MB)
+├── armor.json                (87.2 MB)
+├── consumables.json          (16.7 MB)
+├── cosmetics.json            (28.2 MB)
+├── uncategorized.json        (41.1 MB)
+├── DestinyStatDefinition.json        (39.5 KB)
+├── DestinyTraitDefinition.json       (158 KB)
 ├── DestinyDamageTypeDefinition.json  (4 KB)
 ├── DestinyClassDefinition.json       (1.3 KB)
-├── DestinySandboxPerkDefinition.json (3.2 MB)
-├── DestinyPlugSetDefinition.json     (12 MB)
-└── DestinySocketTypeDefinition.json  (1.3 MB)
+├── DestinySandboxPerkDefinition.json (3.3 MB)
+├── DestinyPlugSetDefinition.json     (11.9 MB)
+├── DestinySocketTypeDefinition.json  (1.3 MB)
+├── DestinyItemCategoryDefinition.json (88 KB)
+├── DestinyActivityModifierDefinition.json (303 KB)
+├── DestinySeasonDefinition.json      (47.5 KB)
+├── DestinyBreakerTypeDefinition.json (1.4 KB)
+├── DestinyEnergyTypeDefinition.json  (2.7 KB)
+├── optimization-metadata.json        (1.6 KB)
+└── README.md                         (Documentation)
 ```
 
 ### 1B: Update Manifest URL

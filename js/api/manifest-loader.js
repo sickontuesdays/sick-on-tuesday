@@ -7,7 +7,7 @@ export class ManifestLoader {
   constructor(baseUrl = null) {
     // Default to GitHub CDN hosting for production
     if (!baseUrl) {
-      baseUrl = 'https://raw.githubusercontent.com/YOUR_USERNAME/destiny-manifest-data/main/';
+      baseUrl = 'https://raw.githubusercontent.com/sickontuesdays/destiny-manifest-data/main/';
     }
 
     this.baseUrl = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
