@@ -610,7 +610,7 @@ export class ComprehensiveSynergyEngine {
     }
 
     // Exotic conflicts
-    const exoticConflicts = this.detectExoticConflicts(buildData);
+    const exoticConflicts = this.findExoticConflicts(buildData.exotics);
     warnings.push(...exoticConflicts);
 
     return warnings;
