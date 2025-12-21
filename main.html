@@ -260,6 +260,98 @@
   .snackbar button{ padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:#0e1726; color:var(--ink); font-weight:700; cursor:pointer; }
   .snackbar button:hover{ background:#111b2a; }
   .snackbar .muted{ color:var(--muted); }
+
+  /* Build Crafter Styles */
+  .build-input-container {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .build-input {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--ink);
+    font-size: 12px;
+    font-family: inherit;
+  }
+  .build-input::placeholder {
+    color: var(--muted);
+  }
+  .build-input:focus {
+    outline: none;
+    border-color: var(--arc);
+    box-shadow: 0 0 0 1px var(--arc);
+  }
+  .build-generate-btn {
+    padding: 6px 10px;
+    background: linear-gradient(135deg, var(--arc) 0%, var(--arc2) 100%);
+    color: #0a0e13;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+  }
+  .build-generate-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(125, 211, 252, 0.3);
+  }
+  .build-generate-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  .build-result {
+    margin-top: 8px;
+    padding: 8px;
+    background: var(--panel2);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .build-result h4 {
+    margin: 0 0 4px 0;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .build-result p {
+    margin: 2px 0;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .build-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .build-action-btn {
+    padding: 3px 6px;
+    background: transparent;
+    color: var(--arc);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    font-family: inherit;
+  }
+  .build-action-btn:hover {
+    background: var(--arc);
+    color: var(--panel);
+  }
+  .loading-state {
+    text-align: center;
+    padding: 16px;
+  }
+  .error-state {
+    text-align: center;
+    padding: 16px;
+    color: var(--bad);
+  }
 </style>
 </head>
 <body>
@@ -304,8 +396,15 @@
       </section>
 
       <section class="card" data-id="Build" data-x="0" data-y="6" data-w="4" data-h="3">
-        <div class="bar"><div class="title">Build Spotlight</div><div class="handle">⋮⋮</div></div>
-        <div class="content">Warlock/Titan/Hunter builds.</div>
+        <div class="bar"><div class="title">🎯 Build Crafter</div><div class="handle">⋮⋮</div></div>
+        <div class="content">
+          <div id="build-crafter-interface">
+            <div class="loading-state" id="loading-state">
+              <div style="font-size: 20px; margin-bottom: 8px;">⏳</div>
+              <div style="font-size: 12px; opacity: 0.7;">Loading Build Crafter...</div>
+            </div>
+          </div>
+        </div>
         <div class="resize" aria-hidden="true"></div>
       </section>
 
@@ -919,5 +1018,208 @@
   init();
 })();
 </script>
+
+<!-- Build Crafter Module Loading System -->
+<script type="module">
+  // Build Crafter Initialization
+  let buildCrafter = null;
+  let manifestLoader = null;
+  let buildAnalyzer = null;
+
+  // Debug logging
+  function debugLog(message) {
+    console.log(`[Build Crafter] ${message}`);
+  }
+
+  // Update loading state
+  function updateLoadingState(message) {
+    const loadingState = document.getElementById('loading-state');
+    if (loadingState) {
+      loadingState.innerHTML = `
+        <div style="font-size: 16px; margin-bottom: 6px;">⏳</div>
+        <div style="font-size: 11px; opacity: 0.7;">${message}</div>
+      `;
+    }
+  }
+
+  // Show error state
+  function showError(message) {
+    const container = document.getElementById('build-crafter-interface');
+    container.innerHTML = `
+      <div class="error-state">
+        <div style="font-size: 16px; margin-bottom: 6px;">❌</div>
+        <div style="font-size: 11px; margin-bottom: 8px;">Error: ${message}</div>
+        <button onclick="initializeBuildCrafter()" style="padding: 4px 8px; background: var(--arc); color: var(--panel); border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">
+          Retry
+        </button>
+      </div>
+    `;
+  }
+
+  // Show Build Crafter interface
+  function showBuildCrafterInterface() {
+    const container = document.getElementById('build-crafter-interface');
+    container.innerHTML = `
+      <div class="build-input-container">
+        <input type="text"
+               class="build-input"
+               id="build-query-input"
+               placeholder="Hunter void build for raids"
+               maxlength="100">
+        <button class="build-generate-btn" id="generate-build-btn">Generate</button>
+      </div>
+      <div id="build-result-container"></div>
+    `;
+
+    // Add event listeners
+    const input = document.getElementById('build-query-input');
+    const button = document.getElementById('generate-build-btn');
+
+    button.addEventListener('click', handleGenerateBuild);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        handleGenerateBuild();
+      }
+    });
+  }
+
+  // Handle build generation
+  async function handleGenerateBuild() {
+    const input = document.getElementById('build-query-input');
+    const button = document.getElementById('generate-build-btn');
+    const resultContainer = document.getElementById('build-result-container');
+
+    const query = input.value.trim();
+    if (!query) {
+      input.focus();
+      return;
+    }
+
+    // Disable input during generation
+    button.disabled = true;
+    button.textContent = 'Generating...';
+
+    try {
+      debugLog(`Generating build for query: "${query}"`);
+      const build = await buildAnalyzer.generateBuild(query);
+
+      debugLog(`Build generated: ${build.name || 'Generated Build'}`);
+      showBuildResult(build);
+    } catch (error) {
+      debugLog(`Build generation failed: ${error.message}`);
+      resultContainer.innerHTML = `
+        <div class="error-state" style="margin-top: 8px; padding: 8px;">
+          <div style="font-size: 12px; margin-bottom: 4px;">⚠️</div>
+          <div style="font-size: 10px;">Generation failed: ${error.message}</div>
+        </div>
+      `;
+    } finally {
+      // Re-enable input
+      button.disabled = false;
+      button.textContent = 'Generate';
+    }
+  }
+
+  // Show build result
+  function showBuildResult(build) {
+    const container = document.getElementById('build-result-container');
+    container.innerHTML = `
+      <div class="build-result">
+        <h4>${build.name || 'Generated Build'}</h4>
+        <p>${build.description || 'AI-generated build recommendation'}</p>
+        <p><strong>Confidence:</strong> ${Math.round((build.confidence || 0.5) * 100)}%</p>
+        <p><strong>Synergies:</strong> ${(build.synergies || []).join(', ') || 'None detected'}</p>
+
+        <div class="build-actions">
+          <button class="build-action-btn" onclick="copyBuildToClipboard()">📋 Copy</button>
+          <button class="build-action-btn" onclick="generateNewBuild()">🔄 New</button>
+          <button class="build-action-btn" onclick="showBuildDetails()">ℹ️ Details</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Copy build to clipboard
+  window.copyBuildToClipboard = function() {
+    const buildResult = document.querySelector('.build-result');
+    if (buildResult) {
+      const text = buildResult.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        debugLog('Build copied to clipboard');
+      }).catch(err => {
+        debugLog('Failed to copy build: ' + err.message);
+      });
+    }
+  };
+
+  // Generate new build
+  window.generateNewBuild = function() {
+    const input = document.getElementById('build-query-input');
+    const container = document.getElementById('build-result-container');
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
+    if (container) {
+      container.innerHTML = '';
+    }
+  };
+
+  // Show build details (placeholder)
+  window.showBuildDetails = function() {
+    alert('Build details feature coming soon!');
+  };
+
+  // Initialize Build Crafter
+  async function initializeBuildCrafter() {
+    try {
+      debugLog('Starting Build Crafter initialization...');
+      updateLoadingState('Loading manifest system...');
+
+      // Load manifest loader
+      const manifestModule = await import('./js/api/manifest-loader.js');
+      const { ManifestLoader } = manifestModule;
+
+      // Initialize manifest loader
+      const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      manifestLoader = new ManifestLoader(isLocal ? './data/manifest/' : null);
+      debugLog('Manifest loader initialized');
+
+      updateLoadingState('Loading build analyzer...');
+
+      // Load build analyzer
+      const analyzerModule = await import('./js/core/build-analyzer.js');
+      const { BuildAnalyzer } = analyzerModule;
+
+      buildAnalyzer = new BuildAnalyzer(manifestLoader);
+      debugLog('Build analyzer initialized');
+
+      updateLoadingState('Initializing systems...');
+
+      // Initialize analyzer (loads essential data)
+      await buildAnalyzer.initialize();
+      debugLog('Build analyzer ready');
+
+      // Show the interface
+      showBuildCrafterInterface();
+      debugLog('Build Crafter ready for use');
+
+    } catch (error) {
+      debugLog(`Initialization failed: ${error.message}`);
+      showError(error.message);
+    }
+  }
+
+  // Make initialization function globally available
+  window.initializeBuildCrafter = initializeBuildCrafter;
+
+  // Start initialization when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeBuildCrafter);
+  } else {
+    initializeBuildCrafter();
+  }
+</script>
+
 </body>
 </html>
