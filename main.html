@@ -1225,7 +1225,31 @@
     html += `<div><strong>Description:</strong> ${build.description || 'No description'}</div>`;
     html += `<div><strong>Confidence Score:</strong> ${Math.round((build.confidence || 0) * 100)}%</div>`;
     html += `<div><strong>Source:</strong> ${build.source || 'Unknown'}</div>`;
-    html += `<div><strong>Query:</strong> ${build.query || 'N/A'}</div>`;
+    if (build.query) {
+      html += `<div><strong>Query:</strong> ${build.query}</div>`;
+    }
+
+    // Show which components were analyzed (if comprehensive build)
+    if (build.analyzedComponents) {
+      html += `<div style="margin-top: 8px;"><strong>Components Analyzed:</strong></div>`;
+      const components = [];
+      if (build.analyzedComponents.weapons) components.push('⚔️ Weapons');
+      if (build.analyzedComponents.armor) components.push('🛡️ Armor');
+      if (build.analyzedComponents.abilities) components.push('⚡ Abilities');
+      if (build.analyzedComponents.mods) components.push('🔧 Mods');
+      if (build.analyzedComponents.exotics) components.push('⭐ Exotics');
+      html += `<div style="margin-left: 12px;">${components.join(', ')}</div>`;
+    }
+
+    // Show build type indicator
+    if (build.source === 'comprehensive_analysis') {
+      html += `<div style="margin-top: 8px; padding: 6px; background: #228833; border-radius: 4px; color: white; font-weight: bold;">🚀 Comprehensive Analysis Active</div>`;
+    } else if (build.source === 'enhanced_curated') {
+      html += `<div style="margin-top: 8px; padding: 6px; background: #4477bb; border-radius: 4px; color: white; font-weight: bold;">📋 Enhanced Curated Build</div>`;
+    } else if (build.source === 'optimized_manifest') {
+      html += `<div style="margin-top: 8px; padding: 6px; background: #7744bb; border-radius: 4px; color: white; font-weight: bold;">🧠 Intelligent Analysis</div>`;
+    }
+
     html += `</div>`;
 
     // Weapons
@@ -1281,28 +1305,169 @@
       html += `</div>`;
     }
 
-    // Stats
-    if (build.stats) {
+    // Abilities (NEW)
+    if (build.abilities) {
       html += `<div style="margin-bottom: 16px;">`;
-      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">📊 Stats</h4>`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">⚡ Guardian Abilities</h4>`;
       html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
 
-      Object.entries(build.stats).forEach(([stat, value]) => {
-        html += `<div><strong>${stat.charAt(0).toUpperCase() + stat.slice(1)}:</strong> ${value}</div>`;
+      if (build.abilities.super) {
+        html += `<div><strong>Super:</strong> ${build.abilities.super}</div>`;
+      }
+      if (build.abilities.aspects && build.abilities.aspects.length > 0) {
+        html += `<div><strong>Aspects:</strong> ${build.abilities.aspects.join(', ')}</div>`;
+      }
+      if (build.abilities.fragments && build.abilities.fragments.length > 0) {
+        html += `<div><strong>Fragments:</strong> ${build.abilities.fragments.join(', ')}</div>`;
+      }
+      if (build.abilities.confidence) {
+        html += `<div><strong>Ability Confidence:</strong> ${Math.round(build.abilities.confidence * 100)}%</div>`;
+      }
+
+      html += `</div></div>`;
+    }
+
+    // Mods (NEW)
+    if (build.mods) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">🔧 Armor Mods</h4>`;
+      html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+
+      if (build.mods.combat && build.mods.combat.length > 0) {
+        html += `<div><strong>Combat Mods:</strong> ${build.mods.combat.join(', ')}</div>`;
+      }
+      if (build.mods.general && build.mods.general.length > 0) {
+        html += `<div><strong>General Mods:</strong> ${build.mods.general.join(', ')}</div>`;
+      }
+      if (build.mods.elementalWells && build.mods.elementalWells.length > 0) {
+        html += `<div><strong>Elemental Wells:</strong> ${build.mods.elementalWells.join(', ')}</div>`;
+      }
+      if (build.mods.chargedWithLight && build.mods.chargedWithLight.length > 0) {
+        html += `<div><strong>Charged with Light:</strong> ${build.mods.chargedWithLight.join(', ')}</div>`;
+      }
+      if (build.mods.artifact && build.mods.artifact.length > 0) {
+        html += `<div><strong>Artifact Mods:</strong> ${build.mods.artifact.join(', ')}</div>`;
+      }
+      if (build.mods.totalCost !== undefined) {
+        html += `<div><strong>Total Mod Cost:</strong> ${build.mods.totalCost}/10</div>`;
+      }
+      if (build.mods.confidence) {
+        html += `<div><strong>Mod Confidence:</strong> ${Math.round(build.mods.confidence * 100)}%</div>`;
+      }
+
+      html += `</div></div>`;
+    }
+
+    // Exotics (NEW)
+    if (build.exotics) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">⭐ Exotic Effects</h4>`;
+      html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+
+      if (build.exotics.weapons && build.exotics.weapons.length > 0) {
+        html += `<div><strong>Exotic Weapons:</strong></div>`;
+        build.exotics.weapons.forEach(weapon => {
+          html += `<div style="margin-left: 12px;">• ${weapon.name || weapon} - ${weapon.effect || 'Special effect'}</div>`;
+        });
+      }
+      if (build.exotics.armor && build.exotics.armor.length > 0) {
+        html += `<div><strong>Exotic Armor:</strong></div>`;
+        build.exotics.armor.forEach(armor => {
+          html += `<div style="margin-left: 12px;">• ${armor.name || armor} - ${armor.effect || 'Special effect'}</div>`;
+        });
+      }
+      if (build.exotics.confidence) {
+        html += `<div><strong>Exotic Confidence:</strong> ${Math.round(build.exotics.confidence * 100)}%</div>`;
+      }
+
+      html += `</div></div>`;
+    }
+
+    // Enhanced Stats (prioritize over basic stats)
+    const statsToShow = build.enhancedStats || build.stats;
+    if (statsToShow) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">📊 ${build.enhancedStats ? 'Optimized' : 'Basic'} Stats</h4>`;
+      html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+
+      Object.entries(statsToShow).forEach(([stat, value]) => {
+        const tier = Math.floor(value / 10);
+        const tierColors = {
+          0: '#666', 1: '#666', 2: '#666',  // Tiers 0-2: Gray
+          3: '#888', 4: '#888',             // Tiers 3-4: Light gray
+          5: '#9db', 6: '#9db',             // Tiers 5-6: Teal
+          7: '#fb9', 8: '#fb9',             // Tiers 7-8: Orange
+          9: '#f83', 10: '#f83'             // Tiers 9-10: Gold
+        };
+        const tierColor = tierColors[tier] || '#666';
+        html += `<div><strong>${stat.charAt(0).toUpperCase() + stat.slice(1)}:</strong> <span style="color: ${tierColor}; font-weight: bold;">${value}</span> (T${tier})</div>`;
       });
 
       html += `</div></div>`;
     }
 
-    // Synergies
-    if (build.synergies && build.synergies.length > 0) {
+    // Comprehensive Synergies (prioritize over basic synergies)
+    const synergiesToShow = build.comprehensiveSynergies || build.synergies;
+    if (synergiesToShow) {
       html += `<div style="margin-bottom: 16px;">`;
-      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">✨ Synergies</h4>`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">✨ ${build.comprehensiveSynergies ? 'Advanced' : 'Basic'} Synergies</h4>`;
       html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
 
-      build.synergies.forEach((synergy, index) => {
-        html += `<div style="margin-bottom: 4px;">• ${synergy}</div>`;
-      });
+      if (build.comprehensiveSynergies) {
+        // Display comprehensive synergies with categories
+        if (build.comprehensiveSynergies.elemental && build.comprehensiveSynergies.elemental.length > 0) {
+          html += `<div><strong>Elemental Synergies:</strong></div>`;
+          build.comprehensiveSynergies.elemental.forEach(synergy => {
+            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : ''}</div>`;
+          });
+        }
+
+        if (build.comprehensiveSynergies.crossSystem && build.comprehensiveSynergies.crossSystem.length > 0) {
+          html += `<div><strong>Cross-System Synergies:</strong></div>`;
+          build.comprehensiveSynergies.crossSystem.forEach(synergy => {
+            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : ''}</div>`;
+          });
+        }
+
+        if (build.comprehensiveSynergies.trigger && build.comprehensiveSynergies.trigger.length > 0) {
+          html += `<div><strong>Trigger-Based Synergies:</strong></div>`;
+          build.comprehensiveSynergies.trigger.forEach(synergy => {
+            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : ''}</div>`;
+          });
+        }
+
+        if (build.comprehensiveSynergies.activity && build.comprehensiveSynergies.activity.length > 0) {
+          html += `<div><strong>Activity-Specific Synergies:</strong></div>`;
+          build.comprehensiveSynergies.activity.forEach(synergy => {
+            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : ''}</div>`;
+          });
+        }
+
+        if (build.comprehensiveSynergies.confidence) {
+          html += `<div style="margin-top: 8px;"><strong>Synergy Analysis Confidence:</strong> ${Math.round(build.comprehensiveSynergies.confidence * 100)}%</div>`;
+        }
+
+        // Show recommendations if available
+        if (build.comprehensiveSynergies.recommendations && build.comprehensiveSynergies.recommendations.length > 0) {
+          html += `<div style="margin-top: 8px;"><strong>Recommendations:</strong></div>`;
+          build.comprehensiveSynergies.recommendations.forEach(rec => {
+            html += `<div style="margin-left: 12px; font-style: italic;">💡 ${rec}</div>`;
+          });
+        }
+
+        // Show warnings if available
+        if (build.comprehensiveSynergies.warnings && build.comprehensiveSynergies.warnings.length > 0) {
+          html += `<div style="margin-top: 8px;"><strong>Warnings:</strong></div>`;
+          build.comprehensiveSynergies.warnings.forEach(warning => {
+            html += `<div style="margin-left: 12px; color: #f83;">⚠️ ${warning}</div>`;
+          });
+        }
+      } else if (Array.isArray(synergiesToShow)) {
+        // Display basic synergies
+        synergiesToShow.forEach((synergy, index) => {
+          html += `<div style="margin-bottom: 4px;">• ${synergy}</div>`;
+        });
+      }
 
       html += `</div></div>`;
     }

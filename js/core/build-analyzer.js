@@ -1,7 +1,12 @@
 /**
- * Build Analyzer - Intelligent analysis system for Destiny 2 builds
- * Uses trait-based synergy detection and natural language processing
+ * Build Analyzer - Comprehensive intelligent analysis system for Destiny 2 builds
+ * Uses trait-based synergy detection, abilities, mods, exotics, and natural language processing
  */
+
+import { AbilitiesAnalyzer } from '../analyzers/abilities-analyzer.js';
+import { ModAnalyzer } from '../analyzers/mod-analyzer.js';
+import { ExoticAnalyzer } from '../analyzers/exotic-analyzer.js';
+import { ComprehensiveSynergyEngine } from './comprehensive-synergy-engine.js';
 
 export class BuildAnalyzer {
   constructor(manifestLoader) {
@@ -9,6 +14,12 @@ export class BuildAnalyzer {
     this.synergyCache = new Map();
     this.analysisReady = false;
     this.curatedBuilds = new Map();
+
+    // Initialize comprehensive analyzer modules
+    this.abilitiesAnalyzer = null;
+    this.modAnalyzer = null;
+    this.exoticAnalyzer = null;
+    this.synergyEngine = null;
 
     // Initialize curated build templates
     this.initializeCuratedBuilds();
@@ -19,29 +30,54 @@ export class BuildAnalyzer {
    */
   async initialize() {
     try {
-      console.log('Initializing Build Analyzer...');
+      console.log('Initializing Comprehensive Build Analyzer...');
 
       // Load essential data immediately
       const { essential, analysisPromise } = await this.loader.initialize();
       this.essentialData = essential;
 
-      console.log('Essential data loaded, building initial synergy graph...');
+      console.log('Essential data loaded, initializing analyzer modules...');
+
+      // Initialize all analyzer modules with essential data
+      this.abilitiesAnalyzer = new AbilitiesAnalyzer(this.essentialData);
+      this.modAnalyzer = new ModAnalyzer(this.essentialData);
+      this.exoticAnalyzer = new ExoticAnalyzer(this.essentialData);
+
+      console.log('Analyzer modules initialized, building initial synergy graph...');
 
       // Start building synergy graph in background when analysis data is ready
       if (analysisPromise) {
         analysisPromise.then(analysisData => {
           this.analysisData = analysisData;
+
+          // Initialize comprehensive synergy engine with all data
+          this.synergyEngine = new ComprehensiveSynergyEngine(
+            this.essentialData,
+            analysisData,
+            this.abilitiesAnalyzer,
+            this.modAnalyzer,
+            this.exoticAnalyzer
+          );
+
           this.buildSynergyGraph();
           this.analysisReady = true;
-          console.log('Build Analyzer fully initialized');
+          console.log('Comprehensive Build Analyzer fully initialized');
         }).catch(error => {
-          console.warn('Analysis data failed to load, using curated builds only:', error);
+          console.warn('Analysis data failed to load, using curated builds with basic analyzers:', error);
+          // Still initialize synergy engine with available data
+          this.synergyEngine = new ComprehensiveSynergyEngine(
+            this.essentialData,
+            {},
+            this.abilitiesAnalyzer,
+            this.modAnalyzer,
+            this.exoticAnalyzer
+          );
         });
       }
 
       return true;
     } catch (error) {
-      console.error('Failed to initialize Build Analyzer:', error);
+      console.error('Failed to initialize Comprehensive Build Analyzer:', error);
       throw error;
     }
   }
@@ -49,18 +85,36 @@ export class BuildAnalyzer {
   // ========== Build Generation ==========
 
   /**
-   * Generate build based on user query
+   * Generate comprehensive build based on user query
    */
   async generateBuild(query, preferences = {}) {
     const parsedQuery = this.parseQuery(query);
 
-    // Check if we have sufficient data for intelligent analysis
+    // Check if we have comprehensive analysis capability
     const hasAnalysisData = this.analysisData && Object.keys(this.analysisData.perks || {}).length > 0;
     const hasEssentialData = this.essentialData && Object.keys(this.essentialData.traits || {}).length > 0;
+    const hasComprehensiveSystem = this.synergyEngine && this.abilitiesAnalyzer && this.modAnalyzer && this.exoticAnalyzer;
 
+    if (hasAnalysisData && hasEssentialData && hasComprehensiveSystem) {
+      try {
+        console.log('🧠 Using comprehensive build generation with full system');
+
+        // Generate comprehensive build using new system
+        const comprehensiveBuild = await this.generateComprehensiveBuild(parsedQuery, preferences);
+
+        if (comprehensiveBuild && comprehensiveBuild.confidence > 0.6) {
+          console.log(`✅ Generated comprehensive build: ${comprehensiveBuild.name} (${Math.round(comprehensiveBuild.confidence * 100)}% confidence)`);
+          return comprehensiveBuild;
+        }
+      } catch (error) {
+        console.warn('⚠️ Comprehensive generation failed, trying intelligent fallback:', error);
+      }
+    }
+
+    // Fallback to original intelligent system
     if (hasAnalysisData && hasEssentialData) {
       try {
-        console.log('🧠 Using intelligent build generation');
+        console.log('🧠 Using original intelligent build generation');
 
         // Determine what item chunks we need
         const requiredChunks = this.determineRequiredChunks(parsedQuery);
@@ -190,6 +244,172 @@ export class BuildAnalyzer {
     parsed.keywords = normalized.split(/\s+/).filter(word => word.length > 2);
 
     return parsed;
+  }
+
+  // ========== Comprehensive Build Generation ==========
+
+  /**
+   * Generate comprehensive build using all analyzer modules
+   */
+  async generateComprehensiveBuild(parsedQuery, preferences = {}) {
+    try {
+      console.log('🔬 Starting comprehensive build analysis...');
+
+      // Step 1: Determine what item chunks we need
+      const requiredChunks = this.determineRequiredChunks(parsedQuery);
+      console.log(`📦 Loading required chunks: ${requiredChunks.join(', ')}`);
+
+      // Step 2: Load required item data
+      const itemChunks = await this.loader.loadItemChunks(requiredChunks);
+
+      // Step 3: Filter items by user constraints
+      const candidateItems = this.filterCandidateItems(itemChunks, parsedQuery, preferences);
+
+      // Step 4: Analyze optimal abilities
+      console.log('⚡ Analyzing optimal abilities...');
+      const abilitiesRecommendation = this.abilitiesAnalyzer.analyzeOptimalAbilities(parsedQuery, candidateItems);
+
+      // Step 5: Analyze optimal mods
+      console.log('🔧 Analyzing optimal mods...');
+      const modsRecommendation = this.modAnalyzer.analyzeOptimalMods(parsedQuery, candidateItems);
+
+      // Step 6: Analyze optimal exotic
+      console.log('⭐ Analyzing optimal exotics...');
+      const exoticsRecommendation = this.exoticAnalyzer.analyzeOptimalExotic(parsedQuery, candidateItems);
+
+      // Step 7: Generate weapon/armor combinations
+      console.log('⚔️ Generating weapon/armor combinations...');
+      const builds = this.generateOptimizedBuilds(candidateItems, parsedQuery, preferences);
+      const baseBuild = builds[0] || this.createFallbackBuild(parsedQuery);
+
+      // Step 8: Combine everything into comprehensive build
+      const comprehensiveBuild = {
+        ...baseBuild,
+
+        // Add comprehensive components
+        abilities: abilitiesRecommendation,
+        mods: modsRecommendation,
+        exotics: exoticsRecommendation,
+
+        // Enhanced stats combining all systems
+        enhancedStats: this.calculateComprehensiveStats(baseBuild, abilitiesRecommendation, modsRecommendation),
+
+        // Calculate comprehensive synergies
+        comprehensiveSynergies: await this.synergyEngine.analyzeComprehensiveBuild({
+          weapons: baseBuild.weapons,
+          armor: baseBuild.armor || {},
+          abilities: abilitiesRecommendation,
+          mods: modsRecommendation,
+          exotics: exoticsRecommendation
+        }, parsedQuery),
+
+        // Updated metadata
+        source: 'comprehensive_analysis',
+        analyzedComponents: {
+          weapons: true,
+          armor: true,
+          abilities: true,
+          mods: true,
+          exotics: true
+        }
+      };
+
+      // Step 9: Calculate final confidence score
+      comprehensiveBuild.confidence = this.calculateComprehensiveConfidence(comprehensiveBuild, parsedQuery);
+
+      console.log(`✅ Generated comprehensive build with ${Math.round(comprehensiveBuild.confidence * 100)}% confidence`);
+      return comprehensiveBuild;
+
+    } catch (error) {
+      console.error('❌ Comprehensive build generation failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate comprehensive stats from all build components
+   */
+  calculateComprehensiveStats(baseBuild, abilities, mods) {
+    const stats = {
+      mobility: 50,
+      resilience: 50,
+      recovery: 50,
+      discipline: 50,
+      intellect: 50,
+      strength: 50
+    };
+
+    // Add base armor stats if available
+    if (baseBuild.stats) {
+      Object.assign(stats, baseBuild.stats);
+    }
+
+    // Add ability stat bonuses
+    if (abilities.statBonuses) {
+      for (const [stat, bonus] of Object.entries(abilities.statBonuses)) {
+        stats[stat] = Math.min(100, stats[stat] + bonus);
+      }
+    }
+
+    // Add mod stat bonuses
+    if (mods.statBonuses) {
+      for (const [stat, bonus] of Object.entries(mods.statBonuses)) {
+        stats[stat] = Math.min(100, stats[stat] + bonus);
+      }
+    }
+
+    return stats;
+  }
+
+  /**
+   * Calculate overall confidence for comprehensive build
+   */
+  calculateComprehensiveConfidence(build, parsedQuery) {
+    let confidence = 0.5; // Base confidence
+
+    // Factor in base build confidence
+    if (build.confidence) {
+      confidence += build.confidence * 0.3;
+    }
+
+    // Factor in abilities confidence
+    if (build.abilities && build.abilities.confidence) {
+      confidence += build.abilities.confidence * 0.2;
+    }
+
+    // Factor in mods confidence
+    if (build.mods && build.mods.confidence) {
+      confidence += build.mods.confidence * 0.2;
+    }
+
+    // Factor in exotics confidence
+    if (build.exotics && build.exotics.confidence) {
+      confidence += build.exotics.confidence * 0.15;
+    }
+
+    // Factor in synergies confidence
+    if (build.comprehensiveSynergies && build.comprehensiveSynergies.confidence) {
+      confidence += build.comprehensiveSynergies.confidence * 0.15;
+    }
+
+    return Math.min(0.95, confidence);
+  }
+
+  /**
+   * Create fallback build when optimization fails
+   */
+  createFallbackBuild(parsedQuery) {
+    return {
+      name: this.generateBuildName(parsedQuery),
+      description: 'Comprehensive build based on query analysis',
+      weapons: {
+        kinetic: { name: 'Primary Weapon', type: 'Primary' },
+        energy: { name: 'Special Weapon', type: 'Special' },
+        power: { name: 'Heavy Weapon', type: 'Heavy' }
+      },
+      confidence: 0.4,
+      source: 'fallback'
+    };
   }
 
   // ========== Synergy Analysis ==========
