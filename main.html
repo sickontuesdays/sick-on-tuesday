@@ -1025,6 +1025,7 @@
   let buildCrafter = null;
   let manifestLoader = null;
   let buildAnalyzer = null;
+  let currentBuild = null; // Store current build for details view
 
   // Debug logging
   function debugLog(message) {
@@ -1122,6 +1123,9 @@
 
   // Show build result
   function showBuildResult(build) {
+    // Store build data for details view
+    currentBuild = build;
+
     const container = document.getElementById('build-result-container');
     container.innerHTML = `
       <div class="build-result">
@@ -1165,10 +1169,154 @@
     }
   };
 
-  // Show build details (placeholder)
+  // Show build details
   window.showBuildDetails = function() {
-    alert('Build details feature coming soon!');
+    if (!currentBuild) {
+      alert('No build data available');
+      return;
+    }
+
+    // Create detailed view
+    const detailsHTML = formatBuildDetails(currentBuild);
+
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;
+      background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center;
+      font-family: inherit; color: var(--ink);
+    `;
+
+    modal.innerHTML = `
+      <div style="
+        background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+        padding: 20px; max-width: 90vw; max-height: 90vh; overflow-y: auto;
+        box-shadow: 0 12px 40px rgba(0,0,0,.5);
+      ">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="margin: 0; color: var(--arc);">📋 Build Details</h3>
+          <button onclick="this.closest('[style*=\"position: fixed\"]').remove()" style="
+            background: var(--border); border: none; border-radius: 6px; padding: 8px 12px;
+            color: var(--ink); cursor: pointer; font-weight: bold;
+          ">✕ Close</button>
+        </div>
+        ${detailsHTML}
+      </div>
+    `;
+
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+    document.body.appendChild(modal);
   };
+
+  // Format build details for display
+  function formatBuildDetails(build) {
+    let html = '<div style="font-size: 13px; line-height: 1.4;">';
+
+    // Build Overview
+    html += `<div style="margin-bottom: 16px;">`;
+    html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">🎯 Build Overview</h4>`;
+    html += `<div><strong>Name:</strong> ${build.name || 'Unknown'}</div>`;
+    html += `<div><strong>Description:</strong> ${build.description || 'No description'}</div>`;
+    html += `<div><strong>Confidence Score:</strong> ${Math.round((build.confidence || 0) * 100)}%</div>`;
+    html += `<div><strong>Source:</strong> ${build.source || 'Unknown'}</div>`;
+    html += `<div><strong>Query:</strong> ${build.query || 'N/A'}</div>`;
+    html += `</div>`;
+
+    // Weapons
+    if (build.weapons) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">🔫 Weapons</h4>`;
+
+      ['kinetic', 'energy', 'power'].forEach(slot => {
+        const weapon = build.weapons[slot];
+        html += `<div style="margin-bottom: 8px; padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+        html += `<div style="font-weight: bold; text-transform: capitalize;">${slot} Slot:</div>`;
+
+        if (weapon) {
+          html += `<div style="margin-left: 8px;">`;
+          html += `<div><strong>Name:</strong> ${weapon.name || 'Unknown'}</div>`;
+          html += `<div><strong>Type:</strong> ${weapon.type || 'Unknown'}</div>`;
+          if (weapon.hash) html += `<div><strong>Hash:</strong> ${weapon.hash}</div>`;
+          if (weapon.score) html += `<div><strong>Score:</strong> ${Math.round(weapon.score * 100)}%</div>`;
+          html += `</div>`;
+        } else {
+          html += `<div style="margin-left: 8px; color: var(--muted);">No weapon assigned</div>`;
+        }
+
+        html += `</div>`;
+      });
+
+      html += `</div>`;
+    }
+
+    // Armor
+    if (build.armor) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">🛡️ Armor</h4>`;
+
+      ['helmet', 'gauntlets', 'chest', 'legs', 'classItem'].forEach(slot => {
+        const armor = build.armor[slot];
+        html += `<div style="margin-bottom: 8px; padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+        html += `<div style="font-weight: bold; text-transform: capitalize;">${slot.replace('classItem', 'Class Item')}:</div>`;
+
+        if (armor) {
+          html += `<div style="margin-left: 8px;">`;
+          html += `<div><strong>Name:</strong> ${armor.name || 'Unknown'}</div>`;
+          if (armor.hash) html += `<div><strong>Hash:</strong> ${armor.hash}</div>`;
+          if (armor.score) html += `<div><strong>Score:</strong> ${Math.round(armor.score * 100)}%</div>`;
+          html += `</div>`;
+        } else {
+          html += `<div style="margin-left: 8px; color: var(--muted);">No armor assigned</div>`;
+        }
+
+        html += `</div>`;
+      });
+
+      html += `</div>`;
+    }
+
+    // Stats
+    if (build.stats) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">📊 Stats</h4>`;
+      html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+
+      Object.entries(build.stats).forEach(([stat, value]) => {
+        html += `<div><strong>${stat.charAt(0).toUpperCase() + stat.slice(1)}:</strong> ${value}</div>`;
+      });
+
+      html += `</div></div>`;
+    }
+
+    // Synergies
+    if (build.synergies && build.synergies.length > 0) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">✨ Synergies</h4>`;
+      html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+
+      build.synergies.forEach((synergy, index) => {
+        html += `<div style="margin-bottom: 4px;">• ${synergy}</div>`;
+      });
+
+      html += `</div></div>`;
+    }
+
+    // Raw Data (for debugging)
+    html += `<div style="margin-bottom: 16px;">`;
+    html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">🔍 Raw Data</h4>`;
+    html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px; font-family: monospace; font-size: 11px; max-height: 200px; overflow-y: auto;">`;
+    html += `<pre style="margin: 0; white-space: pre-wrap;">${JSON.stringify(build, null, 2)}</pre>`;
+    html += `</div></div>`;
+
+    html += '</div>';
+    return html;
+  }
 
   // Initialize Build Crafter
   async function initializeBuildCrafter() {
