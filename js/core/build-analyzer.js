@@ -69,10 +69,10 @@ export class BuildAnalyzer {
         const itemChunks = await this.loader.loadItemChunks(requiredChunks);
 
         // Filter items by user constraints
-        const candidateItems = this.filterCandidateItems(itemChunks, parsedQuery);
+        const candidateItems = this.filterCandidateItems(itemChunks, parsedQuery, preferences);
 
         // Generate optimized build combinations
-        const builds = this.generateOptimizedBuilds(candidateItems, parsedQuery);
+        const builds = this.generateOptimizedBuilds(candidateItems, parsedQuery, preferences);
 
         if (builds.length > 0) {
           console.log(`✅ Generated intelligent build: ${builds[0].name} (${Math.round(builds[0].confidence * 100)}% confidence)`);
@@ -399,7 +399,7 @@ export class BuildAnalyzer {
       if (!weapon || !weapon.inventory) continue;
 
       // Apply filters
-      if (preferences.includeRare === false && weapon.inventory.tierTypeName === 'Rare') continue;
+      if (preferences?.includeRare === false && weapon.inventory?.tierTypeName === 'Rare') continue;
       if (weapon.redacted || weapon.blacklisted) continue;
 
       // Determine slot
@@ -432,7 +432,7 @@ export class BuildAnalyzer {
       if (!armor || !armor.inventory) continue;
 
       // Apply filters
-      if (preferences.includeRare === false && armor.inventory.tierTypeName === 'Rare') continue;
+      if (preferences?.includeRare === false && armor.inventory?.tierTypeName === 'Rare') continue;
       if (armor.redacted || armor.blacklisted) continue;
 
       // Filter by class if specified
