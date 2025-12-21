@@ -160,19 +160,34 @@ function toggleDebugInfo() {
 async function testManifestData() {
   debugLog('Testing manifest data access...');
 
+  // Determine which manifest source to test
+  const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const manifestUrl = isLocal
+    ? './data/manifest/DestinyTraitDefinition.json'
+    : 'https://raw.githubusercontent.com/sickontuesdays/destiny-manifest-data/main/DestinyTraitDefinition.json';
+
+  debugLog(`Testing manifest URL: ${manifestUrl}`);
+
   try {
-    const response = await fetch('./data/manifest/DestinyTraitDefinition.json');
+    const response = await fetch(manifestUrl);
     if (response.ok) {
       const data = await response.json();
       debugLog(`Manifest data loaded: ${Object.keys(data).length} traits found`);
       setStatus('manifest-status', 'success', '✅ Manifest data accessible');
       return true;
     } else {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(`HTTP ${response.status} - ${response.statusText}`);
     }
   } catch (error) {
     debugLog(`Manifest data test failed: ${error.message}`);
-    setStatus('manifest-status', 'error', '❌ Manifest data not accessible');
+
+    if (error.message.includes('404')) {
+      debugLog('GitHub repository may not be pushed yet or files not accessible');
+      setStatus('manifest-status', 'error', '❌ Manifest repository not found (404)');
+    } else {
+      setStatus('manifest-status', 'error', '❌ Manifest data not accessible');
+    }
+
     return false;
   }
 }
@@ -210,7 +225,8 @@ function displayTestBuild(build) {
 debugLog('Starting modular system test...');
 
 // Test module loading capability
-if ('modules' in HTMLScriptElement.prototype) {
+// All modern browsers accessing Vercel sites support ES6 modules
+try {
   debugLog('ES6 modules supported');
   setStatus('module-status', 'success', '✅ ES6 modules supported');
 
@@ -263,16 +279,16 @@ if ('modules' in HTMLScriptElement.prototype) {
     `;
   });
 
-} else {
-  debugLog('ES6 modules not supported');
+} catch (initError) {
+  debugLog(`Initialization failed: ${initError.message}`);
   setStatus('module-status', 'error', '❌ ES6 modules not supported');
   setStatus('analyzer-status', 'error', '❌ Legacy browser - modular system unavailable');
 
   document.getElementById('build-crafter-container').innerHTML = `
     <div style="text-align: center; color: #fb7185;">
       <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-      <div><strong>Legacy Browser Detected</strong></div>
-      <div style="margin-top: 12px; font-size: 14px;">ES6 modules not supported. Please use a modern browser.</div>
+      <div><strong>Module Loading Failed</strong></div>
+      <div style="margin-top: 12px; font-size: 14px;">Error: ${initError.message}</div>
     </div>
   `;
 }
