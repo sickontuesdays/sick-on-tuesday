@@ -1385,13 +1385,13 @@
       if (build.exotics.weapons && Array.isArray(build.exotics.weapons) && build.exotics.weapons.length > 0) {
         html += `<div><strong>Exotic Weapons:</strong></div>`;
         build.exotics.weapons.forEach(weapon => {
-          html += `<div style="margin-left: 12px;">• ${weapon.name || weapon} - ${weapon.effect || 'Special effect'}</div>`;
+          html += `<div style="margin-left: 12px;">• ${weapon.name || weapon} - ${weapon.exoticPerk?.description || weapon.effect || 'Special effect'}</div>`;
         });
       }
       if (build.exotics.armor && Array.isArray(build.exotics.armor) && build.exotics.armor.length > 0) {
         html += `<div><strong>Exotic Armor:</strong></div>`;
         build.exotics.armor.forEach(armor => {
-          html += `<div style="margin-left: 12px;">• ${armor.name || armor} - ${armor.effect || 'Special effect'}</div>`;
+          html += `<div style="margin-left: 12px;">• ${armor.name || armor} - ${armor.exoticPerk?.description || armor.effect || 'Special effect'}</div>`;
         });
       }
       if (build.exotics.confidence) {
@@ -1477,7 +1477,7 @@
         if (build.comprehensiveSynergies.warnings && Array.isArray(build.comprehensiveSynergies.warnings) && build.comprehensiveSynergies.warnings.length > 0) {
           html += `<div style="margin-top: 8px;"><strong>Warnings:</strong></div>`;
           build.comprehensiveSynergies.warnings.forEach(warning => {
-            html += `<div style="margin-left: 12px; color: #f83;">⚠️ ${warning}</div>`;
+            html += `<div style="margin-left: 12px; color: #f83;">⚠️ ${warning.message || warning}</div>`;
           });
         }
       } else if (Array.isArray(synergiesToShow)) {
