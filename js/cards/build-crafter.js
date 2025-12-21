@@ -608,7 +608,7 @@ export class BuildCrafter {
         <div class="synergies">
           <div class="synergies-label">✨ Detected Synergies</div>
           <div class="synergy-tags">
-            ${(build.synergies || ['Balanced Build']).map(synergy =>
+            ${(Array.isArray(build.synergies) ? build.synergies : ['Balanced Build']).map(synergy =>
               `<span class="synergy-tag">${synergy}</span>`
             ).join('')}
           </div>

@@ -1032,6 +1032,24 @@
     console.log(`[Build Crafter] ${message}`);
   }
 
+  // Helper function for safe array access from categorized objects
+  function safeGetAllItems(data, categories = []) {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+
+    if (typeof data === 'object') {
+      let allItems = [];
+      for (const category of categories) {
+        if (data[category] && Array.isArray(data[category])) {
+          allItems.push(...data[category]);
+        }
+      }
+      return allItems;
+    }
+
+    return [];
+  }
+
   // Update loading state
   function updateLoadingState(message) {
     const loadingState = document.getElementById('loading-state');
@@ -1132,7 +1150,7 @@
         <h4>${build.name || 'Generated Build'}</h4>
         <p>${build.description || 'AI-generated build recommendation'}</p>
         <p><strong>Confidence:</strong> ${Math.round((build.confidence || 0.5) * 100)}%</p>
-        <p><strong>Synergies:</strong> ${(build.synergies || []).join(', ') || 'None detected'}</p>
+        <p><strong>Synergies:</strong> ${safeGetAllItems(build.synergies).join(', ') || 'None detected'}</p>
 
         <div class="build-actions">
           <button class="build-action-btn" onclick="copyBuildToClipboard()">📋 Copy</button>
@@ -1314,10 +1332,10 @@
       if (build.abilities.super) {
         html += `<div><strong>Super:</strong> ${build.abilities.super}</div>`;
       }
-      if (build.abilities.aspects && build.abilities.aspects.length > 0) {
+      if (build.abilities.aspects && Array.isArray(build.abilities.aspects) && build.abilities.aspects.length > 0) {
         html += `<div><strong>Aspects:</strong> ${build.abilities.aspects.join(', ')}</div>`;
       }
-      if (build.abilities.fragments && build.abilities.fragments.length > 0) {
+      if (build.abilities.fragments && Array.isArray(build.abilities.fragments) && build.abilities.fragments.length > 0) {
         html += `<div><strong>Fragments:</strong> ${build.abilities.fragments.join(', ')}</div>`;
       }
       if (build.abilities.confidence) {
@@ -1333,19 +1351,19 @@
       html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">🔧 Armor Mods</h4>`;
       html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
 
-      if (build.mods.combat && build.mods.combat.length > 0) {
+      if (build.mods.combat && Array.isArray(build.mods.combat) && build.mods.combat.length > 0) {
         html += `<div><strong>Combat Mods:</strong> ${build.mods.combat.map(mod => mod.name || mod).join(', ')}</div>`;
       }
-      if (build.mods.general && build.mods.general.length > 0) {
+      if (build.mods.general && Array.isArray(build.mods.general) && build.mods.general.length > 0) {
         html += `<div><strong>General Mods:</strong> ${build.mods.general.map(mod => mod.name || mod).join(', ')}</div>`;
       }
-      if (build.mods.elementalWells && build.mods.elementalWells.length > 0) {
+      if (build.mods.elementalWells && Array.isArray(build.mods.elementalWells) && build.mods.elementalWells.length > 0) {
         html += `<div><strong>Elemental Wells:</strong> ${build.mods.elementalWells.map(mod => mod.name || mod).join(', ')}</div>`;
       }
-      if (build.mods.chargedWithLight && build.mods.chargedWithLight.length > 0) {
+      if (build.mods.chargedWithLight && Array.isArray(build.mods.chargedWithLight) && build.mods.chargedWithLight.length > 0) {
         html += `<div><strong>Charged with Light:</strong> ${build.mods.chargedWithLight.map(mod => mod.name || mod).join(', ')}</div>`;
       }
-      if (build.mods.artifact && build.mods.artifact.length > 0) {
+      if (build.mods.artifact && Array.isArray(build.mods.artifact) && build.mods.artifact.length > 0) {
         html += `<div><strong>Artifact Mods:</strong> ${build.mods.artifact.map(mod => mod.name || mod).join(', ')}</div>`;
       }
       if (build.mods.totalCost !== undefined) {
@@ -1364,13 +1382,13 @@
       html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">⭐ Exotic Effects</h4>`;
       html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
 
-      if (build.exotics.weapons && build.exotics.weapons.length > 0) {
+      if (build.exotics.weapons && Array.isArray(build.exotics.weapons) && build.exotics.weapons.length > 0) {
         html += `<div><strong>Exotic Weapons:</strong></div>`;
         build.exotics.weapons.forEach(weapon => {
           html += `<div style="margin-left: 12px;">• ${weapon.name || weapon} - ${weapon.effect || 'Special effect'}</div>`;
         });
       }
-      if (build.exotics.armor && build.exotics.armor.length > 0) {
+      if (build.exotics.armor && Array.isArray(build.exotics.armor) && build.exotics.armor.length > 0) {
         html += `<div><strong>Exotic Armor:</strong></div>`;
         build.exotics.armor.forEach(armor => {
           html += `<div style="margin-left: 12px;">• ${armor.name || armor} - ${armor.effect || 'Special effect'}</div>`;
@@ -1415,28 +1433,28 @@
 
       if (build.comprehensiveSynergies) {
         // Display comprehensive synergies with categories
-        if (build.comprehensiveSynergies.elemental && build.comprehensiveSynergies.elemental.length > 0) {
+        if (build.comprehensiveSynergies.elemental && Array.isArray(build.comprehensiveSynergies.elemental) && build.comprehensiveSynergies.elemental.length > 0) {
           html += `<div><strong>Elemental Synergies:</strong></div>`;
           build.comprehensiveSynergies.elemental.forEach(synergy => {
             html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : ''}</div>`;
           });
         }
 
-        if (build.comprehensiveSynergies.crossSystem && build.comprehensiveSynergies.crossSystem.length > 0) {
+        if (build.comprehensiveSynergies.crossSystem && Array.isArray(build.comprehensiveSynergies.crossSystem) && build.comprehensiveSynergies.crossSystem.length > 0) {
           html += `<div><strong>Cross-System Synergies:</strong></div>`;
           build.comprehensiveSynergies.crossSystem.forEach(synergy => {
             html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : ''}</div>`;
           });
         }
 
-        if (build.comprehensiveSynergies.trigger && build.comprehensiveSynergies.trigger.length > 0) {
+        if (build.comprehensiveSynergies.trigger && Array.isArray(build.comprehensiveSynergies.trigger) && build.comprehensiveSynergies.trigger.length > 0) {
           html += `<div><strong>Trigger-Based Synergies:</strong></div>`;
           build.comprehensiveSynergies.trigger.forEach(synergy => {
             html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : ''}</div>`;
           });
         }
 
-        if (build.comprehensiveSynergies.activity && build.comprehensiveSynergies.activity.length > 0) {
+        if (build.comprehensiveSynergies.activity && Array.isArray(build.comprehensiveSynergies.activity) && build.comprehensiveSynergies.activity.length > 0) {
           html += `<div><strong>Activity-Specific Synergies:</strong></div>`;
           build.comprehensiveSynergies.activity.forEach(synergy => {
             html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : ''}</div>`;
@@ -1448,7 +1466,7 @@
         }
 
         // Show recommendations if available
-        if (build.comprehensiveSynergies.recommendations && build.comprehensiveSynergies.recommendations.length > 0) {
+        if (build.comprehensiveSynergies.recommendations && Array.isArray(build.comprehensiveSynergies.recommendations) && build.comprehensiveSynergies.recommendations.length > 0) {
           html += `<div style="margin-top: 8px;"><strong>Recommendations:</strong></div>`;
           build.comprehensiveSynergies.recommendations.forEach(rec => {
             html += `<div style="margin-left: 12px; font-style: italic;">💡 ${rec}</div>`;
@@ -1456,7 +1474,7 @@
         }
 
         // Show warnings if available
-        if (build.comprehensiveSynergies.warnings && build.comprehensiveSynergies.warnings.length > 0) {
+        if (build.comprehensiveSynergies.warnings && Array.isArray(build.comprehensiveSynergies.warnings) && build.comprehensiveSynergies.warnings.length > 0) {
           html += `<div style="margin-top: 8px;"><strong>Warnings:</strong></div>`;
           build.comprehensiveSynergies.warnings.forEach(warning => {
             html += `<div style="margin-left: 12px; color: #f83;">⚠️ ${warning}</div>`;

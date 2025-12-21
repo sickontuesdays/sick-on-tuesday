@@ -845,13 +845,16 @@ export class ComprehensiveSynergyEngine {
   findElementalMods(mods, damageType) {
     if (!mods || !damageType) return [];
 
-    return mods.filter(mod => {
-      const name = mod.name?.toLowerCase() || '';
-      const description = mod.description?.toLowerCase() || '';
+    // Get all mods safely from either array or categorized object
+    const allMods = this.safeGetAllItems(mods, ['combat', 'general', 'elementalWells', 'chargedWithLight', 'stats', 'artifact']);
+
+    return allMods.filter(mod => {
+      const name = mod?.name?.toLowerCase() || '';
+      const description = mod?.description?.toLowerCase() || '';
 
       return name.includes(damageType) ||
              description.includes(damageType) ||
-             mod.element === damageType;
+             mod?.element === damageType;
     });
   }
 
@@ -1089,6 +1092,36 @@ export class ComprehensiveSynergyEngine {
   }
 
   /**
+   * Helper function to safely get all items from either array or categorized object
+   */
+  safeGetAllItems(data, categories = []) {
+    if (!data) {
+      return [];
+    }
+
+    // If it's already an array, return it
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    // If it's an object with categories, flatten all categories
+    if (typeof data === 'object') {
+      let allItems = [];
+
+      for (const category of categories) {
+        if (data[category] && Array.isArray(data[category])) {
+          allItems.push(...data[category]);
+        }
+      }
+
+      return allItems;
+    }
+
+    // Fallback: return empty array for invalid data
+    return [];
+  }
+
+  /**
    * Find potential synergies with missing components
    */
   findPotentialSynergies(buildData, parsedQuery) {
@@ -1135,8 +1168,9 @@ export class ComprehensiveSynergyEngine {
     }
 
     if (conditions.mods && buildData.mods) {
+      const allBuildMods = this.safeGetAllItems(buildData.mods, ['combat', 'general', 'elementalWells', 'chargedWithLight', 'stats', 'artifact']);
       const missingMods = conditions.mods.filter(mod =>
-        !buildData.mods.some(buildMod =>
+        !allBuildMods.some(buildMod =>
           buildMod?.name?.toLowerCase().includes(mod.toLowerCase())
         )
       );
@@ -1191,9 +1225,12 @@ export class ComprehensiveSynergyEngine {
    * Calculate mod system alignment with activity
    */
   calculateModSystemAlignment(mods, activityModSystems) {
+    // Get all mods safely from either array or categorized object
+    const allMods = this.safeGetAllItems(mods, ['combat', 'general', 'elementalWells', 'chargedWithLight', 'stats', 'artifact']);
+
     for (const system of activityModSystems) {
-      const systemMods = mods.filter(mod =>
-        mod.name?.toLowerCase().includes(system.toLowerCase().replace(/_/g, ' '))
+      const systemMods = allMods.filter(mod =>
+        mod?.name?.toLowerCase().includes(system.toLowerCase().replace(/_/g, ' '))
       );
 
       if (systemMods.length >= 2) {
@@ -1228,9 +1265,12 @@ export class ComprehensiveSynergyEngine {
   findExoticConflicts(exotics) {
     const conflicts = [];
 
+    // Get all exotics safely from either array or categorized object
+    const allExotics = this.safeGetAllItems(exotics, ['weapons', 'armor', 'totalRecommendations']);
+
     // Can only equip one exotic weapon and one exotic armor
-    const exoticWeapons = exotics.filter(exotic => exotic.type === 'weapon');
-    const exoticArmor = exotics.filter(exotic => exotic.type === 'armor');
+    const exoticWeapons = allExotics.filter(exotic => exotic?.type === 'weapon');
+    const exoticArmor = allExotics.filter(exotic => exotic?.type === 'armor');
 
     if (exoticWeapons.length > 1) {
       conflicts.push({
@@ -1259,10 +1299,13 @@ export class ComprehensiveSynergyEngine {
   findModSystemConflicts(mods) {
     const conflicts = [];
 
-    const cwlMods = mods.filter(mod => mod.name?.toLowerCase().includes('charged') ||
-                                     mod.name?.toLowerCase().includes('light'));
-    const wellMods = mods.filter(mod => mod.name?.toLowerCase().includes('well') ||
-                                       mod.name?.toLowerCase().includes('font'));
+    // Get all mods safely from either array or categorized object
+    const allMods = this.safeGetAllItems(mods, ['combat', 'general', 'elementalWells', 'chargedWithLight', 'stats', 'artifact']);
+
+    const cwlMods = allMods.filter(mod => mod?.name?.toLowerCase().includes('charged') ||
+                                          mod?.name?.toLowerCase().includes('light'));
+    const wellMods = allMods.filter(mod => mod?.name?.toLowerCase().includes('well') ||
+                                           mod?.name?.toLowerCase().includes('font'));
 
     if (cwlMods.length > 0 && wellMods.length > 0) {
       conflicts.push({
