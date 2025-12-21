@@ -625,9 +625,9 @@ export class BuildAnalyzer {
   isArmorForClass(armor, guardianClass) {
     // Check if armor is for the specified class
     const classMap = {
-      'hunter': [21,   // Hunter armor category
-      'titan': [22],   // Titan armor category
-      'warlock': [23]  // Warlock armor category
+      'hunter': [21],   // Hunter armor category
+      'titan': [22],    // Titan armor category
+      'warlock': [23]   // Warlock armor category
     };
 
     const targetHashes = classMap[guardianClass] || [];
