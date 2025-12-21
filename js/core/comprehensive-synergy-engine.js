@@ -892,8 +892,22 @@ export class ComprehensiveSynergyEngine {
   countMatchingMods(conditionMods, buildMods) {
     let matches = 0;
 
+    // Handle case where buildMods is an object with mod categories
+    let allMods = [];
+    if (buildMods && typeof buildMods === 'object') {
+      // Collect all mods from all categories into a single array
+      for (const category of ['combat', 'general', 'elementalWells', 'chargedWithLight', 'stats', 'artifact']) {
+        if (buildMods[category] && Array.isArray(buildMods[category])) {
+          allMods.push(...buildMods[category]);
+        }
+      }
+    } else if (Array.isArray(buildMods)) {
+      // If buildMods is already an array, use it directly
+      allMods = buildMods;
+    }
+
     for (const conditionMod of conditionMods) {
-      for (const buildMod of buildMods) {
+      for (const buildMod of allMods) {
         if (buildMod?.name?.toLowerCase().includes(conditionMod.toLowerCase()) ||
             buildMod?.key?.toLowerCase() === conditionMod.toLowerCase()) {
           matches++;

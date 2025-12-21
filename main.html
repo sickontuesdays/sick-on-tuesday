@@ -1334,19 +1334,19 @@
       html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
 
       if (build.mods.combat && build.mods.combat.length > 0) {
-        html += `<div><strong>Combat Mods:</strong> ${build.mods.combat.join(', ')}</div>`;
+        html += `<div><strong>Combat Mods:</strong> ${build.mods.combat.map(mod => mod.name || mod).join(', ')}</div>`;
       }
       if (build.mods.general && build.mods.general.length > 0) {
-        html += `<div><strong>General Mods:</strong> ${build.mods.general.join(', ')}</div>`;
+        html += `<div><strong>General Mods:</strong> ${build.mods.general.map(mod => mod.name || mod).join(', ')}</div>`;
       }
       if (build.mods.elementalWells && build.mods.elementalWells.length > 0) {
-        html += `<div><strong>Elemental Wells:</strong> ${build.mods.elementalWells.join(', ')}</div>`;
+        html += `<div><strong>Elemental Wells:</strong> ${build.mods.elementalWells.map(mod => mod.name || mod).join(', ')}</div>`;
       }
       if (build.mods.chargedWithLight && build.mods.chargedWithLight.length > 0) {
-        html += `<div><strong>Charged with Light:</strong> ${build.mods.chargedWithLight.join(', ')}</div>`;
+        html += `<div><strong>Charged with Light:</strong> ${build.mods.chargedWithLight.map(mod => mod.name || mod).join(', ')}</div>`;
       }
       if (build.mods.artifact && build.mods.artifact.length > 0) {
-        html += `<div><strong>Artifact Mods:</strong> ${build.mods.artifact.join(', ')}</div>`;
+        html += `<div><strong>Artifact Mods:</strong> ${build.mods.artifact.map(mod => mod.name || mod).join(', ')}</div>`;
       }
       if (build.mods.totalCost !== undefined) {
         html += `<div><strong>Total Mod Cost:</strong> ${build.mods.totalCost}/10</div>`;
