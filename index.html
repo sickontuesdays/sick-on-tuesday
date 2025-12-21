@@ -74,6 +74,93 @@
     .links{display:flex; gap:14px; flex-wrap:wrap}
     .links a{color:var(--muted); text-decoration:none}
     .links a:hover{color:var(--ink); text-decoration:underline}
+
+    /* Build Crafter Styles */
+    .build-crafter-card {
+      cursor: default; /* Override card hover cursor */
+    }
+    .build-crafter-card:hover {
+      transform: none; /* Disable card hover transform */
+    }
+    .build-crafter-interface {
+      margin-top: 16px;
+    }
+    .build-input-container {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .build-input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 14px;
+    }
+    .build-input::placeholder {
+      color: var(--muted);
+    }
+    .build-generate-btn {
+      padding: 8px 16px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .build-generate-btn:hover {
+      opacity: 0.9;
+    }
+    .build-generate-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .build-result {
+      margin-top: 12px;
+      padding: 12px;
+      background: var(--card-hover);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .build-result h4 {
+      margin: 0 0 8px 0;
+      font-size: 15px;
+    }
+    .build-result p {
+      margin: 4px 0;
+      font-size: 13px;
+    }
+    .build-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .build-action-btn {
+      padding: 4px 8px;
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .build-action-btn:hover {
+      background: var(--accent);
+      color: white;
+    }
+    .loading-state {
+      text-align: center;
+      padding: 20px;
+    }
+    .error-state {
+      text-align: center;
+      padding: 20px;
+      color: #ef4444;
+    }
   </style>
 </head>
 <body>
@@ -170,6 +257,20 @@
         <h3>Emblem Collector</h3>
         <p>Collection of emblems and where to get them.</p>
       </a>
+
+      <!-- Build Crafter Interactive Card -->
+      <div class="card build-crafter-card" id="build-crafter-container">
+        <span class="pill">AI Build</span>
+        <h3>🎯 Build Crafter</h3>
+        <p>Generate optimized Destiny 2 builds using natural language.</p>
+
+        <div class="build-crafter-content" id="build-crafter-interface" style="margin-top: 12px;">
+          <div class="loading-state" id="loading-state">
+            <div style="font-size: 24px; margin-bottom: 8px;">⏳</div>
+            <div style="font-size: 12px; color: var(--muted);">Loading Build Crafter...</div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <footer>
@@ -182,5 +283,205 @@
   </div>
 
   <script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+
+  <!-- Build Crafter Module Loading System -->
+  <script type="module">
+    // Build Crafter Initialization
+    let buildCrafter = null;
+    let manifestLoader = null;
+    let buildAnalyzer = null;
+
+    // Debug logging
+    function debugLog(message) {
+      console.log(`[Build Crafter] ${message}`);
+    }
+
+    // Update loading state
+    function updateLoadingState(message) {
+      const loadingState = document.getElementById('loading-state');
+      if (loadingState) {
+        loadingState.innerHTML = `
+          <div style="font-size: 20px; margin-bottom: 8px;">⏳</div>
+          <div style="font-size: 12px; color: var(--muted);">${message}</div>
+        `;
+      }
+    }
+
+    // Show error state
+    function showError(message) {
+      const container = document.getElementById('build-crafter-interface');
+      container.innerHTML = `
+        <div class="error-state">
+          <div style="font-size: 20px; margin-bottom: 8px;">❌</div>
+          <div style="font-size: 12px;">Error: ${message}</div>
+          <button onclick="initializeBuildCrafter()" style="margin-top: 8px; padding: 4px 8px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Retry
+          </button>
+        </div>
+      `;
+    }
+
+    // Show Build Crafter interface
+    function showBuildCrafterInterface() {
+      const container = document.getElementById('build-crafter-interface');
+      container.innerHTML = `
+        <div class="build-input-container">
+          <input type="text"
+                 class="build-input"
+                 id="build-query-input"
+                 placeholder="e.g., Hunter void build for raids"
+                 maxlength="100">
+          <button class="build-generate-btn" id="generate-build-btn">Generate</button>
+        </div>
+        <div id="build-result-container"></div>
+      `;
+
+      // Add event listeners
+      const input = document.getElementById('build-query-input');
+      const button = document.getElementById('generate-build-btn');
+
+      button.addEventListener('click', handleGenerateBuild);
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          handleGenerateBuild();
+        }
+      });
+
+      // Focus input
+      input.focus();
+    }
+
+    // Handle build generation
+    async function handleGenerateBuild() {
+      const input = document.getElementById('build-query-input');
+      const button = document.getElementById('generate-build-btn');
+      const resultContainer = document.getElementById('build-result-container');
+
+      const query = input.value.trim();
+      if (!query) {
+        input.focus();
+        return;
+      }
+
+      // Disable input during generation
+      button.disabled = true;
+      button.textContent = 'Generating...';
+
+      try {
+        debugLog(`Generating build for query: "${query}"`);
+        const build = await buildAnalyzer.generateBuild(query);
+
+        debugLog(`Build generated: ${build.name || 'Generated Build'}`);
+        showBuildResult(build);
+      } catch (error) {
+        debugLog(`Build generation failed: ${error.message}`);
+        resultContainer.innerHTML = `
+          <div class="error-state" style="margin-top: 12px;">
+            <div style="font-size: 16px; margin-bottom: 4px;">⚠️</div>
+            <div style="font-size: 12px;">Generation failed: ${error.message}</div>
+          </div>
+        `;
+      } finally {
+        // Re-enable input
+        button.disabled = false;
+        button.textContent = 'Generate';
+      }
+    }
+
+    // Show build result
+    function showBuildResult(build) {
+      const container = document.getElementById('build-result-container');
+      container.innerHTML = `
+        <div class="build-result">
+          <h4>${build.name || 'Generated Build'}</h4>
+          <p>${build.description || 'AI-generated build recommendation'}</p>
+          <p><strong>Confidence:</strong> ${Math.round((build.confidence || 0.5) * 100)}%</p>
+          <p><strong>Synergies:</strong> ${(build.synergies || []).join(', ') || 'None detected'}</p>
+
+          <div class="build-actions">
+            <button class="build-action-btn" onclick="copyBuildToClipboard()">📋 Copy</button>
+            <button class="build-action-btn" onclick="generateNewBuild()">🔄 New</button>
+            <button class="build-action-btn" onclick="showBuildDetails()">ℹ️ Details</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Copy build to clipboard
+    window.copyBuildToClipboard = function() {
+      const buildResult = document.querySelector('.build-result');
+      if (buildResult) {
+        const text = buildResult.innerText;
+        navigator.clipboard.writeText(text).then(() => {
+          debugLog('Build copied to clipboard');
+        }).catch(err => {
+          debugLog('Failed to copy build: ' + err.message);
+        });
+      }
+    };
+
+    // Generate new build
+    window.generateNewBuild = function() {
+      document.getElementById('build-query-input').value = '';
+      document.getElementById('build-result-container').innerHTML = '';
+      document.getElementById('build-query-input').focus();
+    };
+
+    // Show build details (placeholder)
+    window.showBuildDetails = function() {
+      alert('Build details feature coming soon!');
+    };
+
+    // Initialize Build Crafter
+    async function initializeBuildCrafter() {
+      try {
+        debugLog('Starting Build Crafter initialization...');
+        updateLoadingState('Loading manifest system...');
+
+        // Load manifest loader
+        const manifestModule = await import('./js/api/manifest-loader.js');
+        const { ManifestLoader } = manifestModule;
+
+        // Initialize manifest loader
+        const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        manifestLoader = new ManifestLoader(isLocal ? './data/manifest/' : null);
+        debugLog('Manifest loader initialized');
+
+        updateLoadingState('Loading build analyzer...');
+
+        // Load build analyzer
+        const analyzerModule = await import('./js/core/build-analyzer.js');
+        const { BuildAnalyzer } = analyzerModule;
+
+        buildAnalyzer = new BuildAnalyzer(manifestLoader);
+        debugLog('Build analyzer initialized');
+
+        updateLoadingState('Initializing systems...');
+
+        // Initialize analyzer (loads essential data)
+        await buildAnalyzer.initialize();
+        debugLog('Build analyzer ready');
+
+        // Show the interface
+        showBuildCrafterInterface();
+        debugLog('Build Crafter ready for use');
+
+      } catch (error) {
+        debugLog(`Initialization failed: ${error.message}`);
+        showError(error.message);
+      }
+    }
+
+    // Make initialization function globally available
+    window.initializeBuildCrafter = initializeBuildCrafter;
+
+    // Start initialization when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeBuildCrafter);
+    } else {
+      initializeBuildCrafter();
+    }
+  </script>
+
 </body>
 </html>
