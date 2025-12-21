@@ -742,7 +742,20 @@ export class ComprehensiveSynergyEngine {
 
     // Count triggers from mods
     if (buildData.mods) {
-      for (const mod of buildData.mods) {
+      // Handle both array and object with categories
+      let allMods = [];
+      if (Array.isArray(buildData.mods)) {
+        allMods = buildData.mods;
+      } else if (typeof buildData.mods === 'object') {
+        // Collect all mods from all categories
+        for (const category of ['combat', 'general', 'elementalWells', 'chargedWithLight', 'stats', 'artifact']) {
+          if (buildData.mods[category] && Array.isArray(buildData.mods[category])) {
+            allMods.push(...buildData.mods[category]);
+          }
+        }
+      }
+
+      for (const mod of allMods) {
         if (mod?.effects) {
           for (const effect of mod.effects) {
             if (effect.includes('kill')) triggers.on_kill++;
@@ -848,10 +861,46 @@ export class ComprehensiveSynergyEngine {
   countMatchingAbilities(conditionAbilities, buildAbilities) {
     let matches = 0;
 
+    // Ensure conditionAbilities is valid
+    if (!conditionAbilities || !Array.isArray(conditionAbilities) || conditionAbilities.length === 0) {
+      return matches;
+    }
+
+    // Handle case where buildAbilities is null, undefined, or invalid
+    if (!buildAbilities || typeof buildAbilities !== 'object') {
+      return matches;
+    }
+
+    // Get ability values safely
+    let allAbilities = [];
+    try {
+      allAbilities = Object.values(buildAbilities);
+    } catch (error) {
+      console.warn('buildAbilities has unexpected format:', typeof buildAbilities, buildAbilities);
+      return matches;
+    }
+
+    // Ensure we have abilities to check against
+    if (allAbilities.length === 0) {
+      return matches;
+    }
+
     for (const conditionAbility of conditionAbilities) {
-      for (const buildAbility of Object.values(buildAbilities)) {
-        if (buildAbility?.name?.toLowerCase().includes(conditionAbility.toLowerCase()) ||
-            buildAbility?.key?.toLowerCase() === conditionAbility.toLowerCase()) {
+      if (!conditionAbility || typeof conditionAbility !== 'string') {
+        continue; // Skip invalid condition abilities
+      }
+
+      for (const buildAbility of allAbilities) {
+        if (!buildAbility) {
+          continue; // Skip null/undefined abilities
+        }
+
+        // Check if ability names or keys match
+        const abilityName = buildAbility?.name?.toLowerCase() || '';
+        const abilityKey = buildAbility?.key?.toLowerCase() || '';
+        const conditionLower = conditionAbility.toLowerCase();
+
+        if (abilityName.includes(conditionLower) || abilityKey === conditionLower) {
           matches++;
           break;
         }
@@ -956,9 +1005,55 @@ export class ComprehensiveSynergyEngine {
   countMatchingExotics(conditionExotics, buildExotics) {
     let matches = 0;
 
+    // Ensure conditionExotics is valid
+    if (!conditionExotics || !Array.isArray(conditionExotics) || conditionExotics.length === 0) {
+      return matches;
+    }
+
+    // Handle case where buildExotics is null, undefined, or invalid
+    if (!buildExotics) {
+      return matches;
+    }
+
+    // Handle case where buildExotics is an object with categories
+    let allExotics = [];
+    if (buildExotics && typeof buildExotics === 'object' && !Array.isArray(buildExotics)) {
+      // Collect all exotics from all categories into a single array
+      for (const category of ['weapons', 'armor', 'totalRecommendations']) {
+        if (buildExotics[category] && Array.isArray(buildExotics[category])) {
+          allExotics.push(...buildExotics[category]);
+        }
+      }
+    } else if (Array.isArray(buildExotics)) {
+      // If buildExotics is already an array, use it directly
+      allExotics = buildExotics;
+    } else {
+      // buildExotics is neither a valid object nor an array
+      console.warn('buildExotics has unexpected format:', typeof buildExotics, buildExotics);
+      return matches;
+    }
+
+    // Ensure we have exotics to check against
+    if (allExotics.length === 0) {
+      return matches;
+    }
+
     for (const conditionExotic of conditionExotics) {
-      for (const buildExotic of buildExotics) {
-        if (buildExotic?.name?.toLowerCase().includes(conditionExotic.toLowerCase())) {
+      if (!conditionExotic || typeof conditionExotic !== 'string') {
+        continue; // Skip invalid condition exotics
+      }
+
+      for (const buildExotic of allExotics) {
+        if (!buildExotic) {
+          continue; // Skip null/undefined exotics
+        }
+
+        // Check if exotic names or keys match
+        const exoticName = buildExotic?.name?.toLowerCase() || '';
+        const exoticKey = buildExotic?.key?.toLowerCase() || '';
+        const conditionLower = conditionExotic.toLowerCase();
+
+        if (exoticName.includes(conditionLower) || exoticKey === conditionLower) {
           matches++;
           break;
         }
