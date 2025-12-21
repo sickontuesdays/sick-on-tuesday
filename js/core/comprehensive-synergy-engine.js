@@ -432,23 +432,60 @@ export class ComprehensiveSynergyEngine {
   analyzeElementalSynergies(buildData, parsedQuery) {
     const synergies = [];
 
-    if (!parsedQuery.damageType) return synergies;
-
-    const elementalData = this.synergyNetwork.get('elemental')?.[parsedQuery.damageType];
-    if (!elementalData) return synergies;
-
-    // Check weapon-element matching
+    // Analyze actual weapon elements in build (enhanced approach)
     if (buildData.weapons) {
-      const matchingWeapons = Object.values(buildData.weapons)
-        .filter(weapon => weapon?.element === parsedQuery.damageType);
+      const weaponElements = {};
 
-      if (matchingWeapons.length >= 2) {
-        synergies.push({
-          name: `${parsedQuery.damageType.charAt(0).toUpperCase() + parsedQuery.damageType.slice(1)} Focus`,
-          description: `${matchingWeapons.length} ${parsedQuery.damageType} weapons enhance elemental effects`,
-          strength: 'high',
-          confidence: 0.9
-        });
+      // Count weapons by element
+      for (const weapon of Object.values(buildData.weapons)) {
+        if (weapon?.element && weapon.element !== 'kinetic') {
+          weaponElements[weapon.element] = (weaponElements[weapon.element] || 0) + 1;
+        }
+      }
+
+      // Find elemental focus synergies
+      for (const [element, count] of Object.entries(weaponElements)) {
+        if (count >= 2) {
+          synergies.push({
+            name: `${element.charAt(0).toUpperCase() + element.slice(1)} Focus`,
+            description: `${count} ${element} weapons enhance elemental effects`,
+            strength: 'high',
+            confidence: 0.9,
+            type: 'elemental_focus'
+          });
+        }
+      }
+
+      // Check for elemental mod synergies
+      if (buildData.mods?.elementalWells && buildData.mods.elementalWells.length > 0) {
+        for (const [element, count] of Object.entries(weaponElements)) {
+          synergies.push({
+            name: `${element.charAt(0).toUpperCase() + element.slice(1)} Well Synergy`,
+            description: `${element} weapons work with elemental well mods`,
+            strength: 'medium',
+            confidence: 0.7,
+            type: 'elemental_wells'
+          });
+        }
+      }
+    }
+
+    // Original query-based analysis as fallback
+    if (parsedQuery.damageType) {
+      const elementalData = this.synergyNetwork.get('elemental')?.[parsedQuery.damageType];
+      if (elementalData) {
+        const matchingWeapons = Object.values(buildData.weapons || {})
+          .filter(weapon => weapon?.element === parsedQuery.damageType);
+
+        if (matchingWeapons.length >= 1) {
+          synergies.push({
+            name: `Requested ${parsedQuery.damageType.charAt(0).toUpperCase() + parsedQuery.damageType.slice(1)} Build`,
+            description: `Build optimized for ${parsedQuery.damageType} damage`,
+            strength: 'medium',
+            confidence: 0.8,
+            type: 'query_match'
+          });
+        }
       }
     }
 
@@ -486,8 +523,12 @@ export class ComprehensiveSynergyEngine {
    */
   analyzeCrossSystemSynergies(buildData, parsedQuery) {
     const synergies = [];
-    const crossSystemRules = this.synergyNetwork.get('cross_system') || [];
 
+    // Direct synergy detection for common build patterns
+    this.detectDirectSynergies(buildData, synergies, parsedQuery);
+
+    // Original rule-based analysis
+    const crossSystemRules = this.synergyNetwork.get('cross_system') || [];
     for (const rule of crossSystemRules) {
       const matchScore = this.evaluateCrossSystemRule(rule, buildData, parsedQuery);
 
@@ -1399,5 +1440,90 @@ export class ComprehensiveSynergyEngine {
     }
 
     return mismatches;
+  }
+
+  /**
+   * Detect direct synergies between build components
+   */
+  detectDirectSynergies(buildData, synergies, parsedQuery) {
+    // Elemental Wells + Weapon Element synergies
+    if (buildData.mods?.elementalWells && buildData.mods.elementalWells.length > 0) {
+      const wellMods = buildData.mods.elementalWells;
+      const hasElementalOrdnance = wellMods.some(mod => mod.key === 'elemental_ordnance');
+      const hasWellMods = wellMods.length >= 2;
+
+      if (hasElementalOrdnance) {
+        synergies.push({
+          name: 'Elemental Well Loop',
+          description: 'Grenade kills create elemental wells for ability regeneration',
+          strength: 'high',
+          confidence: 0.8,
+          type: 'mod_synergy'
+        });
+      }
+
+      if (hasWellMods) {
+        synergies.push({
+          name: 'Well-Rounded Build',
+          description: `${wellMods.length} elemental well mods create synergistic loops`,
+          strength: 'medium',
+          confidence: 0.7,
+          type: 'mod_synergy'
+        });
+      }
+    }
+
+    // Fastball + Grenade focused synergies
+    if (buildData.mods?.general) {
+      const hasFastball = buildData.mods.general.some(mod => mod.key === 'fastball');
+      if (hasFastball && buildData.mods?.elementalWells?.some(mod => mod.key === 'elemental_ordnance')) {
+        synergies.push({
+          name: 'Grenade Specialist',
+          description: 'Enhanced grenade throwing with elemental well generation',
+          strength: 'medium',
+          confidence: 0.75,
+          type: 'ability_mod_synergy'
+        });
+      }
+    }
+
+    // Exotic weapon synergies
+    if (buildData.exotics?.weapons?.length > 0) {
+      for (const exotic of buildData.exotics.weapons) {
+        if (exotic.key === 'osteo_striga' && parsedQuery?.activity?.includes('add')) {
+          synergies.push({
+            name: 'Poison Add Clear',
+            description: 'Osteo Striga excels at add clearing with spreading poison',
+            strength: 'high',
+            confidence: 0.9,
+            type: 'exotic_activity_synergy'
+          });
+        }
+
+        if (exotic.bestFor?.includes('add_clearing')) {
+          synergies.push({
+            name: 'Add Clear Specialist',
+            description: `${exotic.name} optimized for clearing enemies`,
+            strength: 'medium',
+            confidence: 0.8,
+            type: 'exotic_role_synergy'
+          });
+        }
+      }
+    }
+
+    // Class-specific synergies (Titan)
+    if (parsedQuery?.guardianClass === 'titan') {
+      const hasResilienceMods = buildData.mods?.stats?.some(mod => mod.statBoost?.resilience);
+      if (hasResilienceMods) {
+        synergies.push({
+          name: 'Titan Tank Build',
+          description: 'High resilience enhances Titan survivability',
+          strength: 'medium',
+          confidence: 0.7,
+          type: 'class_stat_synergy'
+        });
+      }
+    }
   }
 }

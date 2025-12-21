@@ -593,10 +593,10 @@ export class ExoticAnalyzer {
       }
     }
 
-    // Sort by score and return top 5
+    // Sort by score and return top 1
     return candidates
       .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
+      .slice(0, 1);
   }
 
   /**
@@ -622,10 +622,10 @@ export class ExoticAnalyzer {
       }
     }
 
-    // Sort by score and return top 5
+    // Sort by score and return top 1
     return candidates
       .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
+      .slice(0, 1);
   }
 
   /**
