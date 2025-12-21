@@ -54,29 +54,38 @@ export class BuildAnalyzer {
   async generateBuild(query, preferences = {}) {
     const parsedQuery = this.parseQuery(query);
 
-    // If analysis isn't ready, fall back to curated builds
-    if (!this.analysisReady) {
-      return this.getCuratedBuild(parsedQuery, preferences);
+    // Check if we have sufficient data for intelligent analysis
+    const hasAnalysisData = this.analysisData && Object.keys(this.analysisData.perks || {}).length > 0;
+    const hasEssentialData = this.essentialData && Object.keys(this.essentialData.traits || {}).length > 0;
+
+    if (hasAnalysisData && hasEssentialData) {
+      try {
+        console.log('🧠 Using intelligent build generation');
+
+        // Determine what item chunks we need
+        const requiredChunks = this.determineRequiredChunks(parsedQuery);
+
+        // Load required item data
+        const itemChunks = await this.loader.loadItemChunks(requiredChunks);
+
+        // Filter items by user constraints
+        const candidateItems = this.filterCandidateItems(itemChunks, parsedQuery);
+
+        // Generate optimized build combinations
+        const builds = this.generateOptimizedBuilds(candidateItems, parsedQuery);
+
+        if (builds.length > 0) {
+          console.log(`✅ Generated intelligent build: ${builds[0].name} (${Math.round(builds[0].confidence * 100)}% confidence)`);
+          return builds[0];
+        }
+      } catch (error) {
+        console.warn('⚠️ Intelligent generation failed, falling back:', error);
+      }
     }
 
-    try {
-      // Determine what item chunks we need
-      const requiredChunks = this.determineRequiredChunks(parsedQuery);
-
-      // Load required item data
-      const itemChunks = await this.loader.loadItemChunks(requiredChunks);
-
-      // Filter items by user constraints
-      const candidateItems = this.filterCandidateItems(itemChunks, parsedQuery, preferences);
-
-      // Generate optimized build combinations
-      const builds = this.generateOptimizedBuilds(candidateItems, parsedQuery, preferences);
-
-      return builds.length > 0 ? builds[0] : this.getCuratedBuild(parsedQuery, preferences);
-    } catch (error) {
-      console.warn('Advanced build generation failed, using curated build:', error);
-      return this.getCuratedBuild(parsedQuery, preferences);
-    }
+    // Enhanced fallback using available data
+    console.log('📋 Using enhanced curated build');
+    return this.getEnhancedCuratedBuild(parsedQuery, preferences);
   }
 
   // ========== Natural Language Processing ==========
@@ -574,15 +583,336 @@ export class BuildAnalyzer {
     };
   }
 
+  /**
+   * Enhanced curated build using available manifest data
+   */
+  getEnhancedCuratedBuild(parsedQuery, preferences = {}) {
+    console.log('🔍 Enhancing curated build with manifest data');
+
+    // Start with basic curated build
+    const baseBuild = this.getCuratedBuild(parsedQuery, preferences);
+
+    // Enhance with trait-based synergy detection
+    const enhancedSynergies = this.findRelevantSynergies(parsedQuery);
+
+    // Improve confidence based on available data
+    let confidence = baseBuild.confidence;
+
+    // Boost confidence if we found relevant traits
+    if (enhancedSynergies.length > 0) {
+      confidence = Math.min(0.85, confidence + (enhancedSynergies.length * 0.15));
+      console.log(`📈 Boosted confidence to ${Math.round(confidence * 100)}% with ${enhancedSynergies.length} synergies`);
+    }
+
+    // Add enhanced build name based on query
+    const enhancedName = this.generateBuildName(parsedQuery);
+
+    return {
+      ...baseBuild,
+      name: enhancedName,
+      synergies: enhancedSynergies.length > 0 ? enhancedSynergies : baseBuild.synergies,
+      confidence,
+      source: 'enhanced_curated'
+    };
+  }
+
+  /**
+   * Find relevant synergies based on parsed query
+   */
+  findRelevantSynergies(parsedQuery) {
+    const synergies = [];
+
+    // Add damage type synergies if we have traits data
+    if (this.essentialData?.traits && parsedQuery.damageType) {
+      const damageTypeTraits = this.findTraitsByDamageType(parsedQuery.damageType);
+      synergies.push(...damageTypeTraits.slice(0, 3)); // Limit to top 3
+    }
+
+    // Add class-specific synergies
+    if (parsedQuery.guardianClass) {
+      const classKeyword = parsedQuery.guardianClass.charAt(0).toUpperCase() + parsedQuery.guardianClass.slice(1);
+      synergies.push(`${classKeyword} Abilities`);
+    }
+
+    // Add activity-specific synergies
+    if (parsedQuery.activity) {
+      if (parsedQuery.activity === 'raid' || parsedQuery.activity === 'endgame') {
+        synergies.push('Boss Damage', 'Survivability');
+      } else if (parsedQuery.activity === 'pvp') {
+        synergies.push('Fast TTK', 'Mobility');
+      }
+    }
+
+    return synergies.slice(0, 5); // Limit total synergies
+  }
+
+  /**
+   * Generate build name based on query
+   */
+  generateBuildName(parsedQuery) {
+    const parts = [];
+
+    if (parsedQuery.guardianClass) {
+      parts.push(parsedQuery.guardianClass.charAt(0).toUpperCase() + parsedQuery.guardianClass.slice(1));
+    }
+
+    if (parsedQuery.damageType) {
+      parts.push(parsedQuery.damageType.charAt(0).toUpperCase() + parsedQuery.damageType.slice(1));
+    }
+
+    if (parsedQuery.activity) {
+      const activityMap = {
+        'raid': 'Raid',
+        'pvp': 'PvP',
+        'endgame': 'Endgame',
+        'patrol': 'Patrol'
+      };
+      parts.push(activityMap[parsedQuery.activity] || 'General');
+    } else {
+      parts.push('Build');
+    }
+
+    return parts.join(' ') || 'Generated Build';
+  }
+
+  /**
+   * Find traits by damage type
+   */
+  findTraitsByDamageType(damageType) {
+    if (!this.essentialData?.traits) return [];
+
+    const damageKeywords = {
+      'void': ['void', 'devour', 'weaken', 'suppression', 'volatile'],
+      'solar': ['solar', 'burn', 'scorch', 'ignition', 'radiant', 'restoration'],
+      'arc': ['arc', 'jolt', 'blind', 'amplified', 'ionic'],
+      'stasis': ['stasis', 'slow', 'freeze', 'shatter', 'crystal'],
+      'strand': ['strand', 'sever', 'unraveling', 'tangle', 'threadling']
+    };
+
+    const keywords = damageKeywords[damageType] || [];
+    const foundTraits = [];
+
+    for (const [traitHash, trait] of Object.entries(this.essentialData.traits)) {
+      const traitName = trait.displayProperties?.name?.toLowerCase() || '';
+      const traitDesc = trait.displayProperties?.description?.toLowerCase() || '';
+
+      for (const keyword of keywords) {
+        if (traitName.includes(keyword) || traitDesc.includes(keyword)) {
+          foundTraits.push(trait.displayProperties.name);
+          break;
+        }
+      }
+    }
+
+    return foundTraits.slice(0, 4); // Return top 4 matching traits
+  }
+
+  /**
+   * Count candidate items for logging
+   */
+  countCandidates(candidates) {
+    let total = 0;
+    for (const slot in candidates) {
+      total += candidates[slot].length;
+    }
+    return total;
+  }
+
   // ========== Helper Methods ==========
 
   /**
    * Helper method stubs - would need full implementation
    */
-  generateOptimizedBuilds(candidateItems, parsedQuery, preferences) {
-    // This would contain the complex build generation algorithm
-    // For now, return empty array to fall back to curated builds
+  generateOptimizedBuilds(candidateItems, parsedQuery, preferences = {}) {
+    console.log('🔧 Generating optimized builds from candidates');
+
+    // Ensure we have enough candidates
+    const totalCandidates = this.countCandidates(candidateItems);
+    if (totalCandidates < 3) {
+      console.log('❌ Insufficient candidates for build generation');
+      return [];
+    }
+
+    try {
+      // Score weapons based on query
+      this.scoreWeapons(candidateItems, parsedQuery);
+
+      // Generate top build combination
+      const build = this.createBuildFromCandidates(candidateItems, parsedQuery);
+
+      if (build) {
+        console.log(`✅ Generated optimized build: ${build.name}`);
+        return [build];
+      }
+    } catch (error) {
+      console.warn('❌ Build optimization failed:', error);
+    }
+
     return [];
+  }
+
+  /**
+   * Score weapons based on query requirements
+   */
+  scoreWeapons(candidateItems, parsedQuery) {
+    const scoreWeapon = (weapon, slot) => {
+      let score = 0.5; // Base score
+
+      // Damage type matching
+      if (parsedQuery.damageType && weapon.damageTypeHashes) {
+        const weaponDamageType = this.getDamageTypeName(weapon.damageTypeHashes[0]);
+        if (weaponDamageType === parsedQuery.damageType) {
+          score += 0.3;
+        }
+      }
+
+      // Weapon type matching
+      if (parsedQuery.weaponTypes.length > 0) {
+        const weaponType = this.getWeaponTypeName(weapon);
+        if (parsedQuery.weaponTypes.some(type => weaponType.includes(type))) {
+          score += 0.25;
+        }
+      }
+
+      // Activity-specific scoring
+      if (parsedQuery.activity === 'raid' || parsedQuery.activity === 'endgame') {
+        // Prefer exotic weapons for raids
+        if (weapon.inventory?.tierTypeName === 'Exotic') {
+          score += 0.2;
+        }
+      }
+
+      weapon.score = Math.min(1.0, score);
+    };
+
+    // Score all weapons
+    ['kinetic', 'energy', 'power'].forEach(slot => {
+      candidateItems[slot].forEach(weapon => scoreWeapon(weapon, slot));
+      candidateItems[slot].sort((a, b) => (b.score || 0) - (a.score || 0));
+    });
+  }
+
+  /**
+   * Create build from top candidates
+   */
+  createBuildFromCandidates(candidateItems, parsedQuery) {
+    // Select best weapons
+    const weapons = {
+      kinetic: candidateItems.kinetic[0] || null,
+      energy: candidateItems.energy[0] || null,
+      power: candidateItems.power[0] || null
+    };
+
+    // Calculate build confidence
+    let confidence = 0.5;
+    let weaponsFound = 0;
+    let totalWeaponScore = 0;
+
+    ['kinetic', 'energy', 'power'].forEach(slot => {
+      if (weapons[slot]) {
+        weaponsFound++;
+        totalWeaponScore += weapons[slot].score || 0.5;
+      }
+    });
+
+    if (weaponsFound > 0) {
+      confidence = totalWeaponScore / weaponsFound;
+    }
+
+    // Generate synergies based on weapons
+    const synergies = this.findWeaponSynergies(weapons, parsedQuery);
+
+    // Boost confidence with synergies
+    if (synergies.length > 0) {
+      confidence = Math.min(0.95, confidence + (synergies.length * 0.1));
+    }
+
+    // Generate build name
+    const buildName = this.generateBuildName(parsedQuery);
+
+    return {
+      name: buildName,
+      description: `Optimized build generated from ${this.countCandidates(candidateItems)} manifest items`,
+      weapons: {
+        kinetic: weapons.kinetic ? {
+          name: weapons.kinetic.displayProperties?.name || 'Kinetic Weapon',
+          type: this.getWeaponTypeName(weapons.kinetic),
+          hash: weapons.kinetic.hash
+        } : null,
+        energy: weapons.energy ? {
+          name: weapons.energy.displayProperties?.name || 'Energy Weapon',
+          type: this.getWeaponTypeName(weapons.energy),
+          hash: weapons.energy.hash
+        } : null,
+        power: weapons.power ? {
+          name: weapons.power.displayProperties?.name || 'Power Weapon',
+          type: this.getWeaponTypeName(weapons.power),
+          hash: weapons.power.hash
+        } : null
+      },
+      synergies,
+      confidence: Math.max(0.6, confidence), // Ensure minimum 60% for optimized builds
+      source: 'optimized_manifest',
+      query: parsedQuery.originalQuery
+    };
+  }
+
+  /**
+   * Find synergies between weapons
+   */
+  findWeaponSynergies(weapons, parsedQuery) {
+    const synergies = [];
+
+    // Check for damage type synergies
+    const damageTypes = [];
+    ['kinetic', 'energy', 'power'].forEach(slot => {
+      if (weapons[slot] && weapons[slot].damageTypeHashes) {
+        const damageType = this.getDamageTypeName(weapons[slot].damageTypeHashes[0]);
+        if (damageType && !damageTypes.includes(damageType)) {
+          damageTypes.push(damageType);
+        }
+      }
+    });
+
+    if (damageTypes.length === 1 && damageTypes[0] !== 'kinetic') {
+      synergies.push(`${damageTypes[0].charAt(0).toUpperCase() + damageTypes[0].slice(1)} Focus`);
+    }
+
+    // Add query-based synergies
+    if (parsedQuery.damageType) {
+      const typeTitle = parsedQuery.damageType.charAt(0).toUpperCase() + parsedQuery.damageType.slice(1);
+      synergies.push(`${typeTitle} Synergies`);
+    }
+
+    if (parsedQuery.activity === 'raid' || parsedQuery.activity === 'endgame') {
+      synergies.push('Boss Damage', 'Champion Handling');
+    }
+
+    return synergies.slice(0, 4); // Limit to 4 synergies
+  }
+
+  /**
+   * Get weapon type name from item data
+   */
+  getWeaponTypeName(weapon) {
+    if (!weapon.itemTypeDisplayName) return 'Weapon';
+    return weapon.itemTypeDisplayName;
+  }
+
+  /**
+   * Get damage type name from hash
+   */
+  getDamageTypeName(damageTypeHash) {
+    const damageTypeMap = {
+      3373582085: 'kinetic',
+      2303181850: 'arc',
+      1847026933: 'solar',
+      3454344768: 'void',
+      151347233: 'stasis',
+      3949783978: 'strand'
+    };
+
+    return damageTypeMap[damageTypeHash] || 'kinetic';
   }
 
   matchesDamageType(damageTypeHash, requestedType) {
