@@ -892,9 +892,19 @@ export class ComprehensiveSynergyEngine {
   countMatchingMods(conditionMods, buildMods) {
     let matches = 0;
 
+    // Ensure conditionMods is valid
+    if (!conditionMods || !Array.isArray(conditionMods) || conditionMods.length === 0) {
+      return matches;
+    }
+
+    // Handle case where buildMods is null, undefined, or invalid
+    if (!buildMods) {
+      return matches;
+    }
+
     // Handle case where buildMods is an object with mod categories
     let allMods = [];
-    if (buildMods && typeof buildMods === 'object') {
+    if (buildMods && typeof buildMods === 'object' && !Array.isArray(buildMods)) {
       // Collect all mods from all categories into a single array
       for (const category of ['combat', 'general', 'elementalWells', 'chargedWithLight', 'stats', 'artifact']) {
         if (buildMods[category] && Array.isArray(buildMods[category])) {
@@ -904,12 +914,33 @@ export class ComprehensiveSynergyEngine {
     } else if (Array.isArray(buildMods)) {
       // If buildMods is already an array, use it directly
       allMods = buildMods;
+    } else {
+      // buildMods is neither a valid object nor an array
+      console.warn('buildMods has unexpected format:', typeof buildMods, buildMods);
+      return matches;
+    }
+
+    // Ensure we have mods to check against
+    if (allMods.length === 0) {
+      return matches;
     }
 
     for (const conditionMod of conditionMods) {
+      if (!conditionMod || typeof conditionMod !== 'string') {
+        continue; // Skip invalid condition mods
+      }
+
       for (const buildMod of allMods) {
-        if (buildMod?.name?.toLowerCase().includes(conditionMod.toLowerCase()) ||
-            buildMod?.key?.toLowerCase() === conditionMod.toLowerCase()) {
+        if (!buildMod) {
+          continue; // Skip null/undefined mods
+        }
+
+        // Check if mod names or keys match
+        const modName = buildMod?.name?.toLowerCase() || '';
+        const modKey = buildMod?.key?.toLowerCase() || '';
+        const conditionLower = conditionMod.toLowerCase();
+
+        if (modName.includes(conditionLower) || modKey === conditionLower) {
           matches++;
           break;
         }
