@@ -1047,6 +1047,9 @@ export class BuildAnalyzer {
       confidence = Math.min(0.95, confidence + (synergies.length * 0.1));
     }
 
+    // Select optimal armor pieces
+    const armor = this.selectOptimalArmor(candidateItems, parsedQuery);
+
     // Generate build name
     const buildName = this.generateBuildName(parsedQuery);
 
@@ -1070,6 +1073,7 @@ export class BuildAnalyzer {
           hash: weapons.power.hash
         } : null
       },
+      armor,
       synergies,
       confidence: Math.max(0.6, confidence), // Ensure minimum 60% for optimized builds
       source: 'optimized_manifest',
@@ -1183,6 +1187,106 @@ export class BuildAnalyzer {
     const targetHashes = classMap[guardianClass] || [];
     return !armor.itemCategoryHashes ||
            armor.itemCategoryHashes.some(hash => targetHashes.includes(hash));
+  }
+
+  /**
+   * Select optimal armor pieces for the build
+   */
+  selectOptimalArmor(candidateItems, parsedQuery) {
+    // Define armor slots to select
+    const armorSlots = ['helmet', 'gauntlets', 'chest', 'legs', 'classItem'];
+    const armorData = candidateItems.armor || [];
+
+    if (!armorData || armorData.length === 0) {
+      // Return placeholder armor structure if no armor data available
+      return this.createPlaceholderArmor(armorSlots, parsedQuery);
+    }
+
+    const selectedArmor = {};
+
+    // Select one armor piece for each slot
+    for (const slot of armorSlots) {
+      const slotArmor = armorData.filter(armor => this.getArmorSlot(armor) === slot);
+
+      if (slotArmor.length > 0) {
+        // Select the first available armor piece for this slot
+        const bestArmor = slotArmor[0];
+        selectedArmor[slot] = {
+          name: bestArmor.displayProperties?.name || `${slot.charAt(0).toUpperCase() + slot.slice(1)} Armor`,
+          hash: bestArmor.hash,
+          score: 0.7,
+          statFocus: this.getRecommendedStatFocus(parsedQuery),
+          type: 'legendary'
+        };
+      } else {
+        // Create placeholder if no armor found for this slot
+        selectedArmor[slot] = {
+          name: `${slot.charAt(0).toUpperCase() + slot.slice(1)} Armor`,
+          hash: `placeholder_${slot}`,
+          score: 0.5,
+          statFocus: this.getRecommendedStatFocus(parsedQuery),
+          type: 'legendary'
+        };
+      }
+    }
+
+    return selectedArmor;
+  }
+
+  /**
+   * Create placeholder armor structure
+   */
+  createPlaceholderArmor(armorSlots, parsedQuery) {
+    const armor = {};
+    const statFocus = this.getRecommendedStatFocus(parsedQuery);
+
+    for (const slot of armorSlots) {
+      armor[slot] = {
+        name: `${slot.charAt(0).toUpperCase() + slot.slice(1)} Armor`,
+        hash: `placeholder_${slot}`,
+        score: 0.6,
+        statFocus: statFocus,
+        type: 'legendary',
+        note: 'Placeholder - optimize with actual inventory'
+      };
+    }
+
+    return armor;
+  }
+
+  /**
+   * Get recommended stat focus based on query
+   */
+  getRecommendedStatFocus(parsedQuery) {
+    const classStatMap = {
+      'titan': ['resilience', 'strength'],
+      'warlock': ['recovery', 'intellect'],
+      'hunter': ['mobility', 'strength']
+    };
+
+    return classStatMap[parsedQuery.guardianClass] || ['resilience', 'recovery'];
+  }
+
+  /**
+   * Determine armor slot from armor item
+   */
+  getArmorSlot(armor) {
+    // This is a simplified mapping - would need proper slot detection logic
+    const slotMap = {
+      45: 'helmet',     // Helmet category hash
+      46: 'gauntlets',  // Gauntlets category hash
+      47: 'chest',      // Chest category hash
+      48: 'legs',       // Legs category hash
+      49: 'classItem'   // Class item category hash
+    };
+
+    if (armor.itemCategoryHashes) {
+      for (const hash of armor.itemCategoryHashes) {
+        if (slotMap[hash]) return slotMap[hash];
+      }
+    }
+
+    return 'helmet'; // Default fallback
   }
 
   calculateStatScore(armor, statPriorities) {

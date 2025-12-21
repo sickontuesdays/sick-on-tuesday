@@ -1050,6 +1050,26 @@
     return [];
   }
 
+  // Helper function to extract all comprehensive synergies
+  function getAllComprehensiveSynergies(build) {
+    const synergies = [];
+
+    if (!build.comprehensiveSynergies) return synergies;
+
+    const synergyCategories = ['elemental', 'crossSystem', 'trigger', 'activity'];
+
+    for (const category of synergyCategories) {
+      const categorySynergies = build.comprehensiveSynergies[category];
+      if (Array.isArray(categorySynergies)) {
+        for (const synergy of categorySynergies) {
+          synergies.push(synergy.name || synergy);
+        }
+      }
+    }
+
+    return synergies;
+  }
+
   // Update loading state
   function updateLoadingState(message) {
     const loadingState = document.getElementById('loading-state');
@@ -1150,7 +1170,7 @@
         <h4>${build.name || 'Generated Build'}</h4>
         <p>${build.description || 'AI-generated build recommendation'}</p>
         <p><strong>Confidence:</strong> ${Math.round((build.confidence || 0.5) * 100)}%</p>
-        <p><strong>Synergies:</strong> ${safeGetAllItems(build.synergies).join(', ') || 'None detected'}</p>
+        <p><strong>Synergies:</strong> ${getAllComprehensiveSynergies(build).join(', ') || 'None detected'}</p>
 
         <div class="build-actions">
           <button class="build-action-btn" onclick="copyBuildToClipboard()">📋 Copy</button>
@@ -1436,28 +1456,40 @@
         if (build.comprehensiveSynergies.elemental && Array.isArray(build.comprehensiveSynergies.elemental) && build.comprehensiveSynergies.elemental.length > 0) {
           html += `<div><strong>Elemental Synergies:</strong></div>`;
           build.comprehensiveSynergies.elemental.forEach(synergy => {
-            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : ''}</div>`;
+            const confidence = synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : '';
+            const description = synergy.description ? `<br><span style="font-size: 11px; color: #ccc; margin-left: 16px;">${synergy.description}</span>` : '';
+            const type = synergy.type ? `<span style="font-size: 10px; color: #7dd3fc; margin-left: 8px;">[${synergy.type}]</span>` : '';
+            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${confidence} ${type}${description}</div>`;
           });
         }
 
         if (build.comprehensiveSynergies.crossSystem && Array.isArray(build.comprehensiveSynergies.crossSystem) && build.comprehensiveSynergies.crossSystem.length > 0) {
           html += `<div><strong>Cross-System Synergies:</strong></div>`;
           build.comprehensiveSynergies.crossSystem.forEach(synergy => {
-            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : ''}</div>`;
+            const confidence = synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : '';
+            const description = synergy.description ? `<br><span style="font-size: 11px; color: #ccc; margin-left: 16px;">${synergy.description}</span>` : '';
+            const type = synergy.type ? `<span style="font-size: 10px; color: #7dd3fc; margin-left: 8px;">[${synergy.type}]</span>` : '';
+            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${confidence} ${type}${description}</div>`;
           });
         }
 
         if (build.comprehensiveSynergies.trigger && Array.isArray(build.comprehensiveSynergies.trigger) && build.comprehensiveSynergies.trigger.length > 0) {
           html += `<div><strong>Trigger-Based Synergies:</strong></div>`;
           build.comprehensiveSynergies.trigger.forEach(synergy => {
-            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : ''}</div>`;
+            const confidence = synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : '';
+            const description = synergy.description ? `<br><span style="font-size: 11px; color: #ccc; margin-left: 16px;">${synergy.description}</span>` : '';
+            const type = synergy.type ? `<span style="font-size: 10px; color: #7dd3fc; margin-left: 8px;">[${synergy.type}]</span>` : '';
+            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${confidence} ${type}${description}</div>`;
           });
         }
 
         if (build.comprehensiveSynergies.activity && Array.isArray(build.comprehensiveSynergies.activity) && build.comprehensiveSynergies.activity.length > 0) {
           html += `<div><strong>Activity-Specific Synergies:</strong></div>`;
           build.comprehensiveSynergies.activity.forEach(synergy => {
-            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : ''}</div>`;
+            const confidence = synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : '';
+            const description = synergy.description ? `<br><span style="font-size: 11px; color: #ccc; margin-left: 16px;">${synergy.description}</span>` : '';
+            const type = synergy.type ? `<span style="font-size: 10px; color: #7dd3fc; margin-left: 8px;">[${synergy.type}]</span>` : '';
+            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${confidence} ${type}${description}</div>`;
           });
         }
 
