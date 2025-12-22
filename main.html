@@ -52,6 +52,31 @@
   .brand h1{margin:0; font-size:28px; font-weight:700; letter-spacing:.04em}
   .brand .badge{color:var(--muted); font-size:13px; letter-spacing:.14em; text-transform:uppercase}
 
+  /* Header controls */
+  .header-controls{
+    display:flex; align-items:center; gap:12px;
+  }
+
+  /* Auth toggle */
+  #authToggle{
+    display:flex; align-items:center; gap:10px;
+    border:1px solid var(--border); border-radius:12px;
+    background:linear-gradient(180deg,#132033,#0e1726);
+    padding:8px 12px; cursor:pointer; user-select:none;
+    font-size:14px; color:var(--ink);
+  }
+  #authToggle .dot{ width:12px; height:12px; border-radius:999px; background:var(--arc); box-shadow:0 0 12px var(--arc); }
+  #authToggle.authenticated .dot{ background:var(--good); box-shadow:0 0 12px var(--good); }
+  #authToggle.loading .dot{ background:var(--warning); box-shadow:0 0 12px var(--warning); animation:pulse 1.5s infinite; }
+  #authToggle .text::after{ content:"Sign In"; }
+  #authToggle.authenticated .text::after{ content:""; } /* Will be set by JS */
+  #authToggle.loading .text::after{ content:"Checking..."; }
+
+  @keyframes pulse {
+    0%, 100% { opacity:1; }
+    50% { opacity:0.5; }
+  }
+
   /* Lock toggle */
   #lockToggle{
     display:flex; align-items:center; gap:10px;
@@ -361,8 +386,13 @@
         <h1>Guardian Command</h1>
         <span class="badge">S!ck on Tuesdays</span>
       </div>
-      <div id="lockToggle" role="button" tabindex="0" aria-pressed="false" title="Click to lock/unlock layout">
-        <span class="dot" aria-hidden="true"></span><span class="text"></span>
+      <div class="header-controls">
+        <div id="authToggle" role="button" tabindex="0" title="Bungie.net Login">
+          <span class="dot" aria-hidden="true"></span><span class="text"></span>
+        </div>
+        <div id="lockToggle" role="button" tabindex="0" aria-pressed="false" title="Click to lock/unlock layout">
+          <span class="dot" aria-hidden="true"></span><span class="text"></span>
+        </div>
       </div>
     </header>
 
@@ -1582,6 +1612,137 @@
   } else {
     initializeBuildCrafter();
   }
+</script>
+
+<!-- Authentication System Integration -->
+<script type="module">
+import authManager from './lib/auth-client.js';
+
+// Authentication UI Controller
+class AuthUI {
+  constructor() {
+    this.authToggle = document.getElementById('authToggle');
+    this.dotElement = this.authToggle?.querySelector('.dot');
+    this.textElement = this.authToggle?.querySelector('.text');
+
+    this.init();
+  }
+
+  init() {
+    // Add click event listener
+    if (this.authToggle) {
+      this.authToggle.addEventListener('click', this.handleAuthClick.bind(this));
+      this.authToggle.addEventListener('keydown', this.handleKeyDown.bind(this));
+    }
+
+    // Listen for auth state changes
+    authManager.addEventListener('sessionchange', this.updateUI.bind(this));
+    authManager.addEventListener('loadingchange', this.updateLoadingState.bind(this));
+    authManager.addEventListener('errorchange', this.handleError.bind(this));
+
+    // Initial UI update
+    this.updateUI();
+    this.updateLoadingState({ detail: authManager.isLoading });
+  }
+
+  handleAuthClick() {
+    if (authManager.isLoading) return;
+
+    if (authManager.isAuthenticated()) {
+      this.logout();
+    } else {
+      this.login();
+    }
+  }
+
+  handleKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.handleAuthClick();
+    }
+  }
+
+  login() {
+    console.log('🔗 Initiating login...');
+    authManager.login();
+  }
+
+  logout() {
+    if (confirm('Are you sure you want to sign out?')) {
+      console.log('👋 Logging out...');
+      authManager.logout();
+    }
+  }
+
+  updateUI() {
+    if (!this.authToggle) return;
+
+    const isAuthenticated = authManager.isAuthenticated();
+    const user = authManager.getUser();
+
+    // Update classes
+    this.authToggle.className = this.authToggle.className
+      .replace(/\b(authenticated|loading)\b/g, '');
+
+    if (isAuthenticated) {
+      this.authToggle.classList.add('authenticated');
+    }
+
+    // Update text content
+    if (isAuthenticated && user) {
+      this.textElement.textContent = user.displayName || 'Signed In';
+      this.authToggle.title = `Signed in as ${user.displayName} - Click to sign out`;
+    } else {
+      this.textElement.textContent = '';
+      this.authToggle.title = 'Click to sign in with Bungie.net';
+    }
+
+    console.log(`🔄 Auth UI updated - authenticated: ${isAuthenticated}`);
+  }
+
+  updateLoadingState(event) {
+    if (!this.authToggle) return;
+
+    const isLoading = event.detail;
+
+    // Update classes
+    this.authToggle.classList.toggle('loading', isLoading);
+
+    // Update text for loading state
+    if (isLoading && !authManager.isAuthenticated()) {
+      this.textElement.textContent = '';
+    }
+  }
+
+  handleError(event) {
+    const error = event.detail;
+    if (error) {
+      console.error('🚨 Auth error:', error);
+      // You could show a toast notification here
+    }
+  }
+}
+
+// Global auth utilities
+window.authUtils = {
+  isAuthenticated: () => authManager.isAuthenticated(),
+  getUser: () => authManager.getUser(),
+  getDestinyMemberships: () => authManager.getDestinyMemberships(),
+  getPrimaryMembership: () => authManager.getPrimaryMembership(),
+  getAccessToken: () => authManager.getAccessToken(),
+  login: () => authManager.login(),
+  logout: () => authManager.logout(),
+  refreshSession: () => authManager.refreshSession()
+};
+
+// Initialize auth UI when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  window.authUI = new AuthUI();
+  console.log('✅ Authentication system initialized');
+});
+
+// For debugging
+window.authManager = authManager;
 </script>
 
 </body>

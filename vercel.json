@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/auth/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -9,13 +14,31 @@
         },
         {
           "key": "Access-Control-Allow-Methods",
-          "value": "GET, HEAD, OPTIONS"
+          "value": "GET, HEAD, POST, OPTIONS"
         },
         {
           "key": "Access-Control-Allow-Headers",
           "value": "X-Requested-With, Content-Type, Accept, Authorization"
         }
       ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/auth/bungie-login",
+      "destination": "/api/auth/bungie-login.js"
+    },
+    {
+      "source": "/api/auth/bungie-callback",
+      "destination": "/api/auth/bungie-callback.js"
+    },
+    {
+      "source": "/api/auth/session",
+      "destination": "/api/auth/session.js"
+    },
+    {
+      "source": "/api/auth/logout",
+      "destination": "/api/auth/logout.js"
     }
   ]
 }
