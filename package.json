@@ -2,7 +2,6 @@
   "name": "sick-on-tuesday-dashboard",
   "version": "1.0.0",
   "description": "Guardian Command Center for Sick on Tuesdays clan",
-  "type": "module",
   "scripts": {
     "dev": "python -m http.server 8080",
     "serve": "npx serve -s . -p 8080"
