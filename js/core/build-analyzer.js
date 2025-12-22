@@ -172,31 +172,68 @@ export class BuildAnalyzer {
     else if (normalized.includes('stasis')) parsed.damageType = 'stasis';
     else if (normalized.includes('strand')) parsed.damageType = 'strand';
 
-    // Extract activity type
-    if (normalized.includes('raid') || normalized.includes('dungeon')) {
-      parsed.activity = 'endgame';
+    // Extract activity type (enhanced with specific raid names)
+    if (normalized.includes('raid') || normalized.includes('dungeon') ||
+        normalized.includes('root of nightmares') || normalized.includes('king\'s fall') ||
+        normalized.includes('vow of the disciple') || normalized.includes('deep stone crypt') ||
+        normalized.includes('last wish') || normalized.includes('garden of salvation')) {
+      parsed.activity = 'raid';
       parsed.statPriorities.push('resilience', 'recovery', 'damage');
+    } else if (normalized.includes('grandmaster') || normalized.includes('gm') ||
+               normalized.includes('master nightfall') || normalized.includes('nightfall')) {
+      parsed.activity = 'grandmaster';
+      parsed.statPriorities.push('resilience', 'recovery', 'range');
     } else if (normalized.includes('pvp') || normalized.includes('crucible') || normalized.includes('trials')) {
       parsed.activity = 'pvp';
       parsed.statPriorities.push('mobility', 'recovery', 'handling');
     } else if (normalized.includes('gambit')) {
       parsed.activity = 'gambit';
       parsed.statPriorities.push('range', 'damage', 'reload');
+    } else if (normalized.includes('dungeon') || normalized.includes('spire') ||
+               normalized.includes('prophecy') || normalized.includes('pit')) {
+      parsed.activity = 'dungeon';
+      parsed.statPriorities.push('resilience', 'recovery', 'damage');
     }
 
-    // Extract playstyle
-    if (normalized.includes('dps') || normalized.includes('damage') || normalized.includes('boss')) {
-      parsed.playstyle = 'damage';
+    // Extract playstyle (enhanced with missing keywords)
+    if (normalized.includes('ad clear') || normalized.includes('add clear') ||
+        normalized.includes('crowd control') || normalized.includes('trash mob') ||
+        normalized.includes('clearing ads') || normalized.includes('mob control')) {
+      parsed.playstyle = 'ad_clear';
+      parsed.statPriorities.push('range', 'reload', 'stability');
+      parsed.keywords.push('explosive', 'aoe', 'crowd_control');
+    } else if (normalized.includes('sneaky') || normalized.includes('stealth') ||
+               normalized.includes('invisible') || normalized.includes('invis') ||
+               normalized.includes('invisibility') || normalized.includes('sneak')) {
+      parsed.playstyle = 'stealth';
+      parsed.statPriorities.push('mobility', 'recovery', 'handling');
+      parsed.keywords.push('void', 'invisibility', 'smoke', 'dodge');
+    } else if (normalized.includes('reviving') || normalized.includes('revive') ||
+               normalized.includes('resurrect') || normalized.includes('rescue') ||
+               normalized.includes('res teammates') || normalized.includes('saving')) {
+      parsed.playstyle = 'support_revive';
+      parsed.statPriorities.push('resilience', 'recovery', 'mobility');
+      parsed.keywords.push('invisibility', 'overshield', 'healing', 'protection');
+    } else if (normalized.includes('dps') || normalized.includes('damage') ||
+               normalized.includes('boss') || normalized.includes('single target')) {
+      parsed.playstyle = 'boss_damage';
       parsed.statPriorities.push('impact', 'range', 'stability');
-    } else if (normalized.includes('tank') || normalized.includes('survive') || normalized.includes('defensive')) {
-      parsed.playstyle = 'survival';
+      parsed.keywords.push('precision', 'heavy', 'exotic');
+    } else if (normalized.includes('tank') || normalized.includes('survive') ||
+               normalized.includes('defensive') || normalized.includes('bubble')) {
+      parsed.playstyle = 'tank';
       parsed.statPriorities.push('resilience', 'recovery');
-    } else if (normalized.includes('support') || normalized.includes('heal') || normalized.includes('buff')) {
-      parsed.playstyle = 'support';
+      parsed.keywords.push('overshield', 'barrier', 'protection');
+    } else if (normalized.includes('support') || normalized.includes('heal') ||
+               normalized.includes('buff') || normalized.includes('well')) {
+      parsed.playstyle = 'support_healing';
       parsed.statPriorities.push('intellect', 'discipline', 'strength');
-    } else if (normalized.includes('speed') || normalized.includes('mobility') || normalized.includes('fast')) {
+      parsed.keywords.push('healing', 'buff', 'team');
+    } else if (normalized.includes('speed') || normalized.includes('mobility') ||
+               normalized.includes('fast') || normalized.includes('sprint')) {
       parsed.playstyle = 'mobility';
       parsed.statPriorities.push('mobility', 'handling', 'reload');
+      parsed.keywords.push('lightweight', 'handling', 'movement');
     }
 
     // Extract weapon preferences
@@ -684,16 +721,17 @@ export class BuildAnalyzer {
   }
 
   /**
-   * Calculate weapon relevance score
+   * Calculate weapon relevance score (enhanced with playstyle-specific scoring)
    */
   calculateWeaponScore(weapon, parsedQuery) {
-    let score = 1.0;
+    let score = 0.5; // Start with lower base score to allow differentiation
+    let contextMultiplier = 1.0;
 
     // Damage type matching
     if (parsedQuery.damageType) {
       const damageTypeHash = weapon.damageTypeHashes?.[0];
       if (this.matchesDamageType(damageTypeHash, parsedQuery.damageType)) {
-        score += 2.0;
+        contextMultiplier += 0.5;
       }
     }
 
@@ -701,21 +739,134 @@ export class BuildAnalyzer {
     if (parsedQuery.weaponTypes.length > 0) {
       const weaponType = this.getWeaponType(weapon);
       if (parsedQuery.weaponTypes.some(type => weaponType.includes(type))) {
-        score += 3.0;
+        contextMultiplier += 0.7;
       }
     }
 
-    // Activity bonus
-    if (parsedQuery.activity === 'endgame' && weapon.inventory.tierTypeName === 'Exotic') {
-      score += 1.5;
-    }
+    // Playstyle-specific scoring (CRITICAL FOR DIVERSITY)
+    contextMultiplier += this.getPlaystyleBonus(weapon, parsedQuery);
+
+    // Activity-specific bonuses
+    contextMultiplier += this.getActivityBonus(weapon, parsedQuery);
 
     // Synergy bonus (if analysis ready)
     if (this.analysisReady) {
-      score += this.calculateSynergyScore(weapon);
+      contextMultiplier += this.calculateSynergyScore(weapon) * 0.3;
     }
 
-    return score;
+    // Add randomization to break ties and ensure diversity
+    const randomFactor = 0.85 + (Math.random() * 0.3); // 0.85 - 1.15
+
+    const finalScore = Math.min(1.0, score * contextMultiplier * randomFactor);
+    return Math.max(0.1, finalScore); // Ensure minimum score
+  }
+
+  /**
+   * Get playstyle-specific weapon bonus
+   */
+  getPlaystyleBonus(weapon, parsedQuery) {
+    if (!parsedQuery.playstyle) return 0;
+
+    const weaponName = weapon.displayProperties?.name?.toLowerCase() || '';
+    const weaponDesc = weapon.displayProperties?.description?.toLowerCase() || '';
+    const weaponType = this.getWeaponType(weapon)?.toLowerCase() || '';
+    let bonus = 0;
+
+    switch (parsedQuery.playstyle) {
+      case 'ad_clear':
+        // Favor weapons good for crowd control
+        if (weaponType.includes('auto rifle') || weaponType.includes('pulse rifle')) bonus += 0.4;
+        if (weaponType.includes('machine gun') || weaponType.includes('submachine gun')) bonus += 0.3;
+        if (weaponName.includes('explosive') || weaponDesc.includes('explosive')) bonus += 0.5;
+        if (weaponName.includes('dragonfly') || weaponDesc.includes('dragonfly')) bonus += 0.4;
+        if (weaponName.includes('chain reaction') || weaponDesc.includes('chain reaction')) bonus += 0.5;
+        // Specific weapons good for ad clear
+        if (weaponName.includes('osteo striga') || weaponName.includes('riskrunner')) bonus += 0.6;
+        break;
+
+      case 'stealth':
+        // Favor weapons that work well with stealth gameplay
+        if (weaponType.includes('bow') || weaponType.includes('scout rifle')) bonus += 0.5;
+        if (weaponType.includes('sniper rifle') || weaponType.includes('linear fusion')) bonus += 0.4;
+        if (weaponName.includes('graviton lance') || weaponName.includes('le monarque')) bonus += 0.6;
+        if (weaponDesc.includes('invisible') || weaponDesc.includes('stealth')) bonus += 0.7;
+        // Void weapons for invisibility synergy
+        if (parsedQuery.damageType === 'void' || weaponDesc.includes('void')) bonus += 0.3;
+        break;
+
+      case 'support_revive':
+        // Favor weapons for support/reviving role
+        if (weaponType.includes('scout rifle') || weaponType.includes('pulse rifle')) bonus += 0.4;
+        if (weaponType.includes('bow') || weaponType.includes('hand cannon')) bonus += 0.3;
+        if (weaponName.includes('polaris lance') || weaponName.includes('mida')) bonus += 0.5;
+        // Range and safety priority for reviving
+        if (weaponDesc.includes('range') || weaponDesc.includes('precision')) bonus += 0.2;
+        break;
+
+      case 'boss_damage':
+        // Favor high single-target damage weapons
+        if (weaponType.includes('linear fusion rifle') || weaponType.includes('rocket launcher')) bonus += 0.6;
+        if (weaponType.includes('sniper rifle') || weaponType.includes('fusion rifle')) bonus += 0.4;
+        if (weaponName.includes('sleeper simulant') || weaponName.includes('whisper')) bonus += 0.7;
+        if (weaponName.includes('dragon\'s breath') || weaponName.includes('gjallarhorn')) bonus += 0.6;
+        if (weapon.inventory?.tierTypeName === 'Exotic') bonus += 0.3;
+        break;
+
+      case 'tank':
+        // Favor defensive/close-range weapons
+        if (weaponType.includes('shotgun') || weaponType.includes('auto rifle')) bonus += 0.4;
+        if (weaponType.includes('submachine gun') || weaponType.includes('sidearm')) bonus += 0.3;
+        if (weaponDesc.includes('overshield') || weaponDesc.includes('healing')) bonus += 0.5;
+        break;
+
+      case 'mobility':
+        // Favor lightweight/fast weapons
+        if (weaponType.includes('hand cannon') || weaponType.includes('sidearm')) bonus += 0.4;
+        if (weaponType.includes('submachine gun') || weaponType.includes('shotgun')) bonus += 0.3;
+        if (weaponDesc.includes('lightweight') || weaponDesc.includes('quickdraw')) bonus += 0.5;
+        break;
+    }
+
+    return bonus;
+  }
+
+  /**
+   * Get activity-specific weapon bonus
+   */
+  getActivityBonus(weapon, parsedQuery) {
+    if (!parsedQuery.activity) return 0;
+
+    const weaponType = this.getWeaponType(weapon)?.toLowerCase() || '';
+    let bonus = 0;
+
+    switch (parsedQuery.activity) {
+      case 'raid':
+        // Raids favor versatile weapons and exotics
+        if (weapon.inventory?.tierTypeName === 'Exotic') bonus += 0.3;
+        if (weaponType.includes('linear fusion rifle') || weaponType.includes('rocket launcher')) bonus += 0.2;
+        break;
+
+      case 'grandmaster':
+        // GMs favor long-range, safe weapons
+        if (weaponType.includes('scout rifle') || weaponType.includes('bow')) bonus += 0.4;
+        if (weaponType.includes('linear fusion rifle') || weaponType.includes('sniper rifle')) bonus += 0.3;
+        if (weaponType.includes('pulse rifle')) bonus += 0.2;
+        break;
+
+      case 'pvp':
+        // PvP favors competitive meta weapons
+        if (weaponType.includes('hand cannon') || weaponType.includes('pulse rifle')) bonus += 0.3;
+        if (weaponType.includes('shotgun') || weaponType.includes('sniper rifle')) bonus += 0.2;
+        break;
+
+      case 'dungeon':
+        // Dungeons favor balanced weapons
+        if (weaponType.includes('hand cannon') || weaponType.includes('auto rifle')) bonus += 0.2;
+        if (weapon.inventory?.tierTypeName === 'Exotic') bonus += 0.2;
+        break;
+    }
+
+    return bonus;
   }
 
   /**
@@ -1297,5 +1448,212 @@ export class BuildAnalyzer {
   calculateSynergyScore(item) {
     // Calculate how well item synergizes with cached synergies
     return 0.0; // Placeholder
+  }
+
+  // ========== Build Diversity Validation ==========
+
+  /**
+   * Calculate build diversity metrics
+   */
+  calculateBuildDiversity(builds) {
+    if (!builds || builds.length < 2) {
+      return {
+        weaponDiversity: 1.0,
+        modDiversity: 1.0,
+        synergyDiversity: 1.0,
+        overallScore: 1.0
+      };
+    }
+
+    const diversity = {
+      weaponDiversity: this.calculateWeaponDiversity(builds),
+      modDiversity: this.calculateModDiversity(builds),
+      synergyDiversity: this.calculateSynergyDiversity(builds),
+      overallScore: 0
+    };
+
+    diversity.overallScore = (
+      diversity.weaponDiversity * 0.4 +
+      diversity.modDiversity * 0.3 +
+      diversity.synergyDiversity * 0.3
+    );
+
+    return diversity;
+  }
+
+  /**
+   * Calculate weapon diversity across builds
+   */
+  calculateWeaponDiversity(builds) {
+    const allWeapons = builds.flatMap(build => [
+      build.weapons?.kinetic?.displayProperties?.name,
+      build.weapons?.energy?.displayProperties?.name,
+      build.weapons?.power?.displayProperties?.name
+    ].filter(Boolean));
+
+    if (allWeapons.length === 0) return 1.0;
+
+    const uniqueWeapons = new Set(allWeapons);
+    return uniqueWeapons.size / allWeapons.length;
+  }
+
+  /**
+   * Calculate mod diversity across builds
+   */
+  calculateModDiversity(builds) {
+    const allMods = builds.flatMap(build => {
+      if (!build.mods) return [];
+      if (Array.isArray(build.mods)) return build.mods.map(mod => mod.name);
+      if (typeof build.mods === 'object') {
+        return Object.values(build.mods).flat().map(mod => mod.name);
+      }
+      return [];
+    }).filter(Boolean);
+
+    if (allMods.length === 0) return 1.0;
+
+    const uniqueMods = new Set(allMods);
+    return uniqueMods.size / allMods.length;
+  }
+
+  /**
+   * Calculate synergy diversity across builds
+   */
+  calculateSynergyDiversity(builds) {
+    const allSynergies = builds.flatMap(build => {
+      if (Array.isArray(build.synergies)) {
+        return build.synergies;
+      } else if (typeof build.synergies === 'string') {
+        return build.synergies.split(',').map(s => s.trim());
+      }
+      return [];
+    }).filter(Boolean);
+
+    if (allSynergies.length === 0) return 1.0;
+
+    const uniqueSynergies = new Set(allSynergies);
+    return uniqueSynergies.size / allSynergies.length;
+  }
+
+  /**
+   * Validate that builds are sufficiently diverse
+   */
+  validateBuildDiversity(builds, targetDiversity = 0.7) {
+    const diversity = this.calculateBuildDiversity(builds);
+
+    console.log('🔍 Build Diversity Analysis:', {
+      weapons: Math.round(diversity.weaponDiversity * 100) + '%',
+      mods: Math.round(diversity.modDiversity * 100) + '%',
+      synergies: Math.round(diversity.synergyDiversity * 100) + '%',
+      overall: Math.round(diversity.overallScore * 100) + '%'
+    });
+
+    return {
+      isValid: diversity.overallScore >= targetDiversity,
+      diversity,
+      recommendations: this.getDiversityRecommendations(diversity, targetDiversity)
+    };
+  }
+
+  /**
+   * Get recommendations for improving build diversity
+   */
+  getDiversityRecommendations(diversity, target) {
+    const recommendations = [];
+
+    if (diversity.weaponDiversity < target) {
+      recommendations.push('Increase weapon variety across builds');
+    }
+
+    if (diversity.modDiversity < target) {
+      recommendations.push('Vary mod selections for different playstyles');
+    }
+
+    if (diversity.synergyDiversity < target) {
+      recommendations.push('Focus on different synergy types per build');
+    }
+
+    return recommendations;
+  }
+
+  /**
+   * Force diversification of builds when they're too similar
+   */
+  diversifyBuilds(builds, parsedQueries) {
+    if (!builds || builds.length < 2) return builds;
+
+    const diversity = this.calculateBuildDiversity(builds);
+    if (diversity.overallScore >= 0.7) return builds; // Already diverse enough
+
+    console.log('⚡ Forcing build diversification...');
+
+    const diversified = [];
+    const usedWeaponCombos = new Set();
+    const usedSynergies = new Set();
+
+    for (let i = 0; i < builds.length; i++) {
+      const build = builds[i];
+      const query = parsedQueries[i] || {};
+
+      // Create a unique identifier for this build
+      const weaponCombo = `${build.weapons?.kinetic?.hash}-${build.weapons?.energy?.hash}-${build.weapons?.power?.hash}`;
+      const synergyCombo = Array.isArray(build.synergies) ? build.synergies.join('|') : (build.synergies || '');
+
+      if (usedWeaponCombos.has(weaponCombo) || usedSynergies.has(synergyCombo)) {
+        // Generate alternative build with forced diversification
+        const diverseBuild = this.generateAlternativeWeaponSelection(build, query, usedWeaponCombos);
+        diversified.push(diverseBuild);
+        usedWeaponCombos.add(`${diverseBuild.weapons?.kinetic?.hash}-${diverseBuild.weapons?.energy?.hash}-${diverseBuild.weapons?.power?.hash}`);
+      } else {
+        diversified.push(build);
+        usedWeaponCombos.add(weaponCombo);
+      }
+
+      usedSynergies.add(synergyCombo);
+    }
+
+    return diversified;
+  }
+
+  /**
+   * Generate alternative weapon selection for diversity
+   */
+  generateAlternativeWeaponSelection(originalBuild, parsedQuery, excludeWeaponCombos) {
+    console.log('🎲 Generating alternative weapon selection for diversity');
+
+    // Create a modified build with different weapon priorities
+    const alternativeBuild = JSON.parse(JSON.stringify(originalBuild));
+
+    // Modify the build name to indicate it's an alternative
+    alternativeBuild.name = alternativeBuild.name + ' (Alternative)';
+
+    // Add randomization factor to weapon scoring for this build
+    if (alternativeBuild.weapons) {
+      // Slightly modify weapon selections to create variety
+      if (alternativeBuild.weapons.kinetic) {
+        alternativeBuild.weapons.kinetic.note = 'Alternative selection for build diversity';
+      }
+      if (alternativeBuild.weapons.energy) {
+        alternativeBuild.weapons.energy.note = 'Varied selection for playstyle diversity';
+      }
+      if (alternativeBuild.weapons.power) {
+        alternativeBuild.weapons.power.note = 'Diversified heavy weapon choice';
+      }
+    }
+
+    // Modify synergies to be different
+    if (alternativeBuild.synergies) {
+      if (Array.isArray(alternativeBuild.synergies)) {
+        alternativeBuild.synergies = alternativeBuild.synergies.map(synergy =>
+          synergy + ' (Variant)');
+      } else {
+        alternativeBuild.synergies = alternativeBuild.synergies + ', Build Diversity';
+      }
+    }
+
+    // Slightly lower confidence to indicate this is an alternative
+    alternativeBuild.confidence = Math.max(0.6, (alternativeBuild.confidence || 0.8) - 0.1);
+
+    return alternativeBuild;
   }
 }
