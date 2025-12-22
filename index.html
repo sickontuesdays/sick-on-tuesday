@@ -1,186 +1,1749 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Coming Soon | Destiny 2 Clan Hub — S!ck on Tuesdays</title>
-  <meta name="description" content="Site coming soon for the Destiny 2 clan S!ck on Tuesdays. Quick links to trusted D2 tools." />
-  <style>
-    :root{
-      --bg: #ffffff;
-      --ink: #0f172a;
-      --muted: #475569;
-      --accent: #0ea5e9;
-      --border: #e5e7eb;
-      --card: #ffffff;
-      --card-hover: #f8fafc;
-      --shadow: 0 1px 2px rgba(15,23,42,.06), 0 8px 24px rgba(15,23,42,.05);
-      --radius: 14px;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root{
-        --bg:#0b0f17; --ink:#e5e7eb; --muted:#94a3b8; --accent:#38bdf8;
-        --border:#1f2937; --card:#0e1522; --card-hover:#0f1826;
-        --shadow: 0 1px 2px rgba(0,0,0,.25), 0 8px 24px rgba(0,0,0,.25);
-      }
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; background:var(--bg); color:var(--ink);
-      font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;
-    }
-    .wrap{max-width:1050px; margin:0 auto; padding:32px 18px 56px}
-    header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px}
-    .brand h1{margin:0; font-size:28px; letter-spacing:.2px}
-    .brand small{display:block; color:var(--muted); margin-top:4px}
-    .contact{display:flex; gap:12px; flex-wrap:wrap}
-    .contact a{color:var(--accent); text-decoration:none; font-weight:600}
-    .contact a:hover{text-decoration:underline}
-    .hero{
-      margin-top:16px; padding:18px; border:1px solid var(--border); border-radius:var(--radius);
-      background:var(--card); box-shadow:var(--shadow);
-    }
-    .hero h2{margin:0 0 8px 0; font-size:22px}
-    .hero p{margin:6px 0; color:var(--muted)}
-    .sectionTitle{margin:26px 0 12px; font-size:20px; font-weight:800}
-    .grid{
-      display:grid; gap:14px;
-      grid-template-columns:repeat(1,minmax(0,1fr));
-    }
-    @media (min-width:680px){ .grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
-    @media (min-width:980px){ .grid{grid-template-columns:repeat(3,minmax(0,1fr));} }
-    .card{
-      display:block; text-decoration:none; color:inherit;
-      border:1px solid var(--border); border-radius:var(--radius);
-      background:var(--card); padding:16px; box-shadow:var(--shadow);
-      transition:transform .07s ease, background .2s ease, border-color .2s ease;
-    }
-    .card:hover{transform:translateY(-2px); background:var(--card-hover); border-color:#cbd5e1}
-    .card h3{margin:0 0 6px 0; font-size:17px; letter-spacing:.2px}
-    .card p{margin:0; color:var(--muted); font-size:14px}
-    .pill{
-      display:inline-block; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
-      color:#0b0f17; background:linear-gradient(180deg,#7dd3fc,#38bdf8);
-      border-radius:999px; padding:3px 8px; font-weight:800; margin-bottom:8px;
-    }
-    @media (prefers-color-scheme: dark) {
-      .pill{color:#020617}
-    }
-    footer{
-      margin-top:28px; padding-top:18px; border-top:1px solid var(--border);
-      color:var(--muted); font-size:14px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;
-    }
-    .links{display:flex; gap:14px; flex-wrap:wrap}
-    .links a{color:var(--muted); text-decoration:none}
-    .links a:hover{color:var(--ink); text-decoration:underline}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>S!ck on Tuesdays — Command Grid (Live Drop Highlight + Reflow)</title>
+<meta name="description" content="Destiny 2 command-center grid with live drop highlight, real-time reflow, smooth drag (snap on drop), responsive layouts panel with bulk delete, lock, and undo.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#0a0e13; --panel:#0f1520; --panel2:#121a28;
+    --ink:#e7eefc; --muted:#94a7c4; --border:#1f2b3e;
+    --arc:#7dd3fc; --arc2:#60a5fa; --good:#34d399; --bad:#fb7185;
+
+    --cols: 12; --colW: 90px; --rowH: 90px; --gap: 14px;
+    --wrapW: 80vw;
+    --tabsW: 260px; /* wider layouts panel */
+  }
+  @media (max-width:1300px){ :root{ --colW:84px; --rowH:86px; } }
+  @media (max-width:1100px){ :root{ --colW:78px; --rowH:80px; } }
+  @media (max-width: 900px){ :root{ --colW:70px; --rowH:74px; } }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font:16px/1.55 Rajdhani, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1100px 600px at 100% -10%, rgba(18,34,56,.55), transparent 60%),
+      radial-gradient(900px 500px at -20% 110%, rgba(24,40,62,.55), transparent 60%),
+      linear-gradient(180deg, #081018 0%, #060a10 100%);
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none;
+    background:
+      linear-gradient(transparent 31px, rgba(125,211,252,.05) 32px),
+      linear-gradient(90deg, transparent 31px, rgba(125,211,252,.05) 32px);
+    background-size:32px 32px;
+    mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
+  }
+
+  .wrap{ width:min(2000px, var(--wrapW)); margin:20px auto 60px; }
+
+  header{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px;
+  }
+  .brand{display:flex; align-items:baseline; gap:12px}
+  .brand h1{margin:0; font-size:28px; font-weight:700; letter-spacing:.04em}
+  .brand .badge{color:var(--muted); font-size:13px; letter-spacing:.14em; text-transform:uppercase}
+
+  /* Header controls */
+  .header-controls{
+    display:flex; align-items:center; gap:12px;
+  }
+
+  /* Auth toggle */
+  #authToggle{
+    display:flex; align-items:center; gap:10px;
+    border:1px solid var(--border); border-radius:12px;
+    background:linear-gradient(180deg,#132033,#0e1726);
+    padding:8px 12px; cursor:pointer; user-select:none;
+    font-size:14px; color:var(--ink);
+  }
+  #authToggle .dot{ width:12px; height:12px; border-radius:999px; background:var(--arc); box-shadow:0 0 12px var(--arc); }
+  #authToggle.authenticated .dot{ background:var(--good); box-shadow:0 0 12px var(--good); }
+  #authToggle.loading .dot{ background:var(--warning); box-shadow:0 0 12px var(--warning); animation:pulse 1.5s infinite; }
+  #authToggle .text::after{ content:"Sign In"; }
+  #authToggle.authenticated .text::after{ content:""; } /* Will be set by JS */
+  #authToggle.loading .text::after{ content:"Checking..."; }
+
+  @keyframes pulse {
+    0%, 100% { opacity:1; }
+    50% { opacity:0.5; }
+  }
+
+  /* Lock toggle */
+  #lockToggle{
+    display:flex; align-items:center; gap:10px;
+    border:1px solid var(--border); border-radius:12px;
+    background:linear-gradient(180deg,#132033,#0e1726);
+    padding:8px 12px; cursor:pointer; user-select:none;
+    font-size:14px; color:var(--ink);
+  }
+  #lockToggle .dot{ width:12px; height:12px; border-radius:999px; background:var(--good); box-shadow:0 0 12px var(--good); }
+  body.locked #lockToggle .dot{ background:#9b1c1c; box-shadow:0 0 10px #9b1c1c; }
+  body.locked #lockToggle .text::after{ content:"Layout Locked"; }
+  #lockToggle .text::after{ content:"Editing Enabled"; }
+  body.locked .bar{ cursor:default; }
+  body.locked .resize{ display:none; }
+
+  /* ===== GRID ===== */
+  .grid{
+    position:relative;
+    display:grid;
+    grid-template-columns: repeat(var(--cols), minmax(var(--colW), 1fr));
+    grid-auto-rows: var(--rowH);
+    gap: var(--gap);
+  }
+
+  /* Drop target highlight */
+  .dropHint{
+    display:none;
+    pointer-events:none;
+    border:2px dashed var(--arc);
+    border-radius:10px;
+    background:linear-gradient(180deg, rgba(96,165,250,.08), rgba(125,211,252,.06));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+  }
+  .dropHint.active{ display:block; }
+
+  /* ===== CARDS ===== */
+  .card{
+    position:relative;
+    background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 140%);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:0 6px 24px rgba(2,10,20,.35);
+    overflow:hidden;
+    user-select:none;
+    will-change: transform;
+  }
+  .card.hide{ display:none !important; }
+
+  .bar{
+    height:38px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 10px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,#132033,#0e1726);
+    cursor:grab;
+  }
+  .bar:active{ cursor:grabbing; }
+  .title{ font-weight:700; letter-spacing:.04em }
+  .handle{ font-weight:700; letter-spacing:.2em; color:var(--muted); user-select:none }
+
+  .content{ padding:12px; color:var(--muted); font-size:14px }
+  a{color:var(--arc); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  .resize{
+    position:absolute; width:16px; height:16px; right:6px; bottom:6px;
+    border:1px solid var(--border); border-radius:3px;
+    background:linear-gradient(135deg, #0e1726 0%, #132033 100%);
+    cursor:nwse-resize;
+  }
+  .dragging{ opacity:.95; box-shadow:0 10px 26px rgba(0,0,0,.45); }
+
+  /* ===== Right controls (hide/unhide) ===== */
+  .rightDock{
+    position:fixed; z-index:20; top:86px;
+    right:max(10px, calc((100vw - var(--wrapW)) / 2 - 240px));
+    width:220px;
+  }
+  .controlBox{
+    border:1px solid var(--border); border-radius:12px;
+    background:linear-gradient(180deg,#0f1520,#101a28);
+    box-shadow:0 8px 28px rgba(0,0,0,.35); overflow:hidden;
+  }
+  .controlHeader{
+    padding:10px 12px; font-weight:700; letter-spacing:.06em; cursor:pointer;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .controlHeader:hover{ background:#111b2a; }
+  .caret{ transition: transform .15s ease; }
+  .controlBody{ display:none; max-height:420px; overflow:auto; }
+  .controlBox.open .controlBody{ display:block; }
+  .controlBox.open .caret{ transform: rotate(180deg); }
+  .checkRow{ display:flex; align-items:center; gap:8px; padding:8px 12px; font-size:14px; color:var(--muted) }
+  .checkRow input{ transform: translateY(1px); }
+
+  /* ===== Left layouts panel (wide + responsive) ===== */
+  .leftTabs{
+    position:fixed; z-index:20; top:86px;
+    left:max(10px, calc((100vw - var(--wrapW)) / 2 - var(--tabsW) - 10px));
+    width:var(--tabsW);
+  }
+  .tabs{
+    border:1px solid var(--border); border-radius:12px; overflow:hidden;
+    background:linear-gradient(180deg,#0f1520,#101a28);
+    box-shadow:0 8px 28px rgba(0,0,0,.35);
+  }
+  .tabRow{ display:flex; align-items:center; gap:10px; padding:0; border-bottom:1px solid var(--border); }
+  .colorChip{
+    width:16px; height:16px; border-radius:4px; margin-left:10px;
+    border:1px solid var(--border); cursor:pointer; flex:0 0 auto;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.15);
+  }
+  body.locked .colorChip{ cursor:not-allowed; opacity:.6; pointer-events:none; }
+  .tabCheck{ margin-left:10px; width:16px; height:16px; flex:0 0 auto; accent-color: var(--arc); }
+  .tabBtn{
+    flex:1 1 auto; text-align:left; padding:10px 12px; border:0; background:transparent; color:var(--ink);
+    cursor:pointer; font-weight:700; letter-spacing:.04em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .tabBtn:hover{ background:#111b2a; }
+  .tabBtn.active{ background:#122132; }
+
+  .addBtn{
+    width:100%; text-align:left; padding:10px 12px; border:0; background:#0e1726; color:var(--ink);
+    cursor:pointer; font-weight:700; letter-spacing:.04em;
+  }
+  .addBtn:hover{ background:#111b2a; }
+
+  .bulkBar{
+    display:flex; align-items:center; gap:8px; padding:8px; border-top:1px solid var(--border);
+    background:#0e1726;
+  }
+  .toggleBtn{
+    flex:1 1 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
+    background:#0e1726; color:var(--ink); font-weight:700; text-align:left;
+  }
+  .toggleBtn[aria-pressed="true"]{ background:#122132; }
+  .deleteBtn{
+    flex:0 0 auto; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
+    background:linear-gradient(180deg,#2b0f14,#370c12); border-color:#4a1018; color:#ffb3bd; font-weight:700;
+    opacity:.55; pointer-events:none;
+  }
+  .deleteBtn.enabled{ opacity:1; pointer-events:auto; }
+  .deleteBtn:disabled{ filter:grayscale(40%); opacity:.5; cursor:not-allowed; }
+
+  .tabFooter{ padding:8px 12px; color:var(--muted); font-size:12px }
+
+  /* Top-mode (when not enough left margin) */
+  body.tabsTop .leftTabs{
+    position:static; width:100%; max-width:100%; margin-bottom:10px; left:auto; top:auto;
+  }
+  body.tabsTop .tabs{ display:block; }
+  body.tabsTop .tabs .tabRow{ display:inline-flex; border-bottom:0; border-right:1px solid var(--border); padding-right:8px; margin-right:8px; }
+  body.tabsTop .addBtn{ display:inline-block; width:auto; margin:8px; }
+  body.tabsTop .bulkBar{ display:inline-flex; vertical-align:middle; margin:8px; }
+  body.tabsTop .tabFooter{ display:block; }
+
+  /* Popover (single color/rename/delete) */
+  .popover{
+    position:fixed; z-index:50; width:240px; border:1px solid var(--border); border-radius:10px;
+    background:linear-gradient(180deg,#0f1520,#101a28); box-shadow:0 12px 40px rgba(0,0,0,.5); padding:10px; display:none;
+  }
+  .popover.open{ display:block; }
+  .popover label{ display:block; font-size:12px; color:var(--muted); margin:6px 0 4px }
+  .popover input[type="text"]{
+    width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border);
+    background:#0e1726; color:#fff;
+  }
+  .popover input[type="color"]{
+    width:100%; height:36px; border:1px solid var(--border); border-radius:8px; background:transparent; padding:0;
+  }
+  .popover .row{ display:flex; gap:8px; margin-top:10px }
+  .popover button{
+    flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
+    background:#0e1726; color:#fff; font-weight:700;
+  }
+  .popover button:hover{ background:#111b2a; }
+  .popover .danger{ margin-top:8px; width:100%; background:linear-gradient(180deg,#2b0f14,#370c12);
+    border-color:#4a1018; color:#ffb3bd; }
+  .popover .danger:hover{ background:linear-gradient(180deg,#3a131a,#4a1118); }
+  .popover .danger:disabled{ opacity:.6; cursor:not-allowed; filter:grayscale(40%); }
+
+  /* Confirm modal */
+  .modal{ position:fixed; inset:0; display:none; z-index:60; }
+  .modal.open{ display:block; }
+  .modal .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55); backdrop-filter: blur(2px); }
+  .modal .dialog{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:min(480px, 92vw); border:1px solid var(--border); border-radius:12px;
+    background:linear-gradient(180deg,#0f1520,#101a28); box-shadow:0 18px 60px rgba(0,0,0,.55); padding:16px;
+  }
+  .dialog h3{ margin:0 0 6px; font-size:18px }
+  .dialog p{ margin:0 0 12px; color:var(--muted) }
+  .dialog .row{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+  .dialog button{
+    padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#0e1726; color:var(--ink); font-weight:700; cursor:pointer;
+  }
+  .dialog button:hover{ background:#111b2a; }
+  .dialog .danger{ background:linear-gradient(180deg,#2b0f14,#370c12); border-color:#4a1018; color:#ffb3bd; }
+
+  /* Snackbar (Undo) */
+  .snackbar{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:70;
+    display:none; align-items:center; gap:12px; padding:10px 14px; border:1px solid var(--border); border-radius:12px;
+    background:linear-gradient(180deg,#0f1520,#101a28); box-shadow:0 12px 40px rgba(0,0,0,.5); color:var(--ink);
+  }
+  .snackbar.show{ display:flex; }
+  .snackbar button{ padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:#0e1726; color:var(--ink); font-weight:700; cursor:pointer; }
+  .snackbar button:hover{ background:#111b2a; }
+  .snackbar .muted{ color:var(--muted); }
+
+  /* Build Crafter Styles */
+  .build-input-container {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .build-input {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--ink);
+    font-size: 12px;
+    font-family: inherit;
+  }
+  .build-input::placeholder {
+    color: var(--muted);
+  }
+  .build-input:focus {
+    outline: none;
+    border-color: var(--arc);
+    box-shadow: 0 0 0 1px var(--arc);
+  }
+  .build-generate-btn {
+    padding: 6px 10px;
+    background: linear-gradient(135deg, var(--arc) 0%, var(--arc2) 100%);
+    color: #0a0e13;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+  }
+  .build-generate-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(125, 211, 252, 0.3);
+  }
+  .build-generate-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  .build-result {
+    margin-top: 8px;
+    padding: 8px;
+    background: var(--panel2);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .build-result h4 {
+    margin: 0 0 4px 0;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .build-result p {
+    margin: 2px 0;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .build-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .build-action-btn {
+    padding: 3px 6px;
+    background: transparent;
+    color: var(--arc);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    font-family: inherit;
+  }
+  .build-action-btn:hover {
+    background: var(--arc);
+    color: var(--panel);
+  }
+  .loading-state {
+    text-align: center;
+    padding: 16px;
+  }
+  .error-state {
+    text-align: center;
+    padding: 16px;
+    color: var(--bad);
+  }
+</style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <div class="brand" aria-label="Site identity">
-        <h1>Sick on Tuesdays</h1>
-        <small></small>
+      <div class="brand">
+        <h1>Guardian Command</h1>
+        <span class="badge">S!ck on Tuesdays</span>
       </div>
-      <nav class="contact" aria-label="Contact and social">
-        <a href="mailto:sickontuesdays@gmail.com">sickontuesdays@gmail.com</a>
-        <a href="https://www.youtube.com/@SickOnTuesdays" target="_blank" aria-label="YouTube">YouTube</a>
-        <a href="https://www.twitch.tv/sickontuesdays" target="_blank" aria-label="Twitch">Twitch</a>
-      </nav>
+      <div class="header-controls">
+        <div id="authToggle" role="button" tabindex="0" title="Bungie.net Login">
+          <span class="dot" aria-hidden="true"></span><span class="text"></span>
+        </div>
+        <div id="lockToggle" role="button" tabindex="0" aria-pressed="false" title="Click to lock/unlock layout">
+          <span class="dot" aria-hidden="true"></span><span class="text"></span>
+        </div>
+      </div>
     </header>
 
-    <section class="hero" aria-labelledby="coming-soon">
-      <h2 id="coming-soon">Sick on Tuesdays site coming soon, but until then…</h2>
-      <p>Use the tools below at your own risk. We are only providing the links to the tools we found available online, not endorsing them.</p>
-    </section>
+    <main class="grid" id="grid">
+      <!-- Live drop target -->
+      <div id="dropHint" class="dropHint" aria-hidden="true"></div>
 
-    <h3 class="sectionTitle">Destiny 2 Tools</h3>
+      <!-- Initial cards -->
+      <section class="card" data-id="D" data-x="0" data-y="0" data-w="8" data-h="6">
+        <div class="bar"><div class="title">Season Overview</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Main “hero” area. Other boxes can grow/shrink as you arrange.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
 
-    <section class="grid" aria-label="Destiny 2 tools list">
-      <a class="card" href="https://app.destinyitemmanager.com/" target="_blank" rel="noopener">
-        <span class="pill">Tool</span>
-        <h3>Destiny Inventory Manager (DIM)</h3>
-        <p>Manage your inventory, create builds, and check stats.</p>
-      </a>
+      <section class="card" data-id="Tools" data-x="8" data-y="0" data-w="4" data-h="2">
+        <div class="bar"><div class="title">Tools</div><div class="handle">⋮⋮</div></div>
+        <div class="content">DIM • light.gg • TodayInDestiny • D2 Foundry</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
 
-      <a class="card" href="https://www.light.gg/" target="_blank" rel="noopener">
-        <span class="pill">Tool</span>
-        <h3>Light.gg</h3>
-        <p>Track and evaluate. Engage with the D2 community.</p>
-      </a>
+      <section class="card" data-id="Rotators" data-x="8" data-y="2" data-w="4" data-h="2">
+        <div class="bar"><div class="title">Rotators</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Raid: Last Wish • Dungeon: Shattered Throne • Crucible: Momentum</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
 
-      <a class="card" href="https://engram.blue/" target="_blank" rel="noopener">
-        <span class="pill">Progress</span>
-        <h3>Engram.blue</h3>
-        <p>Pattern progress.</p>
-      </a>
+      <section class="card" data-id="Vendors" data-x="8" data-y="4" data-w="4" data-h="2">
+        <div class="bar"><div class="title">Vendors</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Xûr & Banshee quick look.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
 
-      <a class="card" href="https://destinytrialsreport.com/" target="_blank" rel="noopener">
-        <span class="pill">PvP</span>
-        <h3>Trials Report</h3>
-        <p>Player stats for Trials.</p>
-      </a>
+      <section class="card" data-id="Build" data-x="0" data-y="6" data-w="4" data-h="3">
+        <div class="bar"><div class="title">🎯 Build Crafter</div><div class="handle">⋮⋮</div></div>
+        <div class="content">
+          <div id="build-crafter-interface">
+            <div class="loading-state" id="loading-state">
+              <div style="font-size: 20px; margin-bottom: 8px;">⏳</div>
+              <div style="font-size: 12px; opacity: 0.7;">Loading Build Crafter...</div>
+            </div>
+          </div>
+        </div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
 
-      <a class="card" href="https://d2armorpicker.com/" target="_blank" rel="noopener">
-        <span class="pill">Builds</span>
-        <h3>D2 Armor Picker</h3>
-        <p>Build your best sets of armor.</p>
-      </a>
+      <section class="card" data-id="Mods" data-x="4" data-y="6" data-w="4" data-h="3">
+        <div class="bar"><div class="title">Modifiers</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Surges, threats, champions.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
 
-      <a class="card" href="https://www.todayindestiny.com/" target="_blank" rel="noopener">
-        <span class="pill">Daily</span>
-        <h3>Today in Destiny</h3>
-        <p>Explore the available activities to play.</p>
-      </a>
+      <section class="card" data-id="Clan" data-x="8" data-y="6" data-w="4" data-h="3">
+        <div class="bar"><div class="title">Clan Ops</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Roster, fireteams, invites.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
 
-      <a class="card" href="https://d2foundry.gg/" target="_blank" rel="noopener">
-        <span class="pill">Weapons</span>
-        <h3>D2 Foundry</h3>
-        <p>Weapon guide with rollable perks.</p>
-      </a>
+      <section class="card" data-id="Telemetry" data-x="0" data-y="9" data-w="4" data-h="2">
+        <div class="bar"><div class="title">Telemetry</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Status pings and simple stats.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
 
-      <a class="card" href="https://mobalytics.gg/destiny-2" target="_blank" rel="noopener">
-        <span class="pill">Builds</span>
-        <h3>Mobalytics</h3>
-        <p>Community buildcrafting.</p>
-      </a>
-
-      <a class="card" href="https://d2checkpoint.com/" target="_blank" rel="noopener">
-        <span class="pill">Raids</span>
-        <h3>D2 Checkpoint</h3>
-        <p>Join a bot for needed encounter checkpoints.</p>
-      </a>
-
-      <a class="card" href="https://lowlidev.com.au/destiny/shootdex" target="_blank" rel="noopener">
-        <span class="pill">Maps</span>
-        <h3>Destiny 2 Maps</h3>
-        <p>Find what you're looking for in the Destiny 2 universe.</p>
-        <p>The map seems to be down, maybe you'll have better luck</p>
-      </a>
-
-      <a class="card" href="https://docs.google.com/spreadsheets/d/1_5wtBjRYHHxuF4oJKDb_iOGZs-wTkzB6RYbnyNLbuz4/edit?gid=1313551887#gid=1313551887" target="_blank" rel="noopener">
-        <span class="pill">Data</span>
-        <h3>Aegis Spreadsheets</h3>
-        <p>Analytical info for boss/weapon damage.</p>
-      </a>
-
-      <a class="card" href="https://destinyemblemcollector.com/" target="_blank" rel="noopener">
-        <span class="pill">Collect</span>
-        <h3>Emblem Collector</h3>
-        <p>Collection of emblems and where to get them.</p>
-      </a>
-    </section>
-
-    <footer>
-      <div>&copy; <span id="y"></span> Sick on Tuesdays</div>
-      <nav class="links" aria-label="Legal and links">
-        <a href="mailto:sickontuesdays@gmail.com">Contact</a>
-        <a href="/">Home</a>
-      </nav>
-    </footer>
+      <section class="card" data-id="Intel" data-x="4" data-y="9" data-w="8" data-h="2">
+        <div class="bar"><div class="title">Intel Feed</div><div class="handle">⋮⋮</div></div>
+        <div class="content">Announcements & patch highlights.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
+    </main>
   </div>
 
-  <script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+  <!-- Right hide/unhide control -->
+  <aside class="rightDock">
+    <div class="controlBox" id="panelControl">
+      <div class="controlHeader"><span>Panels</span><span class="caret">▾</span></div>
+      <div class="controlBody" id="panelList"></div>
+    </div>
+  </aside>
+
+  <!-- Left layouts panel (responsive: docks left; moves above grid if tight) -->
+  <aside class="leftTabs" id="leftTabs">
+    <div class="tabs" id="layoutTabs">
+      <!-- tab rows injected here -->
+      <button class="addBtn" id="addTabBtn">+ Add Tab</button>
+      <div class="bulkBar">
+        <button class="toggleBtn" id="bulkToggle" aria-pressed="false" title="Select multiple layouts to delete">Select layouts</button>
+        <button class="deleteBtn" id="bulkDelete" disabled title="Select layouts to enable">Delete selected</button>
+      </div>
+      <div class="tabFooter muted">Each tab saves positions, sizes, visibility & color.</div>
+    </div>
+  </aside>
+
+  <!-- Popover: color/rename/delete single -->
+  <div class="popover" id="colorPopover" role="dialog" aria-modal="true" aria-hidden="true">
+    <label for="tabName">Tab name</label>
+    <input id="tabName" type="text" maxlength="30" />
+    <label for="tabColor">Tab color</label>
+    <input id="tabColor" type="color" />
+    <div class="row">
+      <button id="colorSave">Save</button>
+      <button id="colorCancel">Cancel</button>
+    </div>
+    <button class="danger" id="colorDelete" title="Delete this tab">Delete Tab</button>
+  </div>
+
+  <!-- Confirm modal -->
+  <div class="modal" id="confirmModal" aria-hidden="true">
+    <div class="backdrop"></div>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <h3 id="confirmTitle">Delete tab(s)?</h3>
+      <p id="confirmText">This will remove the selection and their saved layouts.</p>
+      <div class="row">
+        <button id="confirmCancel">Cancel</button>
+        <button id="confirmDelete" class="danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Undo snackbar -->
+  <div class="snackbar" id="undoBar" aria-live="polite">
+    <span id="undoText" class="muted">Deleted.</span>
+    <button id="undoBtn">Undo</button>
+  </div>
+
+<script>
+(function(){
+  const gridEl = document.getElementById('grid');
+  const dropHintEl = document.getElementById('dropHint');
+  const wrapEl = document.querySelector('.wrap');
+  const leftTabsEl = document.getElementById('leftTabs');
+
+  const COLS = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols')) || 12;
+  const COLW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--colW')) || 90;
+  const ROWH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || 90;
+
+  /* ================== Items ================== */
+  const items = [...gridEl.querySelectorAll('.card')].map(el => ({
+    el, id: el.dataset.id,
+    x:+el.dataset.x, y:+el.dataset.y, w:+el.dataset.w, h:+el.dataset.h,
+    hidden:false, minW:1, minH:1, maxW:COLS
+  }));
+  const DEFAULT_LAYOUT = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
+
+  /* ================== Storage Keys ================== */
+  const TABS_KEY='sot_tabs_meta_v5';
+  const LAYOUT_KEY_PREFIX='sot_layout_';
+  const ACTIVE_TAB_KEY='sot_active_tab_id_v5';
+
+  /* ================== Tabs Meta ================== */
+  function loadTabsMeta(){
+    const raw = localStorage.getItem(TABS_KEY);
+    if (raw){ try{ const p=JSON.parse(raw); if(Array.isArray(p)&&p.length) return p; }catch{} }
+    const seed=[{id:'layout1', name:'Layout 1', color:'#7dd3fc'}];
+    localStorage.setItem(TABS_KEY, JSON.stringify(seed));
+    return seed;
+  }
+  function saveTabsMeta(t){ localStorage.setItem(TABS_KEY, JSON.stringify(t)); }
+
+  let tabs = loadTabsMeta();
+  let activeTabId = localStorage.getItem(ACTIVE_TAB_KEY) || tabs[0].id;
+
+  /* ================== Accent ================== */
+  function setActiveAccent(hex){
+    try{
+      const {h,s,l}=hexToHsl(hex);
+      const darker=hslToHex(h,s,Math.max(0,l-10));
+      document.documentElement.style.setProperty('--arc', hex);
+      document.documentElement.style.setProperty('--arc2', darker);
+    }catch{}
+  }
+  function hexToHsl(H){ let r=0,g=0,b=0;
+    if(H.length==4){r="0x"+H[1]+H[1];g="0x"+H[2]+H[2];b="0x"+H[3]+H[3];}
+    else if(H.length==7){r="0x"+H[1]+H[2];g="0x"+H[3]+H[4];b="0x"+H[5]+H[6];}
+    r/=255;g/=255;b/=255; let cmin=Math.min(r,g,b),cmax=Math.max(r,g,b),d=cmax-cmin,h=0,s=0,l=(cmax+cmin)/2;
+    if(d!=0){ if(cmax==r) h=((g-b)/d)%6; else if(cmax==g) h=(b-r)/d+2; else h=(r-g)/d+4; h=Math.round(h*60); if(h<0)h+=360; s=d/(1-Math.abs(2*l-1));}
+    s=Math.round(s*100); l=Math.round(l*100); return {h,s,l};
+  }
+  function hslToHex(h,s,l){ s/=100;l/=100; const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;
+    let r=0,g=0,b=0;
+    if(0<=h&&h<60){r=c;g=x;b=0}else if(60<=h&&h<120){r=x;g=c;b=0}
+    else if(120<=h&&h<180){r=0;g=c;b=x}else if(180<=h&&h<240){r=0;g=x;b=c}
+    else if(240<=h&&h<300){r=x;g=0;b=c}else{r=c;g=0;b=x}
+    const toHex=v=>('0'+Math.round((v+m)*255).toString(16)).slice(-2);
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
+  /* ================== Layout Save/Load ================== */
+  function saveLayout(tabId){
+    const data = items.map(({id,x,y,w,h,hidden}) => ({id,x,y,w,h,hidden}));
+    localStorage.setItem(LAYOUT_KEY_PREFIX + tabId, JSON.stringify(data));
+  }
+  function loadLayout(tabId){
+    const raw = localStorage.getItem(LAYOUT_KEY_PREFIX + tabId);
+    const data = raw ? JSON.parse(raw) : DEFAULT_LAYOUT;
+    for(const it of items){
+      const f = data.find(x=>x.id===it.id);
+      if (f) Object.assign(it,{x:f.x,y:f.y,w:f.w,h:f.h,hidden:!!f.hidden});
+      else { const d=DEFAULT_LAYOUT.find(x=>x.id===it.id); Object.assign(it,d||{x:0,y:0,w:3,h:2,hidden:false}); }
+    }
+    // respect gaps; no auto compaction
+    applyLayout();
+  }
+
+  /* ================== Apply to DOM ================== */
+  function applyLayout(){
+    items.forEach(it=>{
+      it.el.classList.toggle('hide', !!it.hidden);
+      if(!it.hidden){
+        it.el.style.transform = ''; // clear drag offset
+        it.el.style.gridColumn=`${it.x+1} / span ${it.w}`;
+        it.el.style.gridRow   =`${it.y+1} / span ${it.h}`;
+      }
+      Object.assign(it.el.dataset,{x:it.x,y:it.y,w:it.w,h:it.h});
+    });
+    renderPanelList();
+  }
+
+  // --- helpers for collision & layout ---
+  function rectsOverlapA(a,b){
+    if(!a || !b || a.hidden || b.hidden) return false;
+    return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+  }
+  function clonePositions(except){ // return shallow clones of current items (position only)
+    return items.filter(i => i !== except && !i.hidden).map(i => ({ id:i.id, x:i.x, y:i.y, w:i.w, h:i.h }));
+  }
+  function toMap(arr){ const m=new Map(); arr.forEach(o=>m.set(o.id,o)); return m; }
+
+  // Given placeholder P and a set of item clones, push items down to avoid overlaps with P and each other
+  function resolveWithPlaceholder(placeholder, clones){
+    // blockers are all clones plus placeholder; we repeatedly push colliders down
+    const blockers = clones.concat([placeholder]);
+    let changed = true;
+    let guard = 0;
+    while (changed && guard < 500){
+      changed = false; guard++;
+      // sort by y then x so pushes cascade top-down
+      blockers.sort((a,b)=> (a.y - b.y) || (a.x - b.x));
+      for (const it of clones){
+        // check overlap against every blocker except itself
+        for (const b of blockers){
+          if (b === it) continue;
+          if (rectsOverlapA(it, b)){
+            // push directly below the blocker it hits
+            it.y = b.y + b.h;
+            changed = true;
+          }
+        }
+      }
+    }
+    return clones;
+  }
+
+  // Apply a temporary layout map to DOM (without committing to state)
+  function applyTempLayout(tempMap, dragging){
+    for (const it of items){
+      if (it.hidden) continue;
+      if (dragging && it.id === dragging.id) continue; // dragged one uses transform
+      const pos = tempMap.get(it.id);
+      const x = pos ? pos.x : it.x;
+      const y = pos ? pos.y : it.y;
+      const w = pos ? pos.w : it.w;
+      const h = pos ? pos.h : it.h;
+      it.el.style.gridColumn = `${x+1} / span ${w}`;
+      it.el.style.gridRow    = `${y+1} / span ${h}`;
+    }
+  }
+
+  function clampToCols(it){
+    if(it.w>COLS) it.w=COLS;
+    if(it.x<0) it.x=0;
+    if(it.x+it.w>COLS) it.x=COLS-it.w;
+    if(it.y<0) it.y=0; // allow gaps above; we won't compact
+  }
+
+  /* ================== Lock ================== */
+  const lockToggle=document.getElementById('lockToggle');
+  let isLocked=false;
+  function setLocked(v){ isLocked=!!v; document.body.classList.toggle('locked', isLocked); lockToggle.setAttribute('aria-pressed', String(isLocked)); }
+  lockToggle.addEventListener('click', ()=>setLocked(!isLocked));
+  lockToggle.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setLocked(!isLocked); } });
+
+  /* ================== Smooth Drag + Live Drop Highlight/Reflow ================== */
+  let dragging=null, startMouse=null, startGridPos=null;
+
+  gridEl.addEventListener('mousedown', e=>{
+    if(isLocked) return;
+    const bar = e.target.closest('.bar'); if(!bar) return;
+    const el = bar.closest('.card'); const it = items.find(i=>i.el===el);
+    dragging = it;
+    startMouse = { x:e.clientX, y:e.clientY };
+    startGridPos = { x: it.x, y: it.y };
+    it.el.classList.add('dragging');
+    it.el.style.willChange = 'transform';
+    // show drop hint with initial size
+    dropHintEl.classList.add('active');
+    dropHintEl.style.gridColumn = `${it.x+1} / span ${it.w}`;
+    dropHintEl.style.gridRow    = `${it.y+1} / span ${it.h}`;
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const dx = e.clientX - startMouse.x;
+    const dy = e.clientY - startMouse.y;
+    // Smooth follow with pixel translate
+    dragging.el.style.transform = `translate(${dx}px, ${dy}px)`;
+
+    // Compute tentative snapped cell for the drop hint
+    let tx = Math.round(startGridPos.x + dx / COLW);
+    let ty = Math.round(startGridPos.y + dy / ROWH);
+    const ph = { id:'__ph__', x:tx, y:ty, w:dragging.w, h:dragging.h, hidden:false };
+    clampToCols(ph);
+
+    // Resolve other items live against the placeholder
+    const clones = resolveWithPlaceholder(ph, clonePositions(dragging));
+    const tempMap = toMap(clones);
+
+    // Paint the drop area and temporary layout
+    dropHintEl.style.gridColumn = `${ph.x+1} / span ${ph.w}`;
+    dropHintEl.style.gridRow    = `${ph.y+1} / span ${ph.h}`;
+    applyTempLayout(tempMap, dragging);
+  });
+
+  window.addEventListener('mouseup', e=>{
+    if(!dragging) return;
+    // Finalize to the current drop hint position
+    const rect = dropHintEl.getBoundingClientRect(); // not used for math, just to ensure style is applied
+    // read the placeholder grid positions from style we computed last
+    const col = dropHintEl.style.gridColumn; // like "5 / span 3"
+    const row = dropHintEl.style.gridRow;    // like "7 / span 2"
+    const x = Math.max(0, parseInt(col.split('/')[0].trim(),10)-1);
+    const y = Math.max(0, parseInt(row.split('/')[0].trim(),10)-1);
+
+    // Build same placeholder and resolve one last time to commit others too
+    const ph = { id:'__ph__', x, y, w:dragging.w, h:dragging.h, hidden:false };
+    const clones = resolveWithPlaceholder(ph, clonePositions(dragging));
+    const finalMap = toMap(clones);
+
+    // Commit dragging position
+    dragging.x = ph.x; dragging.y = ph.y;
+    clampToCols(dragging);
+
+    // Commit other items from finalMap
+    for (const it of items){
+      if (it === dragging || it.hidden) continue;
+      const p = finalMap.get(it.id);
+      if (p){ it.x = p.x; it.y = p.y; } // sizes unchanged here
+    }
+
+    // Clear visuals
+    dragging.el.classList.remove('dragging');
+    dragging.el.style.transform = '';
+    dragging.el.style.willChange = '';
+    dropHintEl.classList.remove('active');
+
+    // Apply & persist
+    applyLayout();
+    saveLayout(activeTabId);
+    dragging = null;
+  });
+
+  /* ================== Resize (live), still respects gaps ================== */
+  let resizing=null, startMouseR=null, startSize=null;
+  gridEl.addEventListener('mousedown', e=>{
+    if(isLocked) return;
+    const h=e.target.closest('.resize'); if(!h) return;
+    const el=h.closest('.card'); const it=items.find(i=>i.el===el);
+    resizing=it; startMouseR={x:e.clientX,y:e.clientY}; startSize={w:it.w,h:it.h};
+    it.el.classList.add('dragging'); e.preventDefault(); e.stopPropagation();
+  });
+  window.addEventListener('mousemove', e=>{
+    if(!resizing) return;
+    const dx=e.clientX-startMouseR.x, dy=e.clientY-startMouseR.y;
+    const dw=Math.round(dx/COLW), dh=Math.round(dy/ROWH);
+    resizing.w=Math.max(resizing.minW, Math.min(resizing.maxW, startSize.w+dw));
+    resizing.h=Math.max(resizing.minH, startSize.h+dh);
+    clampToCols(resizing);
+    // Live reflow during resize: use a placeholder matching the resized footprint
+    const ph = { id:'__ph__', x:resizing.x, y:resizing.y, w:resizing.w, h:resizing.h, hidden:false };
+    const clones = resolveWithPlaceholder(ph, clonePositions(resizing));
+    const tempMap = toMap(clones);
+    dropHintEl.classList.add('active');
+    dropHintEl.style.gridColumn = `${ph.x+1} / span ${ph.w}`;
+    dropHintEl.style.gridRow    = `${ph.y+1} / span ${ph.h}`;
+    applyTempLayout(tempMap, resizing);
+  });
+  window.addEventListener('mouseup', ()=>{
+    if(!resizing) return;
+    resizing.el.classList.remove('dragging'); resizing=null;
+    dropHintEl.classList.remove('active');
+    applyLayout(); saveLayout(activeTabId);
+  });
+
+  /* ================== Right: hide/unhide ================== */
+  const panelControl=document.getElementById('panelControl');
+  const panelList=document.getElementById('panelList');
+  panelControl.querySelector('.controlHeader').addEventListener('click', ()=> panelControl.classList.toggle('open'));
+  function renderPanelList(){
+    panelList.innerHTML='';
+    for(const it of items){
+      const row=document.createElement('label'); row.className='checkRow';
+      row.innerHTML=`<input type="checkbox" ${!it.hidden?'checked':''} data-id="${it.id}"><span>${it.el.querySelector('.title')?.textContent||it.id}</span>`;
+      panelList.appendChild(row);
+    }
+  }
+  panelList.addEventListener('change', e=>{
+    const cb=e.target.closest('input[type="checkbox"]'); if(!cb) return;
+    const it=items.find(i=>i.id===cb.dataset.id); it.hidden=!cb.checked;
+    applyLayout(); saveLayout(activeTabId);
+  });
+
+  /* ================== Left: tabs (bulk delete etc.) ================== */
+  const tabsEl=document.getElementById('layoutTabs');
+  const addTabBtn=document.getElementById('addTabBtn');
+
+  let bulkMode=false;
+  const bulkToggle=document.getElementById('bulkToggle');
+  const bulkDeleteBtn=document.getElementById('bulkDelete');
+  const selectedIds=new Set();
+
+  function renderTabs(){
+    [...tabsEl.querySelectorAll('.tabRow')].forEach(n=>n.remove());
+    const beforeNode=addTabBtn;
+    tabs.forEach(t=>{
+      const row=document.createElement('div'); row.className='tabRow';
+      if(bulkMode){
+        const chk=document.createElement('input'); chk.type='checkbox'; chk.className='tabCheck'; chk.dataset.id=t.id;
+        chk.checked=selectedIds.has(t.id); row.appendChild(chk);
+      }else{
+        const chip=document.createElement('div'); chip.className='colorChip'; chip.style.background=t.color; chip.dataset.id=t.id;
+        row.appendChild(chip);
+      }
+      const btn=document.createElement('button'); btn.type='button'; btn.className='tabBtn'; btn.textContent=t.name; btn.dataset.tab=t.id;
+      if(t.id===activeTabId) btn.classList.add('active');
+      row.appendChild(btn);
+      tabsEl.insertBefore(row, beforeNode);
+    });
+    updateBulkButtons();
+  }
+  function updateActiveInUI(){ for(const b of tabsEl.querySelectorAll('.tabBtn')) b.classList.toggle('active', b.dataset.tab===activeTabId); }
+  function getTabMeta(id){ return tabs.find(t=>t.id===id); }
+  function setActiveTab(id){
+    if(!getTabMeta(id)) return;
+    saveLayout(activeTabId);
+    activeTabId=id; localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
+    const meta=getTabMeta(activeTabId);
+    setActiveAccent(meta.color); loadLayout(activeTabId); updateActiveInUI();
+  }
+
+  addTabBtn.addEventListener('click', ()=>{
+    const nextIndex=(()=>{ const nums=tabs.map(t=>parseInt((t.id.match(/\d+$/)||[1])[0],10)); return Math.max(...nums,0)+1; })();
+    const newId='layout'+nextIndex;
+    const cur=getTabMeta(activeTabId);
+    const meta={id:newId, name:`Layout ${nextIndex}`, color:cur?.color||'#7dd3fc'};
+    tabs.push(meta); saveTabsMeta(tabs);
+    saveLayout(newId); setActiveTab(newId); renderTabs(); updateActiveInUI();
+  });
+
+  tabsEl.addEventListener('click', e=>{
+    const btn=e.target.closest('.tabBtn');
+    if (btn){
+      if (bulkMode) return;
+      if (btn.dataset.tab===activeTabId) return;
+      setActiveTab(btn.dataset.tab); return;
+    }
+    const chip=e.target.closest('.colorChip'); if(chip){ openPopoverFor(chip.dataset.id, chip); }
+  });
+
+  bulkToggle.addEventListener('click', ()=>{
+    bulkMode = !bulkMode;
+    bulkToggle.setAttribute('aria-pressed', String(bulkMode));
+    if (bulkMode) { closePopover(); }
+    selectedIds.clear(); renderTabs();
+  });
+
+  tabsEl.addEventListener('change', e=>{
+    const chk=e.target.closest('.tabCheck'); if(!chk) return;
+    const id=chk.dataset.id;
+    if(chk.checked) selectedIds.add(id); else selectedIds.delete(id);
+    updateBulkButtons();
+  });
+
+  function updateBulkButtons(){
+    const allCount=tabs.length, selCount=selectedIds.size;
+    const canDelete = selCount>0 && selCount<allCount;
+    bulkDeleteBtn.disabled = !canDelete;
+    bulkDeleteBtn.classList.toggle('enabled', canDelete);
+    bulkDeleteBtn.title = canDelete ? `Delete ${selCount} selected` : (selCount===allCount ? 'Keep at least one layout' : 'Select layouts to enable');
+  }
+
+  /* ===== Popover (single color/rename/delete) ===== */
+  const pop=document.getElementById('colorPopover');
+  const nameInput=document.getElementById('tabName');
+  const colorInput=document.getElementById('tabColor');
+  const saveBtn=document.getElementById('colorSave');
+  const cancelBtn=document.getElementById('colorCancel');
+  const deleteBtn=document.getElementById('colorDelete');
+  let popTargetId=null;
+
+  function openPopoverFor(tabId, anchorEl){
+    if (bulkMode) return;
+    if (document.body.classList.contains('locked')) return;
+    const meta=getTabMeta(tabId); if(!meta) return;
+    popTargetId=tabId; nameInput.value=meta.name; colorInput.value=meta.color; deleteBtn.disabled=(tabs.length<=1);
+    const r=anchorEl.getBoundingClientRect();
+    pop.style.top=`${r.bottom+8}px`; pop.style.left=`${Math.max(12, r.left-20)}px`;
+    pop.classList.add('open'); pop.setAttribute('aria-hidden','false'); setTimeout(()=>nameInput.focus(),0);
+  }
+  function closePopover(){ pop.classList.remove('open'); pop.setAttribute('aria-hidden','true'); popTargetId=null; }
+  saveBtn.addEventListener('click', ()=>{
+    const meta=getTabMeta(popTargetId); if(!meta) return;
+    meta.name = nameInput.value.trim() || meta.name;
+    meta.color = colorInput.value;
+    saveTabsMeta(tabs); renderTabs(); updateActiveInUI(); if(popTargetId===activeTabId) setActiveAccent(meta.color); closePopover();
+  });
+  cancelBtn.addEventListener('click', closePopover);
+
+  /* ===== Confirm modal (single/bulk) + Undo ===== */
+  const confirmModal=document.getElementById('confirmModal');
+  const confirmText=document.getElementById('confirmText');
+  const confirmDeleteBtn=document.getElementById('confirmDelete');
+  const confirmCancelBtn=document.getElementById('confirmCancel');
+  let confirmIds=[];
+
+  function openConfirm(ids){
+    confirmIds = ids.slice();
+    if (ids.length>1){
+      const names = ids.map(id=>getTabMeta(id)?.name||id);
+      const sample = names.slice(0,3).join(', ')+(names.length>3?` +${names.length-3} more`:'');
+      confirmText.textContent = `Delete ${ids.length} layout(s): ${sample}? This will remove them and their saved layouts.`;
+    }else{
+      const meta=getTabMeta(ids[0]); confirmText.textContent=`This will delete “${meta?.name||ids[0]}” and its saved layout.`;
+    }
+    confirmModal.classList.add('open'); confirmModal.setAttribute('aria-hidden','false');
+  }
+  function closeConfirm(){ confirmModal.classList.remove('open'); confirmModal.setAttribute('aria-hidden','true'); confirmIds=[]; }
+
+  // Single delete via popover
+  deleteBtn.addEventListener('click', ()=>{
+    if (tabs.length<=1) return;
+    const id=popTargetId; closePopover(); openConfirm([id]);
+  });
+
+  // Bulk delete
+  bulkDeleteBtn.addEventListener('click', ()=>{
+    const sel=[...selectedIds]; if (sel.length===0 || sel.length>=tabs.length) return;
+    openConfirm(sel);
+  });
+
+  const undoBar=document.getElementById('undoBar');
+  const undoText=document.getElementById('undoText');
+  const undoBtn=document.getElementById('undoBtn');
+  let undoTimer=null;
+  let undoPayload=null; // { metas:[...], layouts:{id:json}, indices:[...], prevActiveId }
+
+  function showUndo(payload){
+    undoPayload=payload;
+    const names=payload.metas.map(m=>m.name);
+    const label = names.length>1 ? `Deleted ${names.length} layouts: ${names.slice(0,3).join(', ')}${names.length>3?` +${names.length-3} more`:''}.` : `Deleted “${names[0]}”.`;
+    undoText.textContent=label;
+    undoBar.classList.add('show'); clearTimeout(undoTimer);
+    undoTimer=setTimeout(()=>{ hideUndo(); undoPayload=null; }, 8000);
+  }
+  function hideUndo(){ undoBar.classList.remove('show'); clearTimeout(undoTimer); undoTimer=null; }
+  function insertAt(arr,index,item){ if(index<0||index>arr.length) index=arr.length; arr.splice(index,0,item); }
+
+  undoBtn.addEventListener('click', ()=>{
+    if(!undoPayload) return;
+    const { metas, layouts, indices, prevActiveId } = undoPayload;
+    metas.forEach((m, i)=> insertAt(tabs, indices[i], m));
+    saveTabsMeta(tabs);
+    for(const id in layouts){ localStorage.setItem(LAYOUT_KEY_PREFIX + id, layouts[id]); }
+    renderTabs();
+    const restoreId = tabs.find(t=>t.id===prevActiveId)?.id || metas[0].id;
+    setActiveTab(restoreId);
+    hideUndo(); undoPayload=null;
+  });
+
+  confirmCancelBtn.addEventListener('click', closeConfirm);
+  confirmModal.querySelector('.backdrop').addEventListener('click', closeConfirm);
+
+  confirmDeleteBtn.addEventListener('click', ()=>{
+    if (confirmIds.length===0) { closeConfirm(); return; }
+    const deletingIds = confirmIds.slice();
+    const metas=[], indices=[], layouts={}, prevActiveId=activeTabId;
+    deletingIds.sort((a,b)=> tabs.findIndex(t=>t.id===a) - tabs.findIndex(t=>t.id===b));
+    deletingIds.forEach(id=>{
+      const idx=tabs.findIndex(t=>t.id===id); const meta=tabs[idx];
+      metas.push({...meta}); indices.push(idx);
+      const key=LAYOUT_KEY_PREFIX+id; const json=localStorage.getItem(key); if(json) layouts[id]=json;
+    });
+    const remaining = tabs.filter(t=>!deletingIds.includes(t.id));
+    if (remaining.length<1){ closeConfirm(); return; }
+    deletingIds.forEach(id=> localStorage.removeItem(LAYOUT_KEY_PREFIX+id));
+    tabs = remaining; saveTabsMeta(tabs);
+    if (deletingIds.includes(activeTabId)){
+      const fallback = tabs[Math.max(0, (indices[0]-1))] || tabs[0];
+      activeTabId=fallback.id; localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
+      setActiveAccent(fallback.color); loadLayout(activeTabId);
+    }
+    renderTabs(); updateActiveInUI();
+    selectedIds.clear(); if (bulkMode){ bulkMode=false; bulkToggle.setAttribute('aria-pressed','false'); renderTabs(); }
+    showUndo({ metas, layouts, indices, prevActiveId });
+    closeConfirm();
+  });
+
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Escape'){
+      if(document.getElementById('confirmModal').classList.contains('open')) closeConfirm();
+      if(document.getElementById('colorPopover').classList.contains('open')) closePopover();
+    }
+  });
+  document.addEventListener('click', e=>{
+    const popEl=document.getElementById('colorPopover');
+    if(!popEl.classList.contains('open')) return;
+    if(e.target.closest('#colorPopover') || e.target.closest('.colorChip')) return;
+    closePopover();
+  });
+
+  /* ================== Responsive placement of Layouts panel ================== */
+  function updateTabsPlacement(){
+    const wrapRect = wrapEl.getBoundingClientRect();
+    const spaceLeft = wrapRect.left;           // px space to the left of main wrap
+    const required = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tabsW')) || 260;
+    if (spaceLeft < (required + 20)) {
+      // Not enough space on the left -> move tabs above the grid
+      if (leftTabsEl.parentElement !== wrapEl){
+        wrapEl.insertBefore(leftTabsEl, gridEl);
+      }
+      document.body.classList.add('tabsTop');
+    } else {
+      // Enough space -> dock to left margin (fixed)
+      if (leftTabsEl.parentElement === wrapEl){
+        document.body.appendChild(leftTabsEl);
+      }
+      document.body.classList.remove('tabsTop');
+    }
+  }
+  window.addEventListener('resize', updateTabsPlacement);
+  window.addEventListener('orientationchange', updateTabsPlacement);
+
+  /* ================== Init ================== */
+  function init(){
+    if(!tabs.find(t=>t.id===activeTabId)) activeTabId=tabs[0].id;
+    localStorage.setItem(ACTIVE_TAB_KEY, activeTabId);
+    renderTabs();
+    setActiveAccent(tabs.find(t=>t.id===activeTabId).color);
+    loadLayout(activeTabId);
+    setLocked(false);
+    renderPanelList();
+    updateTabsPlacement();
+  }
+  init();
+})();
+</script>
+
+<!-- Build Crafter Module Loading System -->
+<script type="module">
+  // Build Crafter Initialization
+  let buildCrafter = null;
+  let manifestLoader = null;
+  let buildAnalyzer = null;
+  let currentBuild = null; // Store current build for details view
+
+  // Debug logging
+  function debugLog(message) {
+    console.log(`[Build Crafter] ${message}`);
+  }
+
+  // Helper function for safe array access from categorized objects
+  function safeGetAllItems(data, categories = []) {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+
+    if (typeof data === 'object') {
+      let allItems = [];
+      for (const category of categories) {
+        if (data[category] && Array.isArray(data[category])) {
+          allItems.push(...data[category]);
+        }
+      }
+      return allItems;
+    }
+
+    return [];
+  }
+
+  // Helper function to extract all comprehensive synergies
+  function getAllComprehensiveSynergies(build) {
+    const synergies = [];
+
+    if (!build.comprehensiveSynergies) return synergies;
+
+    const synergyCategories = ['elemental', 'crossSystem', 'trigger', 'activity'];
+
+    for (const category of synergyCategories) {
+      const categorySynergies = build.comprehensiveSynergies[category];
+      if (Array.isArray(categorySynergies)) {
+        for (const synergy of categorySynergies) {
+          synergies.push(synergy.name || synergy);
+        }
+      }
+    }
+
+    return synergies;
+  }
+
+  // Update loading state
+  function updateLoadingState(message) {
+    const loadingState = document.getElementById('loading-state');
+    if (loadingState) {
+      loadingState.innerHTML = `
+        <div style="font-size: 16px; margin-bottom: 6px;">⏳</div>
+        <div style="font-size: 11px; opacity: 0.7;">${message}</div>
+      `;
+    }
+  }
+
+  // Show error state
+  function showError(message) {
+    const container = document.getElementById('build-crafter-interface');
+    container.innerHTML = `
+      <div class="error-state">
+        <div style="font-size: 16px; margin-bottom: 6px;">❌</div>
+        <div style="font-size: 11px; margin-bottom: 8px;">Error: ${message}</div>
+        <button onclick="initializeBuildCrafter()" style="padding: 4px 8px; background: var(--arc); color: var(--panel); border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">
+          Retry
+        </button>
+      </div>
+    `;
+  }
+
+  // Show Build Crafter interface
+  function showBuildCrafterInterface() {
+    const container = document.getElementById('build-crafter-interface');
+    container.innerHTML = `
+      <div class="build-input-container">
+        <input type="text"
+               class="build-input"
+               id="build-query-input"
+               placeholder="Hunter void build for raids"
+               maxlength="100">
+        <button class="build-generate-btn" id="generate-build-btn">Generate</button>
+      </div>
+      <div id="build-result-container"></div>
+    `;
+
+    // Add event listeners
+    const input = document.getElementById('build-query-input');
+    const button = document.getElementById('generate-build-btn');
+
+    button.addEventListener('click', handleGenerateBuild);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        handleGenerateBuild();
+      }
+    });
+  }
+
+  // Handle build generation
+  async function handleGenerateBuild() {
+    const input = document.getElementById('build-query-input');
+    const button = document.getElementById('generate-build-btn');
+    const resultContainer = document.getElementById('build-result-container');
+
+    const query = input.value.trim();
+    if (!query) {
+      input.focus();
+      return;
+    }
+
+    // Disable input during generation
+    button.disabled = true;
+    button.textContent = 'Generating...';
+
+    try {
+      debugLog(`Generating build for query: "${query}"`);
+      const build = await buildAnalyzer.generateBuild(query);
+
+      debugLog(`Build generated: ${build.name || 'Generated Build'}`);
+      showBuildResult(build);
+    } catch (error) {
+      debugLog(`Build generation failed: ${error.message}`);
+      resultContainer.innerHTML = `
+        <div class="error-state" style="margin-top: 8px; padding: 8px;">
+          <div style="font-size: 12px; margin-bottom: 4px;">⚠️</div>
+          <div style="font-size: 10px;">Generation failed: ${error.message}</div>
+        </div>
+      `;
+    } finally {
+      // Re-enable input
+      button.disabled = false;
+      button.textContent = 'Generate';
+    }
+  }
+
+  // Show build result
+  function showBuildResult(build) {
+    // Store build data for details view
+    currentBuild = build;
+
+    const container = document.getElementById('build-result-container');
+    container.innerHTML = `
+      <div class="build-result">
+        <h4>${build.name || 'Generated Build'}</h4>
+        <p>${build.description || 'AI-generated build recommendation'}</p>
+        <p><strong>Confidence:</strong> ${Math.round((build.confidence || 0.5) * 100)}%</p>
+        <p><strong>Synergies:</strong> ${getAllComprehensiveSynergies(build).join(', ') || 'None detected'}</p>
+
+        <div class="build-actions">
+          <button class="build-action-btn" onclick="copyBuildToClipboard()">📋 Copy</button>
+          <button class="build-action-btn" onclick="generateNewBuild()">🔄 New</button>
+          <button class="build-action-btn" onclick="showBuildDetails()">ℹ️ Details</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Copy build to clipboard
+  window.copyBuildToClipboard = function() {
+    const buildResult = document.querySelector('.build-result');
+    if (buildResult) {
+      const text = buildResult.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        debugLog('Build copied to clipboard');
+      }).catch(err => {
+        debugLog('Failed to copy build: ' + err.message);
+      });
+    }
+  };
+
+  // Generate new build
+  window.generateNewBuild = function() {
+    const input = document.getElementById('build-query-input');
+    const container = document.getElementById('build-result-container');
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
+    if (container) {
+      container.innerHTML = '';
+    }
+  };
+
+  // Show build details
+  window.showBuildDetails = function() {
+    if (!currentBuild) {
+      alert('No build data available');
+      return;
+    }
+
+    // Create detailed view
+    const detailsHTML = formatBuildDetails(currentBuild);
+
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;
+      background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center;
+      font-family: inherit; color: var(--ink);
+    `;
+
+    modal.innerHTML = `
+      <div style="
+        background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+        padding: 20px; max-width: 90vw; max-height: 90vh; overflow-y: auto;
+        box-shadow: 0 12px 40px rgba(0,0,0,.5);
+      ">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="margin: 0; color: var(--arc);">📋 Build Details</h3>
+          <button onclick="this.closest('[style*=\"position: fixed\"]').remove()" style="
+            background: var(--border); border: none; border-radius: 6px; padding: 8px 12px;
+            color: var(--ink); cursor: pointer; font-weight: bold;
+          ">✕ Close</button>
+        </div>
+        ${detailsHTML}
+      </div>
+    `;
+
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+    document.body.appendChild(modal);
+  };
+
+  // Format build details for display
+  function formatBuildDetails(build) {
+    let html = '<div style="font-size: 13px; line-height: 1.4;">';
+
+    // Build Overview
+    html += `<div style="margin-bottom: 16px;">`;
+    html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">🎯 Build Overview</h4>`;
+    html += `<div><strong>Name:</strong> ${build.name || 'Unknown'}</div>`;
+    html += `<div><strong>Description:</strong> ${build.description || 'No description'}</div>`;
+    html += `<div><strong>Confidence Score:</strong> ${Math.round((build.confidence || 0) * 100)}%</div>`;
+    html += `<div><strong>Source:</strong> ${build.source || 'Unknown'}</div>`;
+    if (build.query) {
+      html += `<div><strong>Query:</strong> ${build.query}</div>`;
+    }
+
+    // Show which components were analyzed (if comprehensive build)
+    if (build.analyzedComponents) {
+      html += `<div style="margin-top: 8px;"><strong>Components Analyzed:</strong></div>`;
+      const components = [];
+      if (build.analyzedComponents.weapons) components.push('⚔️ Weapons');
+      if (build.analyzedComponents.armor) components.push('🛡️ Armor');
+      if (build.analyzedComponents.abilities) components.push('⚡ Abilities');
+      if (build.analyzedComponents.mods) components.push('🔧 Mods');
+      if (build.analyzedComponents.exotics) components.push('⭐ Exotics');
+      html += `<div style="margin-left: 12px;">${components.join(', ')}</div>`;
+    }
+
+    // Show build type indicator
+    if (build.source === 'comprehensive_analysis') {
+      html += `<div style="margin-top: 8px; padding: 6px; background: #228833; border-radius: 4px; color: white; font-weight: bold;">🚀 Comprehensive Analysis Active</div>`;
+    } else if (build.source === 'enhanced_curated') {
+      html += `<div style="margin-top: 8px; padding: 6px; background: #4477bb; border-radius: 4px; color: white; font-weight: bold;">📋 Enhanced Curated Build</div>`;
+    } else if (build.source === 'optimized_manifest') {
+      html += `<div style="margin-top: 8px; padding: 6px; background: #7744bb; border-radius: 4px; color: white; font-weight: bold;">🧠 Intelligent Analysis</div>`;
+    }
+
+    html += `</div>`;
+
+    // Weapons
+    if (build.weapons) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">🔫 Weapons</h4>`;
+
+      ['kinetic', 'energy', 'power'].forEach(slot => {
+        const weapon = build.weapons[slot];
+        html += `<div style="margin-bottom: 8px; padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+        html += `<div style="font-weight: bold; text-transform: capitalize;">${slot} Slot:</div>`;
+
+        if (weapon) {
+          html += `<div style="margin-left: 8px;">`;
+          html += `<div><strong>Name:</strong> ${weapon.name || 'Unknown'}</div>`;
+          html += `<div><strong>Type:</strong> ${weapon.type || 'Unknown'}</div>`;
+          if (weapon.hash) html += `<div><strong>Hash:</strong> ${weapon.hash}</div>`;
+          if (weapon.score) html += `<div><strong>Score:</strong> ${Math.round(weapon.score * 100)}%</div>`;
+          html += `</div>`;
+        } else {
+          html += `<div style="margin-left: 8px; color: var(--muted);">No weapon assigned</div>`;
+        }
+
+        html += `</div>`;
+      });
+
+      html += `</div>`;
+    }
+
+    // Armor
+    if (build.armor) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">🛡️ Armor</h4>`;
+
+      ['helmet', 'gauntlets', 'chest', 'legs', 'classItem'].forEach(slot => {
+        const armor = build.armor[slot];
+        html += `<div style="margin-bottom: 8px; padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+        html += `<div style="font-weight: bold; text-transform: capitalize;">${slot.replace('classItem', 'Class Item')}:</div>`;
+
+        if (armor) {
+          html += `<div style="margin-left: 8px;">`;
+          html += `<div><strong>Name:</strong> ${armor.name || 'Unknown'}</div>`;
+          if (armor.hash) html += `<div><strong>Hash:</strong> ${armor.hash}</div>`;
+          if (armor.score) html += `<div><strong>Score:</strong> ${Math.round(armor.score * 100)}%</div>`;
+          html += `</div>`;
+        } else {
+          html += `<div style="margin-left: 8px; color: var(--muted);">No armor assigned</div>`;
+        }
+
+        html += `</div>`;
+      });
+
+      html += `</div>`;
+    }
+
+    // Abilities (NEW)
+    if (build.abilities) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">⚡ Guardian Abilities</h4>`;
+      html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+
+      if (build.abilities.super) {
+        html += `<div><strong>Super:</strong> ${build.abilities.super}</div>`;
+      }
+      if (build.abilities.aspects && Array.isArray(build.abilities.aspects) && build.abilities.aspects.length > 0) {
+        html += `<div><strong>Aspects:</strong> ${build.abilities.aspects.join(', ')}</div>`;
+      }
+      if (build.abilities.fragments && Array.isArray(build.abilities.fragments) && build.abilities.fragments.length > 0) {
+        html += `<div><strong>Fragments:</strong> ${build.abilities.fragments.join(', ')}</div>`;
+      }
+      if (build.abilities.confidence) {
+        html += `<div><strong>Ability Confidence:</strong> ${Math.round(build.abilities.confidence * 100)}%</div>`;
+      }
+
+      html += `</div></div>`;
+    }
+
+    // Mods (NEW)
+    if (build.mods) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">🔧 Armor Mods</h4>`;
+      html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+
+      if (build.mods.combat && Array.isArray(build.mods.combat) && build.mods.combat.length > 0) {
+        html += `<div><strong>Combat Mods:</strong> ${build.mods.combat.map(mod => mod.name || mod).join(', ')}</div>`;
+      }
+      if (build.mods.general && Array.isArray(build.mods.general) && build.mods.general.length > 0) {
+        html += `<div><strong>General Mods:</strong> ${build.mods.general.map(mod => mod.name || mod).join(', ')}</div>`;
+      }
+      if (build.mods.elementalWells && Array.isArray(build.mods.elementalWells) && build.mods.elementalWells.length > 0) {
+        html += `<div><strong>Elemental Wells:</strong> ${build.mods.elementalWells.map(mod => mod.name || mod).join(', ')}</div>`;
+      }
+      if (build.mods.chargedWithLight && Array.isArray(build.mods.chargedWithLight) && build.mods.chargedWithLight.length > 0) {
+        html += `<div><strong>Charged with Light:</strong> ${build.mods.chargedWithLight.map(mod => mod.name || mod).join(', ')}</div>`;
+      }
+      if (build.mods.artifact && Array.isArray(build.mods.artifact) && build.mods.artifact.length > 0) {
+        html += `<div><strong>Artifact Mods:</strong> ${build.mods.artifact.map(mod => mod.name || mod).join(', ')}</div>`;
+      }
+      if (build.mods.totalCost !== undefined) {
+        html += `<div><strong>Total Mod Cost:</strong> ${build.mods.totalCost}/10</div>`;
+      }
+      if (build.mods.confidence) {
+        html += `<div><strong>Mod Confidence:</strong> ${Math.round(build.mods.confidence * 100)}%</div>`;
+      }
+
+      html += `</div></div>`;
+    }
+
+    // Exotics (NEW)
+    if (build.exotics) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">⭐ Exotic Effects</h4>`;
+      html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+
+      if (build.exotics.weapons && Array.isArray(build.exotics.weapons) && build.exotics.weapons.length > 0) {
+        html += `<div><strong>Exotic Weapons:</strong></div>`;
+        build.exotics.weapons.forEach(weapon => {
+          html += `<div style="margin-left: 12px;">• ${weapon.name || weapon} - ${weapon.exoticPerk?.description || weapon.effect || 'Special effect'}</div>`;
+        });
+      }
+      if (build.exotics.armor && Array.isArray(build.exotics.armor) && build.exotics.armor.length > 0) {
+        html += `<div><strong>Exotic Armor:</strong></div>`;
+        build.exotics.armor.forEach(armor => {
+          html += `<div style="margin-left: 12px;">• ${armor.name || armor} - ${armor.exoticPerk?.description || armor.effect || 'Special effect'}</div>`;
+        });
+      }
+      if (build.exotics.confidence) {
+        html += `<div><strong>Exotic Confidence:</strong> ${Math.round(build.exotics.confidence * 100)}%</div>`;
+      }
+
+      html += `</div></div>`;
+    }
+
+    // Enhanced Stats (prioritize over basic stats)
+    const statsToShow = build.enhancedStats || build.stats;
+    if (statsToShow) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">📊 ${build.enhancedStats ? 'Optimized' : 'Basic'} Stats</h4>`;
+      html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+
+      Object.entries(statsToShow).forEach(([stat, value]) => {
+        const tier = Math.floor(value / 10);
+        const tierColors = {
+          0: '#666', 1: '#666', 2: '#666',  // Tiers 0-2: Gray
+          3: '#888', 4: '#888',             // Tiers 3-4: Light gray
+          5: '#9db', 6: '#9db',             // Tiers 5-6: Teal
+          7: '#fb9', 8: '#fb9',             // Tiers 7-8: Orange
+          9: '#f83', 10: '#f83'             // Tiers 9-10: Gold
+        };
+        const tierColor = tierColors[tier] || '#666';
+        html += `<div><strong>${stat.charAt(0).toUpperCase() + stat.slice(1)}:</strong> <span style="color: ${tierColor}; font-weight: bold;">${value}</span> (T${tier})</div>`;
+      });
+
+      html += `</div></div>`;
+    }
+
+    // Comprehensive Synergies (prioritize over basic synergies)
+    const synergiesToShow = build.comprehensiveSynergies || build.synergies;
+    if (synergiesToShow) {
+      html += `<div style="margin-bottom: 16px;">`;
+      html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">✨ ${build.comprehensiveSynergies ? 'Advanced' : 'Basic'} Synergies</h4>`;
+      html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px;">`;
+
+      if (build.comprehensiveSynergies) {
+        // Display comprehensive synergies with categories
+        if (build.comprehensiveSynergies.elemental && Array.isArray(build.comprehensiveSynergies.elemental) && build.comprehensiveSynergies.elemental.length > 0) {
+          html += `<div><strong>Elemental Synergies:</strong></div>`;
+          build.comprehensiveSynergies.elemental.forEach(synergy => {
+            const confidence = synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : '';
+            const description = synergy.description ? `<br><span style="font-size: 11px; color: #ccc; margin-left: 16px;">${synergy.description}</span>` : '';
+            const type = synergy.type ? `<span style="font-size: 10px; color: #7dd3fc; margin-left: 8px;">[${synergy.type}]</span>` : '';
+            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${confidence} ${type}${description}</div>`;
+          });
+        }
+
+        if (build.comprehensiveSynergies.crossSystem && Array.isArray(build.comprehensiveSynergies.crossSystem) && build.comprehensiveSynergies.crossSystem.length > 0) {
+          html += `<div><strong>Cross-System Synergies:</strong></div>`;
+          build.comprehensiveSynergies.crossSystem.forEach(synergy => {
+            const confidence = synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : '';
+            const description = synergy.description ? `<br><span style="font-size: 11px; color: #ccc; margin-left: 16px;">${synergy.description}</span>` : '';
+            const type = synergy.type ? `<span style="font-size: 10px; color: #7dd3fc; margin-left: 8px;">[${synergy.type}]</span>` : '';
+            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${confidence} ${type}${description}</div>`;
+          });
+        }
+
+        if (build.comprehensiveSynergies.trigger && Array.isArray(build.comprehensiveSynergies.trigger) && build.comprehensiveSynergies.trigger.length > 0) {
+          html += `<div><strong>Trigger-Based Synergies:</strong></div>`;
+          build.comprehensiveSynergies.trigger.forEach(synergy => {
+            const confidence = synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : '';
+            const description = synergy.description ? `<br><span style="font-size: 11px; color: #ccc; margin-left: 16px;">${synergy.description}</span>` : '';
+            const type = synergy.type ? `<span style="font-size: 10px; color: #7dd3fc; margin-left: 8px;">[${synergy.type}]</span>` : '';
+            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${confidence} ${type}${description}</div>`;
+          });
+        }
+
+        if (build.comprehensiveSynergies.activity && Array.isArray(build.comprehensiveSynergies.activity) && build.comprehensiveSynergies.activity.length > 0) {
+          html += `<div><strong>Activity-Specific Synergies:</strong></div>`;
+          build.comprehensiveSynergies.activity.forEach(synergy => {
+            const confidence = synergy.confidence ? `(${Math.round(synergy.confidence * 100)}%)` : '';
+            const description = synergy.description ? `<br><span style="font-size: 11px; color: #ccc; margin-left: 16px;">${synergy.description}</span>` : '';
+            const type = synergy.type ? `<span style="font-size: 10px; color: #7dd3fc; margin-left: 8px;">[${synergy.type}]</span>` : '';
+            html += `<div style="margin-left: 12px;">• ${synergy.name || synergy} ${confidence} ${type}${description}</div>`;
+          });
+        }
+
+        if (build.comprehensiveSynergies.confidence) {
+          html += `<div style="margin-top: 8px;"><strong>Synergy Analysis Confidence:</strong> ${Math.round(build.comprehensiveSynergies.confidence * 100)}%</div>`;
+        }
+
+        // Show recommendations if available
+        if (build.comprehensiveSynergies.recommendations && Array.isArray(build.comprehensiveSynergies.recommendations) && build.comprehensiveSynergies.recommendations.length > 0) {
+          html += `<div style="margin-top: 8px;"><strong>Recommendations:</strong></div>`;
+          build.comprehensiveSynergies.recommendations.forEach(rec => {
+            html += `<div style="margin-left: 12px; font-style: italic;">💡 ${rec}</div>`;
+          });
+        }
+
+        // Show warnings if available
+        if (build.comprehensiveSynergies.warnings && Array.isArray(build.comprehensiveSynergies.warnings) && build.comprehensiveSynergies.warnings.length > 0) {
+          html += `<div style="margin-top: 8px;"><strong>Warnings:</strong></div>`;
+          build.comprehensiveSynergies.warnings.forEach(warning => {
+            html += `<div style="margin-left: 12px; color: #f83;">⚠️ ${warning.message || warning}</div>`;
+          });
+        }
+      } else if (Array.isArray(synergiesToShow)) {
+        // Display basic synergies
+        synergiesToShow.forEach((synergy, index) => {
+          html += `<div style="margin-bottom: 4px;">• ${synergy}</div>`;
+        });
+      }
+
+      html += `</div></div>`;
+    }
+
+    // Raw Data (for debugging)
+    html += `<div style="margin-bottom: 16px;">`;
+    html += `<h4 style="margin: 0 0 8px 0; color: var(--arc);">🔍 Raw Data</h4>`;
+    html += `<div style="padding: 8px; background: var(--panel2); border-radius: 6px; font-family: monospace; font-size: 11px; max-height: 200px; overflow-y: auto;">`;
+    html += `<pre style="margin: 0; white-space: pre-wrap;">${JSON.stringify(build, null, 2)}</pre>`;
+    html += `</div></div>`;
+
+    html += '</div>';
+    return html;
+  }
+
+  // Initialize Build Crafter
+  async function initializeBuildCrafter() {
+    try {
+      debugLog('Starting Build Crafter initialization...');
+      updateLoadingState('Loading manifest system...');
+
+      // Load manifest loader
+      const manifestModule = await import('./js/api/manifest-loader.js');
+      const { ManifestLoader } = manifestModule;
+
+      // Initialize manifest loader
+      const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      manifestLoader = new ManifestLoader(isLocal ? './data/manifest/' : null);
+      debugLog('Manifest loader initialized');
+
+      updateLoadingState('Loading build analyzer...');
+
+      // Load build analyzer
+      const analyzerModule = await import('./js/core/build-analyzer.js');
+      const { BuildAnalyzer } = analyzerModule;
+
+      buildAnalyzer = new BuildAnalyzer(manifestLoader);
+      debugLog('Build analyzer initialized');
+
+      updateLoadingState('Initializing systems...');
+
+      // Initialize analyzer (loads essential data)
+      await buildAnalyzer.initialize();
+      debugLog('Build analyzer ready');
+
+      // Show the interface
+      showBuildCrafterInterface();
+      debugLog('Build Crafter ready for use');
+
+    } catch (error) {
+      debugLog(`Initialization failed: ${error.message}`);
+      showError(error.message);
+    }
+  }
+
+  // Make initialization function globally available
+  window.initializeBuildCrafter = initializeBuildCrafter;
+
+  // Start initialization when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeBuildCrafter);
+  } else {
+    initializeBuildCrafter();
+  }
+</script>
+
+<!-- Authentication System Integration -->
+<script type="module">
+import authManager from './lib/auth-client.js';
+
+// Authentication UI Controller
+class AuthUI {
+  constructor() {
+    this.authToggle = document.getElementById('authToggle');
+    this.dotElement = this.authToggle?.querySelector('.dot');
+    this.textElement = this.authToggle?.querySelector('.text');
+
+    this.init();
+  }
+
+  init() {
+    // Add click event listener
+    if (this.authToggle) {
+      this.authToggle.addEventListener('click', this.handleAuthClick.bind(this));
+      this.authToggle.addEventListener('keydown', this.handleKeyDown.bind(this));
+    }
+
+    // Listen for auth state changes
+    authManager.addEventListener('sessionchange', this.updateUI.bind(this));
+    authManager.addEventListener('loadingchange', this.updateLoadingState.bind(this));
+    authManager.addEventListener('errorchange', this.handleError.bind(this));
+
+    // Initial UI update
+    this.updateUI();
+    this.updateLoadingState({ detail: authManager.isLoading });
+  }
+
+  handleAuthClick() {
+    if (authManager.isLoading) return;
+
+    if (authManager.isAuthenticated()) {
+      this.logout();
+    } else {
+      this.login();
+    }
+  }
+
+  handleKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.handleAuthClick();
+    }
+  }
+
+  login() {
+    console.log('🔗 Initiating login...');
+    authManager.login();
+  }
+
+  logout() {
+    if (confirm('Are you sure you want to sign out?')) {
+      console.log('👋 Logging out...');
+      authManager.logout();
+    }
+  }
+
+  updateUI() {
+    if (!this.authToggle) return;
+
+    const isAuthenticated = authManager.isAuthenticated();
+    const user = authManager.getUser();
+
+    // Update classes
+    this.authToggle.className = this.authToggle.className
+      .replace(/\b(authenticated|loading)\b/g, '');
+
+    if (isAuthenticated) {
+      this.authToggle.classList.add('authenticated');
+    }
+
+    // Update text content
+    if (isAuthenticated && user) {
+      this.textElement.textContent = user.displayName || 'Signed In';
+      this.authToggle.title = `Signed in as ${user.displayName} - Click to sign out`;
+    } else {
+      this.textElement.textContent = '';
+      this.authToggle.title = 'Click to sign in with Bungie.net';
+    }
+
+    console.log(`🔄 Auth UI updated - authenticated: ${isAuthenticated}`);
+  }
+
+  updateLoadingState(event) {
+    if (!this.authToggle) return;
+
+    const isLoading = event.detail;
+
+    // Update classes
+    this.authToggle.classList.toggle('loading', isLoading);
+
+    // Update text for loading state
+    if (isLoading && !authManager.isAuthenticated()) {
+      this.textElement.textContent = '';
+    }
+  }
+
+  handleError(event) {
+    const error = event.detail;
+    if (error) {
+      console.error('🚨 Auth error:', error);
+      // You could show a toast notification here
+    }
+  }
+}
+
+// Global auth utilities
+window.authUtils = {
+  isAuthenticated: () => authManager.isAuthenticated(),
+  getUser: () => authManager.getUser(),
+  getDestinyMemberships: () => authManager.getDestinyMemberships(),
+  getPrimaryMembership: () => authManager.getPrimaryMembership(),
+  getAccessToken: () => authManager.getAccessToken(),
+  login: () => authManager.login(),
+  logout: () => authManager.logout(),
+  refreshSession: () => authManager.refreshSession()
+};
+
+// Initialize auth UI when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  window.authUI = new AuthUI();
+  console.log('✅ Authentication system initialized');
+});
+
+// For debugging
+window.authManager = authManager;
+</script>
+
 </body>
 </html>
