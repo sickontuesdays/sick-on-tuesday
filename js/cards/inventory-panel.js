@@ -268,6 +268,8 @@ export class InventoryPanel {
           ${this.renderEquippedWeapon('Power', characterData.equipped.weapons.power)}
         </div>
       </div>
+
+      ${this.renderSubclassLoadout(characterData.subclass)}
     `;
 
     // Inventory grid
@@ -333,6 +335,95 @@ export class InventoryPanel {
           <span class="weapon-name">${weapon.name}</span>
           <span class="weapon-type">${weapon.itemType}</span>
         </div>
+      </div>
+    `;
+  }
+
+  renderSubclassLoadout(subclassData) {
+    if (!subclassData) {
+      return `
+        <div class="subclass-loadout">
+          <h4>Subclass Loadout</h4>
+          <p class="empty-text">No subclass data available</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="subclass-loadout">
+        <h4>🔥 Subclass Loadout</h4>
+
+        ${subclassData.equipped ? `
+          <div class="subclass-info">
+            <div class="subclass-main">
+              <img src="${subclassData.equipped.icon || ''}" alt="${subclassData.equipped.name || 'Subclass'}" class="subclass-icon" />
+              <div class="subclass-details">
+                <span class="subclass-name">${subclassData.equipped.name || 'Unknown Subclass'}</span>
+                <span class="subclass-type">${subclassData.equipped.itemType || ''}</span>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="abilities-grid">
+          <div class="ability-section">
+            <h5>Abilities</h5>
+            <div class="abilities">
+              ${this.renderAbility('Grenade', subclassData.abilities?.grenade)}
+              ${this.renderAbility('Melee', subclassData.abilities?.melee)}
+              ${this.renderAbility('Class Ability', subclassData.abilities?.classAbility)}
+              ${this.renderAbility('Super', subclassData.abilities?.super)}
+            </div>
+          </div>
+
+          ${subclassData.aspects && subclassData.aspects.length > 0 ? `
+            <div class="aspects-section">
+              <h5>Aspects (${subclassData.aspects.length})</h5>
+              <div class="aspects">
+                ${subclassData.aspects.map(aspect => this.renderSubclassItem('aspect', aspect)).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${subclassData.fragments && subclassData.fragments.length > 0 ? `
+            <div class="fragments-section">
+              <h5>Fragments (${subclassData.fragments.length})</h5>
+              <div class="fragments">
+                ${subclassData.fragments.slice(0, 6).map(fragment => this.renderSubclassItem('fragment', fragment)).join('')}
+                ${subclassData.fragments.length > 6 ? `<div class="more-items">+${subclassData.fragments.length - 6} more...</div>` : ''}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  renderAbility(name, ability) {
+    if (!ability) {
+      return `<div class="ability empty">${name}: <span class="empty-text">Not equipped</span></div>`;
+    }
+
+    return `
+      <div class="ability filled">
+        <img src="${ability.icon || ''}" alt="${ability.name}" class="ability-icon" />
+        <div class="ability-info">
+          <span class="ability-name">${name}</span>
+          <span class="ability-type">${ability.name || 'Unknown'}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  renderSubclassItem(type, item) {
+    if (!item) {
+      return `<div class="${type} empty">Empty</div>`;
+    }
+
+    return `
+      <div class="${type} filled" title="${item.name}&#10;${item.description || ''}">
+        <img src="${item.icon || ''}" alt="${item.name}" class="${type}-icon" />
+        <span class="${type}-name">${item.name}</span>
       </div>
     `;
   }

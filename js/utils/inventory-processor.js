@@ -315,19 +315,162 @@ export class InventoryProcessor {
   }
 
   /**
-   * Process subclass configuration
+   * Process subclass configuration (aspects, fragments, abilities)
    */
   async processSubclass(characterId, profileData) {
-    // This would process subclass data, aspects, fragments, etc.
-    // Implementation depends on specific Bungie API structure
-    return {
+    const subclass = {
       equipped: null,
       aspects: [],
       fragments: [],
-      grenades: [],
-      melees: [],
-      classAbilities: []
+      abilities: {
+        grenade: null,
+        melee: null,
+        classAbility: null,
+        super: null
+      },
+      mods: []
     };
+
+    try {
+      // Get equipped subclass items (bucketHash: 3284755031)
+      if (!profileData.characterEquipment?.data?.[characterId]?.items) {
+        return subclass;
+      }
+
+      const equippedItems = profileData.characterEquipment.data[characterId].items;
+      const subclassItems = equippedItems.filter(item => item.bucketHash === 3284755031);
+
+      for (const item of subclassItems) {
+        const processedItem = await this.processSubclassItem(item, profileData);
+
+        if (processedItem) {
+          // Categorize by item type using manifest data
+          const category = await this.categorizeSubclassItem(processedItem);
+
+          switch (category) {
+            case 'aspect':
+              subclass.aspects.push(processedItem);
+              break;
+            case 'fragment':
+              subclass.fragments.push(processedItem);
+              break;
+            case 'grenade':
+              subclass.abilities.grenade = processedItem;
+              break;
+            case 'melee':
+              subclass.abilities.melee = processedItem;
+              break;
+            case 'classAbility':
+              subclass.abilities.classAbility = processedItem;
+              break;
+            case 'super':
+              subclass.abilities.super = processedItem;
+              break;
+            case 'subclass':
+              subclass.equipped = processedItem;
+              break;
+            default:
+              subclass.mods.push(processedItem);
+          }
+        }
+      }
+
+      return subclass;
+
+    } catch (error) {
+      console.error(`Error processing subclass for character ${characterId}:`, error);
+      return subclass;
+    }
+  }
+
+  /**
+   * Process individual subclass item with socket data
+   */
+  async processSubclassItem(item, profileData) {
+    try {
+      // Get basic item data
+      const processedItem = await this.processItem(item, profileData);
+
+      // Add socket data if available
+      if (item.itemInstanceId && profileData.itemComponents?.sockets?.data?.[item.itemInstanceId]) {
+        const socketData = profileData.itemComponents.sockets.data[item.itemInstanceId];
+        processedItem.sockets = [];
+
+        for (const socket of socketData.sockets || []) {
+          if (socket.plugHash) {
+            try {
+              // Look up plug details in manifest
+              await this.ensureChunkLoaded('consumables');
+              const consumablesChunk = await this.manifestLoader.loadItemChunk('consumables');
+              const plugDef = consumablesChunk[socket.plugHash];
+
+              processedItem.sockets.push({
+                plugHash: socket.plugHash,
+                name: plugDef?.displayProperties?.name || `Plug_${socket.plugHash}`,
+                description: plugDef?.displayProperties?.description || '',
+                icon: plugDef?.displayProperties?.icon || null,
+                isEnabled: socket.isEnabled,
+                isVisible: socket.isVisible
+              });
+            } catch (error) {
+              // Fallback if manifest lookup fails
+              processedItem.sockets.push({
+                plugHash: socket.plugHash,
+                name: `Plug_${socket.plugHash}`,
+                isEnabled: socket.isEnabled,
+                isVisible: socket.isVisible
+              });
+            }
+          }
+        }
+      }
+
+      return processedItem;
+    } catch (error) {
+      console.error('Error processing subclass item:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Categorize subclass item by type (aspect, fragment, ability, etc.)
+   */
+  async categorizeSubclassItem(processedItem) {
+    try {
+      // Use item name patterns to categorize (fallback method)
+      const name = processedItem.name?.toLowerCase() || '';
+      const itemType = processedItem.itemType?.toLowerCase() || '';
+
+      // Known patterns for subclass abilities and components
+      if (name.includes('aspect') || itemType.includes('aspect')) {
+        return 'aspect';
+      }
+      if (name.includes('fragment') || itemType.includes('fragment')) {
+        return 'fragment';
+      }
+      if (name.includes('grenade') || itemType.includes('grenade')) {
+        return 'grenade';
+      }
+      if (name.includes('melee') || itemType.includes('melee')) {
+        return 'melee';
+      }
+      if (name.includes('rift') || name.includes('barricade') || name.includes('dodge') ||
+          itemType.includes('class ability')) {
+        return 'classAbility';
+      }
+      if (name.includes('super') || itemType.includes('super')) {
+        return 'super';
+      }
+      if (itemType.includes('subclass')) {
+        return 'subclass';
+      }
+
+      // Default to mod/unknown
+      return 'mod';
+    } catch (error) {
+      console.error('Error categorizing subclass item:', error);
+      return 'mod';
+    }
   }
 
   /**
