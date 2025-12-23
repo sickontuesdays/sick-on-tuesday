@@ -183,7 +183,7 @@ export class InventoryProcessor {
 
     for (const item of inventoryItems) {
       const processedItem = await this.processItem(item, profileData);
-      const category = await this.categorizeItem(item.itemHash);
+      const category = this.determineItemCategory(item.bucketHash);
 
       if (inventory[category]) {
         inventory[category].push(processedItem);
@@ -212,7 +212,7 @@ export class InventoryProcessor {
 
     for (const item of vaultItems) {
       const processedItem = await this.processItem(item, profileData);
-      const category = await this.categorizeItem(item.itemHash);
+      const category = this.determineItemCategory(item.bucketHash);
 
       if (vault[category]) {
         vault[category].push(processedItem);
