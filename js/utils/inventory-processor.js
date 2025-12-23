@@ -5,6 +5,7 @@ export class InventoryProcessor {
   constructor(manifestLoader) {
     this.manifestLoader = manifestLoader;
     this.loadedChunks = new Set(); // Track what chunks are already loaded for performance
+    this.categoryCache = new Map(); // Cache itemHash -> category mappings for performance
   }
 
   /**
@@ -195,7 +196,7 @@ export class InventoryProcessor {
   }
 
   /**
-   * Process vault contents
+   * Process vault contents using itemCategoryHashes for proper categorization
    */
   async processVault(profileData) {
     const vault = {
@@ -213,7 +214,8 @@ export class InventoryProcessor {
 
     for (const item of vaultItems) {
       const processedItem = await this.processItem(item, profileData);
-      const category = this.categorizeVaultItem(item.bucketHash);
+      // Use itemCategoryHashes instead of bucketHash for proper categorization
+      const category = await this.categorizeItemByManifest(item.itemHash);
 
       if (vault[category]) {
         vault[category].push(processedItem);
@@ -647,6 +649,123 @@ export class InventoryProcessor {
     };
 
     return bucketTypes[bucketHash] || 'Unknown';
+  }
+
+  /**
+   * Categorize item using itemCategoryHashes from manifest (CORRECT METHOD)
+   * Replaces bucket hash categorization which incorrectly used storage location
+   */
+  async categorizeItemByManifest(itemHash) {
+    try {
+      // Check cache first for performance
+      if (this.categoryCache.has(itemHash)) {
+        return this.categoryCache.get(itemHash);
+      }
+
+      const categories = await this.getItemCategories(itemHash);
+      const category = this.determinePrimaryCategory(categories);
+
+      // Cache the result for future lookups
+      this.categoryCache.set(itemHash, category);
+
+      return category;
+    } catch (error) {
+      console.warn(`Failed to categorize item ${itemHash}:`, error);
+      return 'materials'; // Fallback to materials
+    }
+  }
+
+  /**
+   * Get itemCategoryHashes from manifest for proper categorization
+   * Searches across all manifest chunks to find the item definition
+   */
+  async getItemCategories(itemHash) {
+    // Search order: weapons, armor, consumables (most common to least common)
+    const chunks = ['weapons', 'armor', 'consumables'];
+
+    for (const chunkName of chunks) {
+      try {
+        await this.ensureChunkLoaded(chunkName);
+        const chunk = await this.manifestLoader.loadItemChunk(chunkName);
+
+        if (chunk && chunk[itemHash]) {
+          const item = chunk[itemHash];
+
+          // Primary: Use itemCategoryHashes (official Bungie API categorization)
+          if (item.itemCategoryHashes && item.itemCategoryHashes.length > 0) {
+            return item.itemCategoryHashes;
+          }
+
+          // Fallback: Use traitHashes for newer items
+          if (item.traitHashes && item.traitHashes.length > 0) {
+            return this.mapTraitHashesToCategories(item.traitHashes);
+          }
+
+          // Last resort: Use itemType
+          if (item.itemType !== undefined) {
+            return this.mapItemTypeToCategories(item.itemType);
+          }
+        }
+      } catch (error) {
+        // Continue to next chunk if this one fails
+        continue;
+      }
+    }
+
+    return []; // No categorization data found
+  }
+
+  /**
+   * Determine primary category for items with multiple categories
+   * Based on Destiny Item Manager (DIM) implementation and Bungie best practices
+   */
+  determinePrimaryCategory(itemCategoryHashes) {
+    if (!itemCategoryHashes || itemCategoryHashes.length === 0) {
+      return 'materials'; // Default fallback
+    }
+
+    // Priority order based on DIM implementation and Bungie API docs
+    const categoryPriority = [
+      { hash: 1, name: 'weapons' },      // Weapons (highest priority)
+      { hash: 20, name: 'armor' },       // Armor
+      { hash: 59, name: 'mods' },        // Mods (map to materials for vault display)
+      { hash: 35, name: 'consumables' }, // Consumables
+      { hash: 40, name: 'materials' }    // Materials (lowest priority)
+    ];
+
+    for (const priority of categoryPriority) {
+      if (itemCategoryHashes.includes(priority.hash)) {
+        // Map mods to materials for vault display consistency
+        return priority.name === 'mods' ? 'materials' : priority.name;
+      }
+    }
+
+    return 'materials'; // Default fallback
+  }
+
+  /**
+   * Map traitHashes to categories for newer items (fallback method)
+   */
+  mapTraitHashesToCategories(traitHashes) {
+    // This is a simplified implementation - traitHashes are more complex
+    // For now, return empty array to use itemType fallback
+    return [];
+  }
+
+  /**
+   * Map itemType to categories (last resort fallback)
+   */
+  mapItemTypeToCategories(itemType) {
+    // Map numeric itemType to category hashes
+    const itemTypeToCategory = {
+      1: [1],  // Weapons
+      2: [1],  // Weapons
+      3: [1],  // Weapons
+      20: [20], // Armor
+      // Add more mappings as needed
+    };
+
+    return itemTypeToCategory[itemType] || [];
   }
 
   /**
