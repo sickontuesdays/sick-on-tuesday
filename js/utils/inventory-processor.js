@@ -4,6 +4,7 @@
 export class InventoryProcessor {
   constructor(manifestLoader) {
     this.manifestLoader = manifestLoader;
+    this.loadedChunks = new Set(); // Track what chunks are already loaded for performance
   }
 
   /**
@@ -226,18 +227,23 @@ export class InventoryProcessor {
    */
   async processItem(item, profileData) {
     try {
-      // For performance, we'll create basic item info without full manifest lookups
-      // Full item definitions would be too slow to load for every item
+      // Determine item category and load appropriate manifest chunk
+      const category = this.determineItemCategory(item.bucketHash);
+      await this.ensureChunkLoaded(category);
+
+      // Get manifest chunk and look up item definition
+      const itemChunk = await this.manifestLoader.loadItemChunk(category);
+      const itemDef = itemChunk[item.itemHash];
 
       const processedItem = {
         itemHash: item.itemHash,
         itemInstanceId: item.itemInstanceId,
-        name: `Item_${item.itemHash}`, // Will show hash until proper lookup is implemented
-        description: '',
-        icon: null, // Icon lookup requires manifest
+        name: itemDef?.displayProperties?.name || `Unknown_${item.itemHash}`,
+        description: itemDef?.displayProperties?.description || 'No description available',
+        icon: itemDef?.displayProperties?.icon || null,
         quantity: item.quantity || 1,
-        itemType: this.getItemTypeFromBucket(item.bucketHash),
-        tier: 'Unknown', // Tier requires manifest lookup
+        itemType: itemDef?.itemTypeDisplayName || this.getItemTypeFromBucket(item.bucketHash),
+        tier: itemDef?.inventory?.tierTypeName || 'Unknown',
         bucketHash: item.bucketHash,
         transferStatus: item.transferStatus,
         lockable: item.lockable,
@@ -405,10 +411,40 @@ export class InventoryProcessor {
     }
   }
 
-  async categorizeItem(itemHash) {
-    // For now, categorize based on the bucket type instead of loading full definitions
-    // This is much more performance-friendly
-    return 'unknown'; // Will be categorized by bucket in processEquippedItems/processInventoryItems
+  determineItemCategory(bucketHash) {
+    // Map bucket hashes to manifest chunks for efficient item definition loading
+    const bucketToCategory = {
+      // Weapons
+      1498876634: 'weapons',    // Kinetic Weapons
+      2465295065: 'weapons',    // Energy Weapons
+      953998645: 'weapons',     // Power Weapons
+
+      // Armor
+      3448274439: 'armor',      // Helmet
+      3551918588: 'armor',      // Arms
+      14239492: 'armor',        // Chest
+      20886954: 'armor',        // Legs
+      1585787867: 'armor',      // Class Item
+
+      // Consumables and materials
+      1469714392: 'consumables', // General consumables
+      2422292810: 'consumables', // Modifications
+
+      // Subclass
+      3284755031: 'consumables', // Subclass (treated as consumable for manifest lookup)
+
+      // Vault
+      138197802: 'consumables'   // General vault items
+    };
+
+    return bucketToCategory[bucketHash] || 'consumables';
+  }
+
+  async ensureChunkLoaded(category) {
+    if (!this.loadedChunks.has(category)) {
+      await this.manifestLoader.loadItemChunk(category);
+      this.loadedChunks.add(category);
+    }
   }
 
   async processItemStats(statsData) {
@@ -440,15 +476,40 @@ export class InventoryProcessor {
   async processItemSockets(socketsData) {
     const sockets = [];
 
-    // For performance, we'll include socket data without full manifest lookups for now
-    for (const socket of socketsData) {
-      if (socket.plugHash) {
-        sockets.push({
-          plugHash: socket.plugHash,
-          name: `Mod_${socket.plugHash}`, // Will need proper lookup later
-          description: '',
-          icon: null
-        });
+    // Load plugs/mods chunk for socket name resolution
+    try {
+      await this.ensureChunkLoaded('consumables'); // Many mods are in consumables
+      const consumablesChunk = await this.manifestLoader.loadItemChunk('consumables');
+
+      for (const socket of socketsData) {
+        if (socket.plugHash) {
+          // Look up plug/mod definition in manifest
+          const plugDef = consumablesChunk[socket.plugHash];
+
+          sockets.push({
+            plugHash: socket.plugHash,
+            name: plugDef?.displayProperties?.name || `Mod_${socket.plugHash}`,
+            description: plugDef?.displayProperties?.description || '',
+            icon: plugDef?.displayProperties?.icon || null,
+            isEnabled: socket.isEnabled,
+            isVisible: socket.isVisible
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error processing item sockets:', error);
+      // Fallback to basic socket info if manifest lookup fails
+      for (const socket of socketsData) {
+        if (socket.plugHash) {
+          sockets.push({
+            plugHash: socket.plugHash,
+            name: `Mod_${socket.plugHash}`,
+            description: '',
+            icon: null,
+            isEnabled: socket.isEnabled,
+            isVisible: socket.isVisible
+          });
+        }
       }
     }
 
