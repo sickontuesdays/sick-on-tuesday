@@ -340,12 +340,18 @@ export class InventoryProcessor {
       const equippedItems = profileData.characterEquipment.data[characterId].items;
       const subclassItems = equippedItems.filter(item => item.bucketHash === 3284755031);
 
+      console.log(`🔍 Found ${subclassItems.length} subclass items for character ${characterId}`);
+
       for (const item of subclassItems) {
         const processedItem = await this.processSubclassItem(item, profileData);
 
         if (processedItem) {
+          console.log(`📋 Processing subclass item: ${processedItem.name} (${processedItem.itemType})`);
+
           // Categorize by item type using manifest data
           const category = await this.categorizeSubclassItem(processedItem);
+
+          console.log(`🏷️ Categorized "${processedItem.name}" as: ${category}`);
 
           switch (category) {
             case 'aspect':
@@ -374,6 +380,19 @@ export class InventoryProcessor {
           }
         }
       }
+
+      console.log(`✅ Subclass processing complete for character ${characterId}:`, {
+        equipped: !!subclass.equipped,
+        aspects: subclass.aspects.length,
+        fragments: subclass.fragments.length,
+        abilities: {
+          grenade: !!subclass.abilities.grenade,
+          melee: !!subclass.abilities.melee,
+          classAbility: !!subclass.abilities.classAbility,
+          super: !!subclass.abilities.super
+        },
+        mods: subclass.mods.length
+      });
 
       return subclass;
 
@@ -441,6 +460,8 @@ export class InventoryProcessor {
       const name = processedItem.name?.toLowerCase() || '';
       const itemType = processedItem.itemType?.toLowerCase() || '';
 
+      console.log(`🔍 Categorizing: name="${name}", itemType="${itemType}"`);
+
       // Known patterns for subclass abilities and components
       if (name.includes('aspect') || itemType.includes('aspect')) {
         return 'aspect';
@@ -466,6 +487,7 @@ export class InventoryProcessor {
       }
 
       // Default to mod/unknown
+      console.log(`⚠️ No category match found for "${name}" (${itemType}), defaulting to 'mod'`);
       return 'mod';
     } catch (error) {
       console.error('Error categorizing subclass item:', error);
