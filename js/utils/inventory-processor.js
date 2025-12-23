@@ -126,9 +126,6 @@ export class InventoryProcessor {
     const equippedItems = profileData.characterEquipment.data[characterId].items;
 
     for (const item of equippedItems) {
-      const itemDef = await this.manifestLoader.getDefinition('DestinyInventoryItemDefinition', item.itemHash);
-      if (!itemDef) continue;
-
       const processedItem = await this.processItem(item, profileData);
 
       // Categorize by bucket hash
@@ -229,24 +226,18 @@ export class InventoryProcessor {
    */
   async processItem(item, profileData) {
     try {
-      const itemDef = await this.manifestLoader.getDefinition('DestinyInventoryItemDefinition', item.itemHash);
-      if (!itemDef) {
-        return {
-          itemHash: item.itemHash,
-          name: 'Unknown Item',
-          error: 'Definition not found'
-        };
-      }
+      // For performance, we'll create basic item info without full manifest lookups
+      // Full item definitions would be too slow to load for every item
 
       const processedItem = {
         itemHash: item.itemHash,
         itemInstanceId: item.itemInstanceId,
-        name: itemDef.displayProperties.name,
-        description: itemDef.displayProperties.description,
-        icon: itemDef.displayProperties.icon ? `https://bungie.net${itemDef.displayProperties.icon}` : null,
+        name: `Item_${item.itemHash}`, // Will show hash until proper lookup is implemented
+        description: '',
+        icon: null, // Icon lookup requires manifest
         quantity: item.quantity || 1,
-        itemType: itemDef.itemTypeDisplayName,
-        tier: await this.getTierName(itemDef.inventory.tierTypeHash),
+        itemType: this.getItemTypeFromBucket(item.bucketHash),
+        tier: 'Unknown', // Tier requires manifest lookup
         bucketHash: item.bucketHash,
         transferStatus: item.transferStatus,
         lockable: item.lockable,
@@ -292,10 +283,21 @@ export class InventoryProcessor {
     const stats = {};
 
     if (character.stats) {
-      for (const [statHash, value] of Object.entries(character.stats)) {
-        const statDef = await this.manifestLoader.getDefinition('DestinyStatDefinition', statHash);
-        if (statDef) {
-          stats[statDef.displayProperties.name.toLowerCase()] = value;
+      try {
+        const essentialData = await this.manifestLoader.loadEssentialData();
+        for (const [statHash, value] of Object.entries(character.stats)) {
+          const statDef = essentialData.stats[statHash];
+          if (statDef) {
+            stats[statDef.displayProperties.name.toLowerCase()] = value;
+          } else {
+            stats[`stat_${statHash}`] = value;
+          }
+        }
+      } catch (error) {
+        console.error('Error processing character stats:', error);
+        // Fallback to raw stat data
+        for (const [statHash, value] of Object.entries(character.stats)) {
+          stats[`stat_${statHash}`] = value;
         }
       }
     }
@@ -329,15 +331,14 @@ export class InventoryProcessor {
       const charProgressions = profileData.characterProgressions.data[characterId].progressions;
 
       for (const [progressionHash, progression] of Object.entries(charProgressions)) {
-        const progressionDef = await this.manifestLoader.getDefinition('DestinyProgressionDefinition', progressionHash);
-        if (progressionDef) {
-          progressions[progressionDef.displayProperties.name] = {
-            level: progression.level,
-            progressToNextLevel: progression.progressToNextLevel,
-            nextLevelAt: progression.nextLevelAt,
-            currentProgress: progression.currentProgress
-          };
-        }
+        // Store progression data with hash key for now - names would require additional manifest loading
+        progressions[`progression_${progressionHash}`] = {
+          hash: progressionHash,
+          level: progression.level,
+          progressToNextLevel: progression.progressToNextLevel,
+          nextLevelAt: progression.nextLevelAt,
+          currentProgress: progression.currentProgress
+        };
       }
     }
 
@@ -348,46 +349,88 @@ export class InventoryProcessor {
    * Helper methods
    */
   async getClassName(classHash) {
-    const classDef = await this.manifestLoader.getDefinition('DestinyClassDefinition', classHash);
-    return classDef?.displayProperties?.name || 'Unknown Class';
+    try {
+      const essentialData = await this.manifestLoader.loadEssentialData();
+      const classDef = essentialData.classes[classHash];
+      return classDef?.displayProperties?.name || 'Unknown Class';
+    } catch (error) {
+      console.error('Error getting class name:', error);
+      return 'Unknown Class';
+    }
   }
 
   async getRaceName(raceHash) {
-    const raceDef = await this.manifestLoader.getDefinition('DestinyRaceDefinition', raceHash);
-    return raceDef?.displayProperties?.name || 'Unknown Race';
+    try {
+      // Race definitions are not in essential data, use a lookup table for now
+      const raceNames = {
+        2803282938: 'Awoken',
+        3887404748: 'Human',
+        898834093: 'Exo'
+      };
+      return raceNames[raceHash] || 'Unknown Race';
+    } catch (error) {
+      console.error('Error getting race name:', error);
+      return 'Unknown Race';
+    }
   }
 
   async getGenderName(genderHash) {
-    const genderDef = await this.manifestLoader.getDefinition('DestinyGenderDefinition', genderHash);
-    return genderDef?.displayProperties?.name || 'Unknown Gender';
+    try {
+      // Gender definitions lookup table
+      const genderNames = {
+        3111576190: 'Male',
+        2204441813: 'Female'
+      };
+      return genderNames[genderHash] || 'Unknown Gender';
+    } catch (error) {
+      console.error('Error getting gender name:', error);
+      return 'Unknown Gender';
+    }
   }
 
   async getTierName(tierHash) {
-    const tierDef = await this.manifestLoader.getDefinition('DestinyItemTierTypeDefinition', tierHash);
-    return tierDef?.displayProperties?.name || 'Unknown Tier';
+    try {
+      // Tier definitions lookup table
+      const tierNames = {
+        4008398120: 'Legendary',
+        2759499571: 'Exotic',
+        3340296461: 'Rare',
+        2395677314: 'Common',
+        3685308718: 'Basic'
+      };
+      return tierNames[tierHash] || 'Unknown Tier';
+    } catch (error) {
+      console.error('Error getting tier name:', error);
+      return 'Unknown Tier';
+    }
   }
 
   async categorizeItem(itemHash) {
-    const itemDef = await this.manifestLoader.getDefinition('DestinyInventoryItemDefinition', itemHash);
-    if (!itemDef) return 'unknown';
-
-    // Categorize based on item category hashes
-    const categories = itemDef.itemCategoryHashes || [];
-
-    if (categories.includes(1)) return 'weapons';      // Weapons
-    if (categories.includes(20)) return 'armor';       // Armor
-    if (categories.includes(61)) return 'consumables'; // Consumables
-
-    return 'materials'; // Default for materials/currencies
+    // For now, categorize based on the bucket type instead of loading full definitions
+    // This is much more performance-friendly
+    return 'unknown'; // Will be categorized by bucket in processEquippedItems/processInventoryItems
   }
 
   async processItemStats(statsData) {
     const stats = {};
 
-    for (const [statHash, statValue] of Object.entries(statsData)) {
-      const statDef = await this.manifestLoader.getDefinition('DestinyStatDefinition', statHash);
-      if (statDef) {
-        stats[statDef.displayProperties.name.toLowerCase()] = statValue.value;
+    try {
+      const essentialData = await this.manifestLoader.loadEssentialData();
+
+      for (const [statHash, statValue] of Object.entries(statsData)) {
+        const statDef = essentialData.stats[statHash];
+        if (statDef) {
+          stats[statDef.displayProperties.name.toLowerCase()] = statValue.value;
+        } else {
+          // Fallback for unknown stats
+          stats[`stat_${statHash}`] = statValue.value;
+        }
+      }
+    } catch (error) {
+      console.error('Error processing item stats:', error);
+      // Return raw stat data if manifest fails
+      for (const [statHash, statValue] of Object.entries(statsData)) {
+        stats[`stat_${statHash}`] = statValue.value;
       }
     }
 
@@ -397,21 +440,45 @@ export class InventoryProcessor {
   async processItemSockets(socketsData) {
     const sockets = [];
 
+    // For performance, we'll include socket data without full manifest lookups for now
     for (const socket of socketsData) {
       if (socket.plugHash) {
-        const plugDef = await this.manifestLoader.getDefinition('DestinyInventoryItemDefinition', socket.plugHash);
-        if (plugDef) {
-          sockets.push({
-            plugHash: socket.plugHash,
-            name: plugDef.displayProperties.name,
-            description: plugDef.displayProperties.description,
-            icon: plugDef.displayProperties.icon ? `https://bungie.net${plugDef.displayProperties.icon}` : null
-          });
-        }
+        sockets.push({
+          plugHash: socket.plugHash,
+          name: `Mod_${socket.plugHash}`, // Will need proper lookup later
+          description: '',
+          icon: null
+        });
       }
     }
 
     return sockets;
+  }
+
+  /**
+   * Get item type from bucket hash
+   */
+  getItemTypeFromBucket(bucketHash) {
+    const bucketTypes = {
+      // Weapons
+      1498876634: 'Kinetic Weapon',
+      2465295065: 'Energy Weapon',
+      953998645: 'Power Weapon',
+
+      // Armor
+      3448274439: 'Helmet',
+      3551918588: 'Gauntlets',
+      14239492: 'Chest Armor',
+      20886954: 'Leg Armor',
+      1585787867: 'Class Item',
+
+      // Other
+      138197802: 'General', // Vault
+      1469714392: 'Consumables',
+      2422292810: 'Modifications'
+    };
+
+    return bucketTypes[bucketHash] || 'Unknown';
   }
 
   /**
