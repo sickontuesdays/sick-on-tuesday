@@ -299,7 +299,7 @@ export class InventoryPanel {
     infoEl.innerHTML = `
       <div class="vault-header">
         <h3>🏦 Vault</h3>
-        <p class="vault-summary">Total Items: ${totalItems} / 500</p>
+        <p class="vault-summary">Total Items: ${totalItems} / 1000</p>
       </div>
 
       <div class="vault-categories">

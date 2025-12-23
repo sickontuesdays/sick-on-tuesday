@@ -86,7 +86,8 @@ export class InventoryProcessor {
         equipped: await this.processEquippedItems(characterId, profileData),
         inventory: await this.processCharacterInventory(characterId, profileData),
         subclass: await this.processSubclass(characterId, profileData),
-        progressions: await this.processProgressions(characterId, profileData)
+        progressions: await this.processProgressions(characterId, profileData),
+        armorStats: await this.calculateArmorStats(characterId, profileData)
       };
 
       return characterData;
@@ -212,7 +213,7 @@ export class InventoryProcessor {
 
     for (const item of vaultItems) {
       const processedItem = await this.processItem(item, profileData);
-      const category = this.determineItemCategory(item.bucketHash);
+      const category = this.categorizeVaultItem(item.bucketHash);
 
       if (vault[category]) {
         vault[category].push(processedItem);
@@ -440,6 +441,38 @@ export class InventoryProcessor {
     return bucketToCategory[bucketHash] || 'consumables';
   }
 
+  categorizeVaultItem(bucketHash) {
+    // Map vault item bucket hashes to display categories
+    // This is different from determineItemCategory which is for manifest loading
+    const bucketToCategory = {
+      // Weapons
+      1498876634: 'weapons',    // Kinetic Weapons
+      2465295065: 'weapons',    // Energy Weapons
+      953998645: 'weapons',     // Power Weapons
+
+      // Armor
+      3448274439: 'armor',      // Helmet
+      3551918588: 'armor',      // Arms/Gauntlets
+      14239492: 'armor',        // Chest Armor
+      20886954: 'armor',        // Leg Armor
+      1585787867: 'armor',      // Class Item
+
+      // Materials & Consumables
+      1469714392: 'materials',  // General consumables/materials (most vault items)
+      2422292810: 'materials',  // Modifications
+      138197802: 'materials',   // General vault items
+
+      // Consumables (things that are actually consumed)
+      269153547: 'consumables', // Consumables bucket
+      1506418338: 'consumables', // Consumable-specific items
+
+      // Subclass
+      3284755031: 'materials'   // Subclass (treat as materials for vault display)
+    };
+
+    return bucketToCategory[bucketHash] || 'materials';
+  }
+
   async ensureChunkLoaded(category) {
     if (!this.loadedChunks.has(category)) {
       await this.manifestLoader.loadItemChunk(category);
@@ -514,6 +547,80 @@ export class InventoryProcessor {
     }
 
     return sockets;
+  }
+
+  /**
+   * Calculate total armor stats for a character
+   */
+  async calculateArmorStats(characterId, profileData) {
+    // Calculate total armor stats (Mobility, Resilience, Recovery, etc.)
+    const armorStats = {
+      mobility: 0,
+      resilience: 0,
+      recovery: 0,
+      discipline: 0,
+      intellect: 0,
+      strength: 0
+    };
+
+    // Sum stats from equipped armor pieces
+    if (profileData.characterEquipment?.data?.[characterId]?.items) {
+      const equippedItems = profileData.characterEquipment.data[characterId].items;
+
+      for (const item of equippedItems) {
+        if (this.isArmorItem(item.bucketHash) && item.itemInstanceId) {
+          const itemStats = profileData.itemComponents?.stats?.data?.[item.itemInstanceId];
+          if (itemStats?.stats) {
+            await this.addItemStatsToTotal(itemStats.stats, armorStats);
+          }
+        }
+      }
+    }
+
+    return armorStats;
+  }
+
+  /**
+   * Check if an item is an armor piece based on bucket hash
+   */
+  isArmorItem(bucketHash) {
+    const armorBuckets = [
+      3448274439, // Helmet
+      3551918588, // Arms/Gauntlets
+      14239492,   // Chest Armor
+      20886954,   // Leg Armor
+      1585787867  // Class Item
+    ];
+    return armorBuckets.includes(bucketHash);
+  }
+
+  /**
+   * Add individual item stats to armor totals
+   */
+  async addItemStatsToTotal(itemStatsData, armorStats) {
+    try {
+      const essentialData = await this.manifestLoader.loadEssentialData();
+
+      // Map of stat hashes to stat names
+      const armorStatHashes = {
+        2996146975: 'mobility',    // Mobility
+        392767087: 'resilience',   // Resilience
+        1943323491: 'recovery',    // Recovery
+        1735777505: 'discipline',  // Discipline
+        144602215: 'intellect',    // Intellect
+        4244567218: 'strength'     // Strength
+      };
+
+      for (const [statHash, statValue] of Object.entries(itemStatsData)) {
+        const statKey = armorStatHashes[statHash];
+        if (statKey && armorStats.hasOwnProperty(statKey)) {
+          armorStats[statKey] += statValue.value || 0;
+        }
+      }
+    } catch (error) {
+      console.error('Error adding item stats to total:', error);
+      // Continue processing other items even if one fails
+    }
   }
 
   /**
