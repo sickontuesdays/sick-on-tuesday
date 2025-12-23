@@ -22,7 +22,7 @@ export class ManifestLoader {
 
   /**
    * Load essential data for immediate UI needs
-   * Returns: { stats, traits, damageTypes, classes, races, genders, buckets, tiers }
+   * Returns: { stats, traits, damageTypes, classes }
    */
   async loadEssentialData() {
     if (this.essentialData) {
@@ -30,26 +30,18 @@ export class ManifestLoader {
     }
 
     try {
-      const [stats, traits, damageTypes, classes, races, genders, buckets, tiers] = await Promise.all([
-        this.loadDefinition('DestinyStatDefinition'),           // ~39 KB - 76 stats
-        this.loadDefinition('DestinyTraitDefinition'),          // ~155 KB - 458 traits
-        this.loadDefinition('DestinyDamageTypeDefinition'),     // ~4 KB - damage types
-        this.loadDefinition('DestinyClassDefinition'),          // ~1.3 KB - classes
-        this.loadDefinition('DestinyRaceDefinition'),           // ~1 KB - races (replaces hardcoded)
-        this.loadDefinition('DestinyGenderDefinition'),         // ~1 KB - genders (replaces hardcoded)
-        this.loadDefinition('DestinyInventoryBucketDefinition'), // ~8 KB - buckets (replaces hardcoded)
-        this.loadDefinition('DestinyItemTierTypeDefinition')    // ~2 KB - tiers (replaces hardcoded)
+      const [stats, traits, damageTypes, classes] = await Promise.all([
+        this.loadDefinition('DestinyStatDefinition'),        // ~39 KB - 76 stats
+        this.loadDefinition('DestinyTraitDefinition'),       // ~155 KB - 458 traits
+        this.loadDefinition('DestinyDamageTypeDefinition'),  // ~4 KB - damage types
+        this.loadDefinition('DestinyClassDefinition')        // ~1.3 KB - classes
       ]);
 
       this.essentialData = {
         stats: stats || {},
         traits: traits || {},
         damageTypes: damageTypes || {},
-        classes: classes || {},
-        races: races || {},
-        genders: genders || {},
-        buckets: buckets || {},
-        tiers: tiers || {}
+        classes: classes || {}
       };
 
       return this.essentialData;
