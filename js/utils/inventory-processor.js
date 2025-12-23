@@ -341,6 +341,18 @@ export class InventoryProcessor {
       const subclassItems = equippedItems.filter(item => item.bucketHash === 3284755031);
 
       console.log(`🔍 Found ${subclassItems.length} subclass items for character ${characterId}`);
+      console.log(`📊 Total equipped items for character: ${equippedItems.length}`);
+
+      // Debug: Show all unique bucket hashes to understand what's equipped
+      const bucketHashes = [...new Set(equippedItems.map(item => item.bucketHash))];
+      console.log(`🗂️ All bucket hashes equipped:`, bucketHashes);
+
+      // Debug: Show subclass items found
+      console.log(`🎯 Subclass items found:`, subclassItems.map(item => ({
+        hash: item.itemHash,
+        bucket: item.bucketHash,
+        instanceId: item.itemInstanceId
+      })));
 
       for (const item of subclassItems) {
         const processedItem = await this.processSubclassItem(item, profileData);
@@ -407,8 +419,8 @@ export class InventoryProcessor {
    */
   async processSubclassItem(item, profileData) {
     try {
-      // Get basic item data
-      const processedItem = await this.processItem(item, profileData);
+      // Get basic item data using specialized subclass manifest lookup
+      const processedItem = await this.processSubclassItemManifest(item, profileData);
 
       // Add socket data if available
       if (item.itemInstanceId && profileData.itemComponents?.sockets?.data?.[item.itemInstanceId]) {
@@ -449,6 +461,68 @@ export class InventoryProcessor {
       console.error('Error processing subclass item:', error);
       return null;
     }
+  }
+
+  /**
+   * Process subclass item with multi-chunk manifest lookup
+   */
+  async processSubclassItemManifest(item, profileData) {
+    // Try multiple manifest chunks since subclass items could be anywhere
+    const chunksToTry = ['consumables', 'weapons', 'armor'];
+    let itemDef = null;
+    let foundInChunk = null;
+
+    for (const chunkName of chunksToTry) {
+      try {
+        await this.ensureChunkLoaded(chunkName);
+        const chunk = await this.manifestLoader.loadItemChunk(chunkName);
+
+        if (chunk && chunk[item.itemHash]) {
+          itemDef = chunk[item.itemHash];
+          foundInChunk = chunkName;
+          console.log(`📦 Found subclass item ${item.itemHash} in ${chunkName} chunk`);
+          break;
+        }
+      } catch (error) {
+        console.log(`⚠️ Failed to check ${chunkName} chunk for item ${item.itemHash}`);
+        continue;
+      }
+    }
+
+    const processedItem = {
+      itemHash: item.itemHash,
+      itemInstanceId: item.itemInstanceId,
+      name: itemDef?.displayProperties?.name || `Unknown_${item.itemHash}`,
+      description: itemDef?.displayProperties?.description || 'No description available',
+      icon: itemDef?.displayProperties?.icon || null,
+      quantity: item.quantity || 1,
+      itemType: itemDef?.itemTypeDisplayName || 'Unknown',
+      tier: itemDef?.inventory?.tierTypeName || 'Unknown',
+      bucketHash: item.bucketHash,
+      transferStatus: item.transferStatus,
+      lockable: item.lockable,
+      state: item.state,
+      foundInChunk: foundInChunk
+    };
+
+    console.log(`🔎 Processed subclass item: ${processedItem.name} (type: ${processedItem.itemType}, tier: ${processedItem.tier})`);
+
+    // Add instance-specific data if available
+    if (item.itemInstanceId && profileData.itemComponents?.instances?.data?.[item.itemInstanceId]) {
+      const instance = profileData.itemComponents.instances.data[item.itemInstanceId];
+      processedItem.damageTypeHash = instance.damageTypeHash;
+      processedItem.primaryStat = instance.primaryStat;
+      processedItem.canEquip = instance.canEquip;
+      processedItem.cannotEquipReason = instance.cannotEquipReason;
+    }
+
+    // Add stats if available
+    if (item.itemInstanceId && profileData.itemComponents?.stats?.data?.[item.itemInstanceId]) {
+      const stats = profileData.itemComponents.stats.data[item.itemInstanceId];
+      processedItem.stats = await this.processItemStats(stats.stats);
+    }
+
+    return processedItem;
   }
 
   /**
