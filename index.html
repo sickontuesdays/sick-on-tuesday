@@ -377,6 +377,448 @@
     padding: 16px;
     color: var(--bad);
   }
+
+  /* ===== INVENTORY PANEL STYLES ===== */
+  .inventory-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Authentication State */
+  .auth-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    color: var(--muted);
+  }
+
+  .sign-in-prompt h3 {
+    margin: 0 0 8px 0;
+    color: var(--ink);
+    font-size: 16px;
+  }
+
+  .sign-in-prompt p {
+    margin: 0;
+    font-size: 12px;
+    opacity: 0.8;
+  }
+
+  /* Loading State */
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--muted);
+  }
+
+  .loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top: 2px solid var(--arc);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 8px;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Error State */
+  .error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    color: var(--bad);
+  }
+
+  .error-state h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+  }
+
+  .error-state p {
+    margin: 0 0 12px 0;
+    font-size: 12px;
+    opacity: 0.8;
+  }
+
+  .retry-btn {
+    padding: 6px 12px;
+    background: var(--arc);
+    color: var(--bg);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.2s ease;
+  }
+
+  .retry-btn:hover {
+    background: var(--arc2);
+    transform: translateY(-1px);
+  }
+
+  /* Main Inventory Interface */
+  .inventory-interface {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Character Tabs */
+  .inventory-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--muted);
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  .tab:hover {
+    background: var(--panel2);
+    color: var(--ink);
+  }
+
+  .tab.active {
+    background: var(--arc);
+    color: var(--bg);
+    border-color: var(--arc2);
+    box-shadow: 0 2px 8px rgba(125, 211, 252, 0.3);
+  }
+
+  .tab-icon {
+    font-size: 10px;
+  }
+
+  .tab-name {
+    font-weight: 500;
+  }
+
+  /* Character Content */
+  .character-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .character-info {
+    margin-bottom: 12px;
+    padding: 8px;
+    background: var(--panel);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  .character-header h3 {
+    margin: 0 0 4px 0;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .character-details {
+    margin: 0 0 8px 0;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  /* Character Stats */
+  .character-stats {
+    margin-bottom: 12px;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 6px;
+    background: var(--panel2);
+    border-radius: 4px;
+    font-size: 10px;
+  }
+
+  .stat-name {
+    color: var(--muted);
+  }
+
+  .stat-value {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  /* Equipped Gear */
+  .equipped-gear h4 {
+    margin: 0 0 6px 0;
+    color: var(--ink);
+    font-size: 12px;
+  }
+
+  .equipped-weapons {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .equipped-slot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    background: var(--panel2);
+    border-radius: 4px;
+    font-size: 10px;
+  }
+
+  .equipped-slot.empty {
+    color: var(--muted);
+    opacity: 0.7;
+  }
+
+  .weapon-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+  }
+
+  .weapon-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .weapon-name {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .weapon-type {
+    color: var(--muted);
+    font-size: 9px;
+  }
+
+  /* Vault Content */
+  .vault-header h3 {
+    margin: 0 0 4px 0;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .vault-summary {
+    margin: 0 0 8px 0;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .vault-categories {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+  }
+
+  .category {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 6px;
+    background: var(--panel2);
+    border-radius: 4px;
+    font-size: 10px;
+  }
+
+  .category-name {
+    color: var(--muted);
+  }
+
+  .category-count {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  /* Inventory Grid */
+  .inventory-grid {
+    flex: 1;
+  }
+
+  .section-header {
+    margin-bottom: 6px;
+    padding: 4px 0;
+    color: var(--ink);
+    font-size: 11px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    gap: 3px;
+    margin-bottom: 12px;
+  }
+
+  .item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .item:hover {
+    background: var(--panel2);
+    border-color: var(--arc);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .item-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 2px;
+    margin-bottom: 3px;
+  }
+
+  .item-quantity {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 8px;
+    font-weight: 600;
+    padding: 1px 3px;
+    border-radius: 2px;
+    min-width: 12px;
+    text-align: center;
+  }
+
+  .item-info {
+    display: none; /* Hidden by default, shown on hover via tooltip */
+  }
+
+  .more-items {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 9px;
+    border-style: dashed;
+    background: transparent;
+    cursor: default;
+  }
+
+  .empty-inventory {
+    text-align: center;
+    color: var(--muted);
+    font-style: italic;
+    padding: 20px;
+    font-size: 12px;
+  }
+
+  /* Download Controls */
+  .download-controls {
+    display: flex;
+    gap: 6px;
+    padding-top: 8px;
+    margin-top: 8px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .action-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  .action-btn.primary {
+    background: var(--arc);
+    color: var(--bg);
+    border-color: var(--arc2);
+  }
+
+  .action-btn.primary:hover {
+    background: var(--arc2);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(125, 211, 252, 0.3);
+  }
+
+  .action-btn.secondary {
+    background: var(--panel);
+    color: var(--ink);
+  }
+
+  .action-btn.secondary:hover {
+    background: var(--panel2);
+    border-color: var(--arc);
+    transform: translateY(-1px);
+  }
+
+  .action-btn span {
+    font-size: 9px;
+  }
+
+  /* Hidden utility class */
+  .hidden {
+    display: none !important;
+  }
+
+  /* Responsive adjustments for smaller cards */
+  .card[data-w="4"] .items-grid {
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  }
+
+  .card[data-w="4"] .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .card[data-w="4"] .vault-categories {
+    grid-template-columns: 1fr;
+  }
 </style>
 </head>
 <body>
@@ -459,6 +901,16 @@
       <section class="card" data-id="Intel" data-x="4" data-y="9" data-w="8" data-h="2">
         <div class="bar"><div class="title">Intel Feed</div><div class="handle">⋮⋮</div></div>
         <div class="content">Announcements & patch highlights.</div>
+        <div class="resize" aria-hidden="true"></div>
+      </section>
+
+      <section class="card" data-id="Inventory" data-x="0" data-y="11" data-w="12" data-h="5">
+        <div class="bar"><div class="title">🎒 Player Inventory</div><div class="handle">⋮⋮</div></div>
+        <div class="content">
+          <div id="inventory-panel-content">
+            <div class="loading-state">Sign in to view inventory...</div>
+          </div>
+        </div>
         <div class="resize" aria-hidden="true"></div>
       </section>
     </main>
@@ -1576,7 +2028,10 @@
       // Initialize manifest loader
       const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
       manifestLoader = new ManifestLoader(isLocal ? './data/manifest/' : null);
-      debugLog('Manifest loader initialized');
+
+      // Make manifest loader globally available for other modules
+      window.manifestLoader = manifestLoader;
+      debugLog('Manifest loader initialized and made globally available');
 
       updateLoadingState('Loading build analyzer...');
 
@@ -1743,6 +2198,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // For debugging
 window.authManager = authManager;
+</script>
+
+<!-- Inventory Panel Integration -->
+<script type="module">
+import InventoryPanel from './js/cards/inventory-panel.js';
+
+// Initialize inventory panel when DOM is ready
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    console.log('🎒 Initializing Inventory Panel...');
+
+    // Wait for manifest loader to be available (from BuildCrafter initialization)
+    const waitForManifest = () => {
+      return new Promise((resolve) => {
+        const checkManifest = () => {
+          if (window.manifestLoader) {
+            resolve(window.manifestLoader);
+          } else {
+            setTimeout(checkManifest, 100);
+          }
+        };
+        checkManifest();
+      });
+    };
+
+    // Wait for manifestLoader to be initialized
+    const manifestLoader = await waitForManifest();
+
+    // Find the inventory panel card element
+    const inventoryCard = document.querySelector('[data-id="Inventory"]');
+    if (!inventoryCard) {
+      console.error('❌ Inventory panel card not found in DOM');
+      return;
+    }
+
+    // Initialize the inventory panel
+    window.inventoryPanel = new InventoryPanel(inventoryCard, window.authManager, manifestLoader);
+
+    console.log('✅ Inventory Panel initialized successfully');
+
+  } catch (error) {
+    console.error('❌ Failed to initialize Inventory Panel:', error);
+  }
+});
 </script>
 
 </body>
