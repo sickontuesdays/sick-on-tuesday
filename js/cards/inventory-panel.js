@@ -251,12 +251,12 @@ export class InventoryPanel {
 
       <div class="character-stats">
         <div class="stat-grid">
-          <div class="stat"><span class="stat-name">Mobility:</span> <span class="stat-value">${characterData.stats.mobility || 0}</span></div>
-          <div class="stat"><span class="stat-name">Resilience:</span> <span class="stat-value">${characterData.stats.resilience || 0}</span></div>
-          <div class="stat"><span class="stat-name">Recovery:</span> <span class="stat-value">${characterData.stats.recovery || 0}</span></div>
-          <div class="stat"><span class="stat-name">Discipline:</span> <span class="stat-value">${characterData.stats.discipline || 0}</span></div>
-          <div class="stat"><span class="stat-name">Intellect:</span> <span class="stat-value">${characterData.stats.intellect || 0}</span></div>
-          <div class="stat"><span class="stat-name">Strength:</span> <span class="stat-value">${characterData.stats.strength || 0}</span></div>
+          <div class="stat"><span class="stat-name">Mobility:</span> <span class="stat-value">${characterData.armorStats.mobility || 0}</span></div>
+          <div class="stat"><span class="stat-name">Resilience:</span> <span class="stat-value">${characterData.armorStats.resilience || 0}</span></div>
+          <div class="stat"><span class="stat-name">Recovery:</span> <span class="stat-value">${characterData.armorStats.recovery || 0}</span></div>
+          <div class="stat"><span class="stat-name">Discipline:</span> <span class="stat-value">${characterData.armorStats.discipline || 0}</span></div>
+          <div class="stat"><span class="stat-name">Intellect:</span> <span class="stat-value">${characterData.armorStats.intellect || 0}</span></div>
+          <div class="stat"><span class="stat-name">Strength:</span> <span class="stat-value">${characterData.armorStats.strength || 0}</span></div>
         </div>
       </div>
 

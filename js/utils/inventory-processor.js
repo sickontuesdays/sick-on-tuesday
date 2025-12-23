@@ -370,13 +370,9 @@ export class InventoryProcessor {
 
   async getRaceName(raceHash) {
     try {
-      // Race definitions are not in essential data, use a lookup table for now
-      const raceNames = {
-        2803282938: 'Awoken',
-        3887404748: 'Human',
-        898834093: 'Exo'
-      };
-      return raceNames[raceHash] || 'Unknown Race';
+      const essentialData = await this.manifestLoader.loadEssentialData();
+      const raceDef = essentialData.races[raceHash];
+      return raceDef?.displayProperties?.name || 'Unknown Race';
     } catch (error) {
       console.error('Error getting race name:', error);
       return 'Unknown Race';
@@ -385,12 +381,9 @@ export class InventoryProcessor {
 
   async getGenderName(genderHash) {
     try {
-      // Gender definitions lookup table
-      const genderNames = {
-        3111576190: 'Male',
-        2204441813: 'Female'
-      };
-      return genderNames[genderHash] || 'Unknown Gender';
+      const essentialData = await this.manifestLoader.loadEssentialData();
+      const genderDef = essentialData.genders[genderHash];
+      return genderDef?.displayProperties?.name || 'Unknown Gender';
     } catch (error) {
       console.error('Error getting gender name:', error);
       return 'Unknown Gender';
@@ -399,18 +392,56 @@ export class InventoryProcessor {
 
   async getTierName(tierHash) {
     try {
-      // Tier definitions lookup table
-      const tierNames = {
-        4008398120: 'Legendary',
-        2759499571: 'Exotic',
-        3340296461: 'Rare',
-        2395677314: 'Common',
-        3685308718: 'Basic'
-      };
-      return tierNames[tierHash] || 'Unknown Tier';
+      const essentialData = await this.manifestLoader.loadEssentialData();
+      const tierDef = essentialData.tiers[tierHash];
+      return tierDef?.displayProperties?.name || 'Unknown Tier';
     } catch (error) {
       console.error('Error getting tier name:', error);
       return 'Unknown Tier';
+    }
+  }
+
+  /**
+   * Get bucket definition from manifest (centralized bucket lookup)
+   */
+  async getBucketDefinition(bucketHash) {
+    try {
+      const essentialData = await this.manifestLoader.loadEssentialData();
+      const bucketDef = essentialData.buckets[bucketHash];
+      return bucketDef || null;
+    } catch (error) {
+      console.error('Error getting bucket definition:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get bucket slot name from manifest (replaces hardcoded mappings)
+   */
+  async getBucketSlotName(bucketHash) {
+    try {
+      const bucketDef = await this.getBucketDefinition(bucketHash);
+      if (!bucketDef) return null;
+
+      // Map bucket display names to consistent slot names
+      const displayName = bucketDef.displayProperties?.name?.toLowerCase() || '';
+
+      // Weapon slots
+      if (displayName.includes('kinetic')) return 'kinetic';
+      if (displayName.includes('energy')) return 'energy';
+      if (displayName.includes('power') || displayName.includes('heavy')) return 'power';
+
+      // Armor slots
+      if (displayName.includes('helmet') || displayName.includes('head')) return 'helmet';
+      if (displayName.includes('gauntlet') || displayName.includes('arm')) return 'gauntlets';
+      if (displayName.includes('chest') || displayName.includes('body')) return 'chest';
+      if (displayName.includes('leg') || displayName.includes('boot')) return 'legs';
+      if (displayName.includes('class') || displayName.includes('mark') || displayName.includes('bond') || displayName.includes('cloak')) return 'classItem';
+
+      return displayName;
+    } catch (error) {
+      console.error('Error getting bucket slot name:', error);
+      return null;
     }
   }
 
