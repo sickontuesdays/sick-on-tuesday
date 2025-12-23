@@ -44,46 +44,36 @@ export class BungieInventoryAPI {
       // Rate limiting
       await this.rateLimiter.wait();
 
-      // Comprehensive component list for complete build data
-      const components = [
-        200, // Characters - Character list and base stats
-        201, // CharacterInventories - Non-equipped items
-        205, // CharacterEquipment - Currently equipped gear
-        102, // ProfileInventories - Vault contents
-        103, // ProfileCurrencies - Materials and currencies
-        300, // ItemInstances - Unique weapon/armor rolls
-        304, // ItemStats - Stat values on items
-        305, // ItemSockets - Mod slots and installed mods
-        309, // CharacterProgressions - Subclass unlocks, artifact progression
-        302, // CharacterActivities - Current activities/loadouts
-        900, // Records - Triumph completion (for unlock tracking)
-        800  // Collectibles - Collection badges (for exotic tracking)
-      ].join(',');
+      // Use server-side endpoint for secure API access
+      const response = await fetch('/api/inventory/profile', {
+        method: 'GET',
+        credentials: 'include', // Include cookies for session authentication
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
 
-      const url = `/Destiny2/${primaryMembership.membershipType}/Profile/${primaryMembership.membershipId}/?components=${components}`;
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication expired - please sign in again');
+        }
+        if (response.status === 429) {
+          throw new Error('Rate limited by Bungie API - please wait');
+        }
+        const errorText = await response.text();
+        throw new Error(`API error: ${response.status} ${errorText}`);
+      }
 
-      const response = await this.makeAuthenticatedRequest(url);
-
-      // Process and enhance the data
-      const processedData = {
-        membershipData: {
-          membershipType: primaryMembership.membershipType,
-          membershipId: primaryMembership.membershipId,
-          displayName: user.displayName,
-          platforms: user.platforms
-        },
-        profileData: response,
-        fetchTimestamp: Date.now()
-      };
+      const data = await response.json();
 
       // Cache the result
       this.cache.set(cacheKey, {
-        data: processedData,
+        data: data,
         timestamp: Date.now()
       });
 
       console.log('✅ Successfully fetched comprehensive user data');
-      return processedData;
+      return data;
 
     } catch (error) {
       console.error('❌ Error fetching user data:', error);
@@ -93,98 +83,67 @@ export class BungieInventoryAPI {
 
   /**
    * Get specific character data
+   * NOTE: Currently using getCompleteUserData() as it includes all character data
+   * This method would need a separate server-side endpoint if needed independently
    */
   async getCharacterData(characterId) {
-    try {
-      const primaryMembership = this.authManager.getPrimaryMembership();
-      if (!primaryMembership) {
-        throw new Error('No primary membership found');
-      }
+    // For now, use complete data and filter for specific character
+    const completeData = await this.getCompleteUserData();
 
-      await this.rateLimiter.wait();
-
-      const components = '200,201,205,300,304,305,309,302'; // Character-specific components
-      const url = `/Destiny2/${primaryMembership.membershipType}/Profile/${primaryMembership.membershipId}/Character/${characterId}/?components=${components}`;
-
-      return await this.makeAuthenticatedRequest(url);
-
-    } catch (error) {
-      console.error('❌ Error fetching character data:', error);
-      throw this.enhanceError(error);
+    // Extract character-specific data from complete response
+    if (completeData?.profileData?.characters?.data?.[characterId]) {
+      return {
+        characters: { [characterId]: completeData.profileData.characters.data[characterId] },
+        characterInventories: completeData.profileData.characterInventories?.data?.[characterId],
+        characterEquipment: completeData.profileData.characterEquipment?.data?.[characterId],
+        itemInstances: completeData.profileData.itemInstances?.data,
+        itemStats: completeData.profileData.itemStats?.data,
+        itemSockets: completeData.profileData.itemSockets?.data
+      };
     }
+
+    throw new Error(`Character ${characterId} not found`);
   }
 
   /**
    * Get vault contents only
+   * NOTE: Currently using getCompleteUserData() as it includes vault data
+   * This method would need a separate server-side endpoint if needed independently
    */
   async getVaultData() {
-    try {
-      const primaryMembership = this.authManager.getPrimaryMembership();
-      if (!primaryMembership) {
-        throw new Error('No primary membership found');
-      }
+    // For now, use complete data and extract vault information
+    const completeData = await this.getCompleteUserData();
 
-      await this.rateLimiter.wait();
-
-      const components = '102,300,304,305'; // Profile inventory with item details
-      const url = `/Destiny2/${primaryMembership.membershipType}/Profile/${primaryMembership.membershipId}/?components=${components}`;
-
-      return await this.makeAuthenticatedRequest(url);
-
-    } catch (error) {
-      console.error('❌ Error fetching vault data:', error);
-      throw this.enhanceError(error);
-    }
+    return {
+      profileInventory: completeData?.profileData?.profileInventory?.data,
+      itemInstances: completeData?.profileData?.itemInstances?.data,
+      itemStats: completeData?.profileData?.itemStats?.data,
+      itemSockets: completeData?.profileData?.itemSockets?.data
+    };
   }
 
   /**
    * Make authenticated request to Bungie API
+   * NOTE: This method has been replaced with server-side endpoint calls
+   * Direct client-side API calls are not used to avoid exposing API keys
    */
+  /*
   async makeAuthenticatedRequest(endpoint) {
-    const accessToken = this.authManager.getAccessToken();
-    if (!accessToken) {
-      throw new Error('No access token available');
-    }
-
-    const headers = {
-      'X-API-Key': process.env.BUNGIE_API_KEY || this.getBungieApiKey(),
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    };
-
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'GET',
-      headers: headers
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Authentication expired - please sign in again');
-      }
-      if (response.status === 429) {
-        throw new Error('Rate limited by Bungie API - please wait');
-      }
-      throw new Error(`Bungie API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    // Check Bungie-specific error codes
-    if (data.ErrorCode !== 1) {
-      throw new Error(`Bungie Error ${data.ErrorCode}: ${data.Message}`);
-    }
-
-    return data.Response;
+    // This method is no longer used - all API calls go through server-side endpoints
+    throw new Error('Direct API calls not supported - use server-side endpoints');
   }
+  */
 
   /**
    * Get Bungie API key from environment or configuration
+   * NOTE: API keys are now handled server-side only for security
    */
+  /*
   getBungieApiKey() {
-    // In a real implementation, this should come from environment variables
-    // For now, we'll assume it's available through the auth system
-    return this.authManager.apiKey || null;
+    // API keys are no longer accessible client-side for security reasons
+    throw new Error('API keys are handled server-side only');
   }
+  */
 
   /**
    * Enhance error messages for better user experience
