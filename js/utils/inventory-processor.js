@@ -365,30 +365,36 @@ export class InventoryProcessor {
 
           console.log(`🏷️ Categorized "${processedItem.name}" as: ${category}`);
 
-          switch (category) {
-            case 'aspect':
-              subclass.aspects.push(processedItem);
-              break;
-            case 'fragment':
-              subclass.fragments.push(processedItem);
-              break;
-            case 'grenade':
-              subclass.abilities.grenade = processedItem;
-              break;
-            case 'melee':
-              subclass.abilities.melee = processedItem;
-              break;
-            case 'classAbility':
-              subclass.abilities.classAbility = processedItem;
-              break;
-            case 'super':
-              subclass.abilities.super = processedItem;
-              break;
-            case 'subclass':
-              subclass.equipped = processedItem;
-              break;
-            default:
-              subclass.mods.push(processedItem);
+          // Handle main subclass (contains aspects/fragments in sockets)
+          if (category === 'subclass') {
+            subclass.equipped = processedItem;
+
+            // Extract aspects, fragments, and abilities from subclass sockets
+            await this.extractSubclassAbilities(item, profileData, subclass);
+          } else {
+            // Handle other items (shouldn't be many in this bucket)
+            switch (category) {
+              case 'aspect':
+                subclass.aspects.push(processedItem);
+                break;
+              case 'fragment':
+                subclass.fragments.push(processedItem);
+                break;
+              case 'grenade':
+                subclass.abilities.grenade = processedItem;
+                break;
+              case 'melee':
+                subclass.abilities.melee = processedItem;
+                break;
+              case 'classAbility':
+                subclass.abilities.classAbility = processedItem;
+                break;
+              case 'super':
+                subclass.abilities.super = processedItem;
+                break;
+              default:
+                subclass.mods.push(processedItem);
+            }
           }
         }
       }
@@ -1006,6 +1012,152 @@ export class InventoryProcessor {
     };
 
     return itemTypeToCategory[itemType] || [];
+  }
+
+  /**
+   * Extract abilities, aspects, and fragments from subclass socket data
+   */
+  async extractSubclassAbilities(subclassItem, profileData, subclass) {
+    console.log(`🚨 SOCKET EXTRACTION METHOD CALLED - This should appear if method exists!`);
+    try {
+      console.log(`🔌 Extracting socket data for subclass item: ${subclassItem.itemInstanceId}`);
+
+      // Get socket data for this subclass item
+      const socketData = profileData.itemComponents?.sockets?.data?.[subclassItem.itemInstanceId];
+      if (!socketData?.sockets) {
+        console.log(`⚠️ No socket data found for subclass item ${subclassItem.itemInstanceId}`);
+        return;
+      }
+
+      console.log(`📡 Found ${socketData.sockets.length} sockets for subclass item`);
+
+      // Process each socket to find abilities, aspects, and fragments
+      for (let socketIndex = 0; socketIndex < socketData.sockets.length; socketIndex++) {
+        const socket = socketData.sockets[socketIndex];
+
+        if (!socket.plugHash) {
+          console.log(`🔌 Socket ${socketIndex}: No plugHash (empty socket)`);
+          continue;
+        }
+
+        console.log(`🔌 Processing socket ${socketIndex}: plugHash ${socket.plugHash}`);
+
+        // Look up the plug item in manifest
+        const plugItem = await this.lookupPlugInManifest(socket.plugHash);
+        if (!plugItem) {
+          console.log(`❌ Socket ${socketIndex}: Could not find plugHash ${socket.plugHash} in manifest`);
+          continue;
+        }
+
+        console.log(`🔍 Socket ${socketIndex}: Found "${plugItem.displayProperties?.name || 'Unknown'}" (${plugItem.itemTypeDisplayName || 'Unknown Type'})`);
+
+        // Categorize the socket item
+        const socketCategory = await this.categorizeSocketItem(plugItem);
+        console.log(`🏷️ Socket ${socketIndex}: Categorized as "${socketCategory}"`);
+
+        // Create processed socket item
+        const processedSocketItem = {
+          name: plugItem.displayProperties?.name || `Unknown_${socket.plugHash}`,
+          description: plugItem.displayProperties?.description || '',
+          icon: plugItem.displayProperties?.icon || '',
+          hash: socket.plugHash,
+          itemType: plugItem.itemTypeDisplayName || 'Unknown',
+          socketIndex: socketIndex,
+          isEnabled: socket.isEnabled || false,
+          isVisible: socket.isVisible !== false
+        };
+
+        // Add to appropriate category based on socket item type
+        switch (socketCategory) {
+          case 'aspect':
+            subclass.aspects.push(processedSocketItem);
+            console.log(`➕ Added aspect: ${processedSocketItem.name}`);
+            break;
+          case 'fragment':
+            subclass.fragments.push(processedSocketItem);
+            console.log(`➕ Added fragment: ${processedSocketItem.name}`);
+            break;
+          case 'grenade':
+            subclass.abilities.grenade = processedSocketItem;
+            console.log(`➕ Added grenade ability: ${processedSocketItem.name}`);
+            break;
+          case 'melee':
+            subclass.abilities.melee = processedSocketItem;
+            console.log(`➕ Added melee ability: ${processedSocketItem.name}`);
+            break;
+          case 'classAbility':
+            subclass.abilities.classAbility = processedSocketItem;
+            console.log(`➕ Added class ability: ${processedSocketItem.name}`);
+            break;
+          case 'super':
+            subclass.abilities.super = processedSocketItem;
+            console.log(`➕ Added super ability: ${processedSocketItem.name}`);
+            break;
+          default:
+            // Unknown socket items go to mods for now
+            subclass.mods.push(processedSocketItem);
+            console.log(`➕ Added unknown socket item to mods: ${processedSocketItem.name}`);
+        }
+      }
+
+      console.log(`🎯 Socket extraction complete. Found: ${subclass.aspects.length} aspects, ${subclass.fragments.length} fragments, abilities: ${!!subclass.abilities.grenade}/${!!subclass.abilities.melee}/${!!subclass.abilities.classAbility}/${!!subclass.abilities.super}`);
+
+    } catch (error) {
+      console.error('Error extracting subclass abilities from sockets:', error);
+    }
+  }
+
+  /**
+   * Look up a plug item across manifest chunks
+   */
+  async lookupPlugInManifest(plugHash) {
+    const chunksToTry = ['consumables', 'weapons', 'armor'];
+
+    for (const chunkName of chunksToTry) {
+      try {
+        await this.ensureChunkLoaded(chunkName);
+        const chunk = await this.manifestLoader.loadItemChunk(chunkName);
+        if (chunk && chunk[plugHash]) {
+          return chunk[plugHash];
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Categorize a socket item based on its properties
+   */
+  async categorizeSocketItem(plugItem) {
+    if (!plugItem) return 'unknown';
+
+    const itemType = plugItem.itemTypeDisplayName?.toLowerCase() || '';
+    const name = plugItem.displayProperties?.name?.toLowerCase() || '';
+    const description = plugItem.displayProperties?.description?.toLowerCase() || '';
+
+    // Check item categories for more specific types
+    if (plugItem.itemCategoryHashes) {
+      // Known category hashes for subclass components
+      if (plugItem.itemCategoryHashes.includes(4023194814)) return 'fragment';
+      if (plugItem.itemCategoryHashes.includes(4204418100)) return 'aspect';
+      if (plugItem.itemCategoryHashes.includes(16)) return 'super';
+      if (plugItem.itemCategoryHashes.includes(23)) return 'grenade';
+      if (plugItem.itemCategoryHashes.includes(24)) return 'melee';
+      if (plugItem.itemCategoryHashes.includes(38)) return 'classAbility';
+    }
+
+    // Fallback to text-based detection
+    if (itemType.includes('fragment') || name.includes('fragment')) return 'fragment';
+    if (itemType.includes('aspect') || name.includes('aspect')) return 'aspect';
+    if (itemType.includes('grenade') || name.includes('grenade')) return 'grenade';
+    if (itemType.includes('melee') || name.includes('melee')) return 'melee';
+    if (itemType.includes('class') || name.includes('barrier') || name.includes('rift') || name.includes('dodge')) return 'classAbility';
+    if (itemType.includes('super') || description.includes('super')) return 'super';
+
+    return 'unknown';
   }
 
   /**
