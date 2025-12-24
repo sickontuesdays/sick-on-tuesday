@@ -5,12 +5,12 @@
 
 export class ManifestLoader {
   constructor(baseUrl = null) {
-    // Default to GitHub CDN hosting for production
+    // Default to local server-side manifest API for current data
     if (!baseUrl) {
-      baseUrl = 'https://raw.githubusercontent.com/sickontuesdays/destiny-manifest-data/main/';
+      baseUrl = '/api/manifest/definition';
     }
 
-    this.baseUrl = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+    this.baseUrl = baseUrl;
     this.cache = new Map();
     this.loadingPromises = new Map();
     this.isInitialized = false;
@@ -153,7 +153,9 @@ export class ManifestLoader {
     }
 
     // Start new load operation
-    const url = this.baseUrl + filename;
+    // Extract definition name from filename (remove .json extension)
+    const definitionName = filename.replace('.json', '');
+    const url = `${this.baseUrl}?tableName=${definitionName}`;
     const loadPromise = this.fetchWithRetry(url)
       .then(response => {
         if (!response.ok) {
