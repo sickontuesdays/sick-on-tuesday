@@ -55,7 +55,7 @@ export class ManifestLoader {
 
   /**
    * Load analysis data for synergy detection
-   * Returns: { perks, plugSets, sockets }
+   * Returns: { perks, plugSets, sockets, inventoryItems }
    */
   async loadAnalysisData() {
     if (this.analysisData) {
@@ -63,23 +63,25 @@ export class ManifestLoader {
     }
 
     try {
-      const [perks, plugSets, sockets] = await Promise.all([
+      const [perks, plugSets, sockets, inventoryItems] = await Promise.all([
         this.loadDefinition('DestinySandboxPerkDefinition'), // ~3.2 MB - 4,744 perks
         this.loadDefinition('DestinyPlugSetDefinition'),     // ~12 MB - 4,476 plug sets
-        this.loadDefinition('DestinySocketTypeDefinition')   // ~1.3 MB - 1,253 sockets
+        this.loadDefinition('DestinySocketTypeDefinition'),  // ~1.3 MB - 1,253 sockets
+        this.loadDefinition('DestinyInventoryItemDefinition') // ~236 MB - 31,235 items (includes plugs)
       ]);
 
       this.analysisData = {
         perks: perks || {},
         plugSets: plugSets || {},
-        sockets: sockets || {}
+        sockets: sockets || {},
+        inventoryItems: inventoryItems || {}
       };
 
       return this.analysisData;
     } catch (error) {
       console.error('Failed to load analysis data:', error);
       // Return empty objects to allow graceful degradation
-      this.analysisData = { perks: {}, plugSets: {}, sockets: {} };
+      this.analysisData = { perks: {}, plugSets: {}, sockets: {}, inventoryItems: {} };
       return this.analysisData;
     }
   }

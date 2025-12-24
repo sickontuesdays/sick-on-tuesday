@@ -6,6 +6,7 @@ export class InventoryProcessor {
     this.manifestLoader = manifestLoader;
     this.loadedChunks = new Set(); // Track what chunks are already loaded for performance
     this.categoryCache = new Map(); // Cache itemHash -> category mappings for performance
+    this.analysisDataPromise = null; // Promise for loading analysis data (including DestinyInventoryItemDefinition)
   }
 
   /**
@@ -1108,24 +1109,63 @@ export class InventoryProcessor {
   }
 
   /**
-   * Look up a plug item across manifest chunks
+   * Look up a plug item in DestinyInventoryItemDefinition
    */
   async lookupPlugInManifest(plugHash) {
-    const chunksToTry = ['consumables', 'weapons', 'armor'];
+    try {
+      // Load the complete inventory definition table
+      const analysisData = await this.manifestLoader.loadAnalysisData();
 
-    for (const chunkName of chunksToTry) {
-      try {
-        await this.ensureChunkLoaded(chunkName);
-        const chunk = await this.manifestLoader.loadItemChunk(chunkName);
-        if (chunk && chunk[plugHash]) {
-          return chunk[plugHash];
-        }
-      } catch (error) {
-        continue;
+      if (!analysisData.inventoryItems) {
+        console.warn('DestinyInventoryItemDefinition not loaded');
+        return null;
       }
+
+      // Normalize hash for lookup (handle negative vs positive)
+      const normalizedHash = this.normalizeHash(plugHash);
+      const plugItem = analysisData.inventoryItems[normalizedHash];
+
+      if (!plugItem) {
+        console.warn(`Plug ${plugHash} not found in DestinyInventoryItemDefinition`);
+        return null;
+      }
+
+      if (plugItem.blacklisted || plugItem.redacted) {
+        console.warn(`Plug ${plugHash} is blacklisted or redacted`);
+        return null;
+      }
+
+      return plugItem;
+    } catch (error) {
+      console.error('Error looking up plug in manifest:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Normalize hash for consistent lookup (handle signed/unsigned conversion)
+   */
+  normalizeHash(hash) {
+    if (typeof hash === 'string') {
+      hash = parseInt(hash);
     }
 
-    return null;
+    // Convert negative to unsigned 32-bit
+    if (hash < 0) {
+      return (hash >>> 0).toString();
+    }
+
+    return hash.toString();
+  }
+
+  /**
+   * Ensure analysis data is loaded (including DestinyInventoryItemDefinition)
+   */
+  async ensureAnalysisDataLoaded() {
+    if (!this.analysisDataPromise) {
+      this.analysisDataPromise = this.manifestLoader.loadAnalysisData();
+    }
+    return await this.analysisDataPromise;
   }
 
   /**
