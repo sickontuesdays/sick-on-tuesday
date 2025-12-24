@@ -1184,6 +1184,8 @@ export class InventoryProcessor {
 
   /**
    * Categorize a socket item based on its properties
+   * FIXED: Based on actual manifest data analysis - all subclass items share category hashes 59 and 1043342778
+   * We need to categorize by name patterns, not different category hashes
    */
   async categorizeSocketItem(plugItem) {
     if (!plugItem) return 'unknown';
@@ -1192,26 +1194,102 @@ export class InventoryProcessor {
     const name = plugItem.displayProperties?.name?.toLowerCase() || '';
     const description = plugItem.displayProperties?.description?.toLowerCase() || '';
 
-    // Check item categories for more specific types
-    if (plugItem.itemCategoryHashes) {
-      // Known category hashes for subclass components
-      if (plugItem.itemCategoryHashes.includes(4023194814)) return 'fragment';
-      if (plugItem.itemCategoryHashes.includes(4204418100)) return 'aspect';
-      if (plugItem.itemCategoryHashes.includes(16)) return 'super';
-      if (plugItem.itemCategoryHashes.includes(23)) return 'grenade';
-      if (plugItem.itemCategoryHashes.includes(24)) return 'melee';
-      if (plugItem.itemCategoryHashes.includes(38)) return 'classAbility';
+    // Debug logging for problematic hashes we were testing
+    const itemHash = plugItem.hash || 'unknown';
+    if ([1282157891, 3721022585, 2463983862, 1680616210, 2470512752, 4037640975, 2111549310, 1051276350, 1051276348, 424005861].includes(itemHash)) {
+      console.log(`🧪 Categorizing hash ${itemHash}: "${plugItem.displayProperties?.name}" with categories [${plugItem.itemCategoryHashes?.join(', ') || 'none'}]`);
     }
 
-    // Fallback to text-based detection
-    if (itemType.includes('fragment') || name.includes('fragment')) return 'fragment';
-    if (itemType.includes('aspect') || name.includes('aspect')) return 'aspect';
-    if (itemType.includes('grenade') || name.includes('grenade')) return 'grenade';
-    if (itemType.includes('melee') || name.includes('melee')) return 'melee';
-    if (itemType.includes('class') || name.includes('barrier') || name.includes('rift') || name.includes('dodge')) return 'classAbility';
-    if (itemType.includes('super') || description.includes('super')) return 'super';
+    // Verify this is a subclass-related item first
+    if (plugItem.itemCategoryHashes) {
+      const hasSubclassCategory = plugItem.itemCategoryHashes.includes(59) ||
+                                  plugItem.itemCategoryHashes.includes(1043342778);
 
-    return 'unknown';
+      if (!hasSubclassCategory) {
+        return 'other'; // Not a subclass item
+      }
+    }
+
+    // Categorize by name patterns (based on actual manifest data analysis)
+
+    // Helper function to return result with debug logging
+    const returnResult = (category) => {
+      if ([1282157891, 3721022585, 2463983862, 1680616210, 2470512752, 4037640975, 2111549310, 1051276350, 1051276348, 424005861].includes(itemHash)) {
+        console.log(`🏷️ Hash ${itemHash} categorized as: ${category}`);
+      }
+      return category;
+    };
+
+    // Prismatic fragments (Facets)
+    if (name.includes('facet')) return returnResult('fragment');
+
+    // Solar fragments (Embers)
+    if (name.includes('ember')) return returnResult('fragment');
+
+    // Arc fragments (Spark)
+    if (name.includes('spark')) return returnResult('fragment');
+
+    // Void fragments (Echo)
+    if (name.includes('echo')) return returnResult('fragment');
+
+    // Stasis fragments (Whisper)
+    if (name.includes('whisper')) return returnResult('fragment');
+
+    // Strand fragments (Thread)
+    if (name.includes('thread') && name.includes('of')) return returnResult('fragment');
+
+    // Empty fragment sockets
+    if (name.includes('empty fragment socket')) return returnResult('fragment');
+
+    // Empty aspect sockets
+    if (name.includes('empty aspect socket')) return returnResult('aspect');
+
+    // General fragment detection
+    if (name.includes('fragment')) return returnResult('fragment');
+
+    // General aspect detection
+    if (name.includes('aspect')) return returnResult('aspect');
+
+    // Class abilities (Dodge, Rift, Barricade)
+    if (name.includes('dodge') || name.includes('rift') || name.includes('barricade') ||
+        name.includes('barrier')) return returnResult('classAbility');
+
+    // Movement abilities (Jump, Glide, Lift)
+    if (name.includes('jump') || name.includes('glide') || name.includes('lift') ||
+        name.includes('blink')) return returnResult('classAbility');
+
+    // Grenade abilities
+    if (name.includes('grenade') || name.includes('tripmine') || name.includes('pulse') ||
+        name.includes('magnetic') || name.includes('fusion') || name.includes('storm') ||
+        name.includes('lightning') || name.includes('solar') || name.includes('voidwall') ||
+        name.includes('suppressor') || name.includes('scatter') || name.includes('axion') ||
+        name.includes('vortex') || name.includes('spike') || name.includes('swarm')) return returnResult('grenade');
+
+    // Melee abilities
+    if (name.includes('knife') || name.includes('hammer') || name.includes('palm') ||
+        name.includes('strike') || name.includes('charge') || name.includes('slap') ||
+        name.includes('punch') || name.includes('lash') || name.includes('snap')) return returnResult('melee');
+
+    // Super abilities (usually longer descriptive names)
+    if (name.includes('golden gun') || name.includes('blade barrage') || name.includes('burning maul') ||
+        name.includes('sentinel') || name.includes('nova') || name.includes('storm') ||
+        name.includes('dawnblade') || name.includes('fists') || name.includes('tether') ||
+        name.includes('spectral') || name.includes('chaos reach') || name.includes('well') ||
+        name.includes('ward') || name.includes('banner') || name.includes('gathering storm') ||
+        name.includes('needlestorm') || name.includes('silkstrike') || name.includes('bladefury')) return returnResult('super');
+
+    // Ability-like items that don't fit other categories
+    if (name.includes('grapple') || name.includes('woven') || name.includes('threaded')) return returnResult('ability');
+
+    // Default for subclass items we can't categorize
+    const result = 'ability';
+
+    // Debug logging for the result
+    if ([1282157891, 3721022585, 2463983862, 1680616210, 2470512752, 4037640975, 2111549310, 1051276350, 1051276348, 424005861].includes(itemHash)) {
+      console.log(`🏷️ Hash ${itemHash} categorized as: ${result}`);
+    }
+
+    return result;
   }
 
   /**
