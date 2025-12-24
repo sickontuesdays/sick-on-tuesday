@@ -93,18 +93,66 @@ export class ManifestLoader {
    * @param {string} chunkType - 'weapons', 'armor', 'consumables', 'cosmetics'
    */
   async loadItemChunk(chunkType) {
-    const chunkMap = {
-      weapons: 'weapons.json',          // ~77 MB - 6,752 weapons
-      armor: 'armor.json',              // ~84 MB - 6,430 armor pieces
-      consumables: 'consumables.json',  // ~16 MB - 3,162 consumables
-      cosmetics: 'cosmetics.json'       // ~27 MB - 5,997 cosmetics
-    };
-
-    if (!chunkMap[chunkType]) {
-      throw new Error(`Unknown chunk type: ${chunkType}. Available: ${Object.keys(chunkMap).join(', ')}`);
+    // Check if chunk is already cached
+    if (this.cache.has(chunkType)) {
+      return this.cache.get(chunkType);
     }
 
-    return await this.loadFromCache(chunkType, chunkMap[chunkType]);
+    // Load the full DestinyInventoryItemDefinition if not already loaded
+    if (!this.cache.has('DestinyInventoryItemDefinition')) {
+      console.log(`Loading DestinyInventoryItemDefinition to create ${chunkType} chunk...`);
+      await this.loadDefinition('DestinyInventoryItemDefinition');
+    }
+
+    const allItems = this.cache.get('DestinyInventoryItemDefinition');
+    if (!allItems) {
+      throw new Error('Failed to load DestinyInventoryItemDefinition for chunk creation');
+    }
+
+    // Filter items based on chunk type using itemCategoryHashes
+    const chunkItems = {};
+
+    for (const [hash, item] of Object.entries(allItems)) {
+      if (!item.itemCategoryHashes || !Array.isArray(item.itemCategoryHashes)) {
+        continue;
+      }
+
+      let includeInChunk = false;
+
+      switch (chunkType) {
+        case 'weapons':
+          // Weapon category hashes: 1 (Weapon)
+          includeInChunk = item.itemCategoryHashes.includes(1);
+          break;
+        case 'armor':
+          // Armor category hashes: 20 (Armor)
+          includeInChunk = item.itemCategoryHashes.includes(20);
+          break;
+        case 'consumables':
+          // Consumable category hashes: 35 (Consumable)
+          includeInChunk = item.itemCategoryHashes.includes(35);
+          break;
+        case 'cosmetics':
+          // Cosmetic category hashes: various shader/emblem/emote categories
+          includeInChunk = item.itemCategoryHashes.some(cat =>
+            [41, 42, 43, 44, 52, 53, 55, 56, 59].includes(cat)  // Various cosmetic categories
+          );
+          break;
+        default:
+          throw new Error(`Unknown chunk type: ${chunkType}. Available: weapons, armor, consumables, cosmetics`);
+      }
+
+      if (includeInChunk) {
+        chunkItems[hash] = item;
+      }
+    }
+
+    console.log(`Created ${chunkType} chunk with ${Object.keys(chunkItems).length} items`);
+
+    // Cache the filtered chunk
+    this.cache.set(chunkType, chunkItems);
+
+    return chunkItems;
   }
 
   /**
