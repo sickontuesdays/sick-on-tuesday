@@ -1110,6 +1110,7 @@ export class InventoryProcessor {
 
   /**
    * Look up a plug item in DestinyInventoryItemDefinition
+   * Fixed to use numeric keys first (matching working data viewer approach)
    */
   async lookupPlugInManifest(plugHash) {
     try {
@@ -1121,19 +1122,32 @@ export class InventoryProcessor {
         return null;
       }
 
-      // Normalize hash for lookup (handle negative vs positive)
-      const normalizedHash = this.normalizeHash(plugHash);
-      const plugItem = analysisData.inventoryItems[normalizedHash];
+      let plugItem = null;
+
+      // Try numeric key first (working data viewer approach)
+      plugItem = analysisData.inventoryItems[plugHash];
+
+      // Fallback: try string key if numeric fails
+      if (!plugItem) {
+        plugItem = analysisData.inventoryItems[String(plugHash)];
+      }
+
+      // Final fallback: try unsigned 32-bit conversion
+      if (!plugItem && plugHash < 0) {
+        const unsignedHash = plugHash >>> 0;
+        plugItem = analysisData.inventoryItems[unsignedHash];
+      }
 
       if (!plugItem) {
-        console.warn(`Plug ${plugHash} not found in DestinyInventoryItemDefinition`);
+        console.warn(`Plug ${plugHash} not found in DestinyInventoryItemDefinition (tried numeric, string, and unsigned)`);
         return null;
       }
 
-      if (plugItem.blacklisted || plugItem.redacted) {
-        console.warn(`Plug ${plugHash} is blacklisted or redacted`);
-        return null;
-      }
+      // Don't filter blacklisted/redacted items - working data viewer doesn't
+      // if (plugItem.blacklisted || plugItem.redacted) {
+      //   console.warn(`Plug ${plugHash} is blacklisted or redacted`);
+      //   return null;
+      // }
 
       return plugItem;
     } catch (error) {
