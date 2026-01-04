@@ -1,10 +1,11 @@
 {
-  "name": "sick-on-tuesday-dashboard",
+  "name": "sick-on-tuesday",
   "version": "1.0.0",
-  "description": "Guardian Command Center for Sick on Tuesdays clan",
+  "description": "Guardian Command Center - Comprehensive Destiny 2 Dashboard for Sick on Tuesdays clan",
   "scripts": {
     "dev": "python -m http.server 8080",
-    "serve": "npx serve -s . -p 8080"
+    "serve": "npx serve -s . -p 8080",
+    "start": "npx serve -s . -p 3000"
   },
   "dependencies": {
     "jose": "^5.1.3"
@@ -14,14 +15,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/sick-on-tuesday.git"
+    "url": "git+https://github.com/sickontuesdays/sick-on-tuesday.git"
   },
   "keywords": [
     "destiny2",
     "bungie",
     "guardian",
     "dashboard",
-    "builds"
+    "builds",
+    "inventory",
+    "clan"
   ],
   "author": "Sick on Tuesdays",
   "license": "MIT"

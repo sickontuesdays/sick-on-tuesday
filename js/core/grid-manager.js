@@ -1,62 +1,76 @@
 /**
- * Grid Manager - Extracted from sick-on-tuesday dashboard
- * Handles grid layout, positioning, collision detection, and reflow
+ * Grid Manager - CSS Grid-based layout system with drag-and-drop
  */
 
 export class GridManager {
-  constructor(gridElement, dropHintElement) {
-    this.gridEl = gridElement;
-    this.dropHintEl = dropHintElement;
+  constructor(gridEl, dropHintEl) {
+    this.gridEl = gridEl;
+    this.dropHintEl = dropHintEl;
 
-    // Initialize grid properties from CSS custom properties
-    this.COLS = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols')) || 12;
-    this.COLW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--colW')) || 90;
-    this.ROWH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || 90;
+    // Grid configuration
+    this.COLS = 12;
+    this.COLW = 90;
+    this.ROWH = 90;
+    this.GAP = 14;
 
-    // Items will be set externally
+    // Items state
     this.items = [];
-    this.onLayoutChange = null; // callback for when layout changes
+    this.defaultLayout = [];
+
+    // Callbacks
+    this.onLayoutChange = null;
+
+    this.updateDimensions();
   }
 
   /**
-   * Initialize grid with card elements
+   * Update grid dimensions from CSS variables
+   */
+  updateDimensions() {
+    const styles = getComputedStyle(document.documentElement);
+    this.COLS = parseInt(styles.getPropertyValue('--cols')) || 12;
+    this.COLW = parseFloat(styles.getPropertyValue('--colW')) || 90;
+    this.ROWH = parseFloat(styles.getPropertyValue('--rowH')) || 90;
+  }
+
+  /**
+   * Initialize items from DOM
    */
   initializeItems() {
     this.items = [...this.gridEl.querySelectorAll('.card')].map(el => ({
       el,
       id: el.dataset.id,
-      x: +el.dataset.x,
-      y: +el.dataset.y,
-      w: +el.dataset.w,
-      h: +el.dataset.h,
-      hidden: false,
-      minW: 1,
-      minH: 1,
-      maxW: this.COLS
+      x: +el.dataset.x || 0,
+      y: +el.dataset.y || 0,
+      w: +el.dataset.w || 3,
+      h: +el.dataset.h || 2,
+      hidden: el.classList.contains('hide'),
+      minW: +el.dataset.minW || 2,
+      minH: +el.dataset.minH || 2,
+      maxW: +el.dataset.maxW || this.COLS
     }));
 
-    return this.items;
+    // Save default layout
+    this.defaultLayout = this.items.map(({ id, x, y, w, h, hidden }) => ({
+      id, x, y, w, h, hidden
+    }));
+
+    this.applyLayout();
   }
 
   /**
-   * Get default layout snapshot
-   */
-  getDefaultLayout() {
-    return this.items.map(({id, x, y, w, h, hidden}) => ({id, x, y, w, h, hidden}));
-  }
-
-  /**
-   * Apply layout positions to DOM elements
+   * Apply current layout to DOM
    */
   applyLayout() {
     this.items.forEach(item => {
       item.el.classList.toggle('hide', !!item.hidden);
+
       if (!item.hidden) {
-        item.el.style.transform = ''; // clear any drag transform
+        item.el.style.transform = '';
         item.el.style.gridColumn = `${item.x + 1} / span ${item.w}`;
         item.el.style.gridRow = `${item.y + 1} / span ${item.h}`;
       }
-      // Update data attributes for persistence
+
       Object.assign(item.el.dataset, {
         x: item.x,
         y: item.y,
@@ -65,165 +79,207 @@ export class GridManager {
       });
     });
 
-    // Notify layout changed
+    this.hideDropHint();
+
     if (this.onLayoutChange) {
       this.onLayoutChange(this.getLayoutData());
     }
   }
 
   /**
-   * Get current layout data for persistence
+   * Get current layout data
    */
   getLayoutData() {
-    return this.items.map(({id, x, y, w, h, hidden}) => ({id, x, y, w, h, hidden}));
+    return this.items.map(({ id, x, y, w, h, hidden }) => ({
+      id, x, y, w, h, hidden
+    }));
   }
 
   /**
-   * Restore layout from saved data
+   * Get default layout
    */
-  restoreLayout(layoutData, defaultLayout = null) {
-    const fallbackLayout = defaultLayout || this.getDefaultLayout();
+  getDefaultLayout() {
+    return this.defaultLayout;
+  }
 
+  /**
+   * Restore layout from data
+   */
+  restoreLayout(layoutData) {
     for (const item of this.items) {
-      const savedPos = layoutData.find(x => x.id === item.id);
-      if (savedPos) {
+      const saved = layoutData.find(l => l.id === item.id);
+      if (saved) {
         Object.assign(item, {
-          x: savedPos.x,
-          y: savedPos.y,
-          w: savedPos.w,
-          h: savedPos.h,
-          hidden: !!savedPos.hidden
+          x: saved.x,
+          y: saved.y,
+          w: saved.w,
+          h: saved.h,
+          hidden: !!saved.hidden
         });
       } else {
-        const defaultPos = fallbackLayout.find(x => x.id === item.id);
-        Object.assign(item, defaultPos || {x: 0, y: 0, w: 3, h: 2, hidden: false});
+        // Use default for new items
+        const def = this.defaultLayout.find(d => d.id === item.id);
+        if (def) {
+          Object.assign(item, def);
+        }
       }
     }
+    this.applyLayout();
+  }
+
+  /**
+   * Toggle item visibility
+   */
+  toggleItemVisibility(itemId, visible) {
+    const item = this.items.find(i => i.id === itemId);
+    if (item) {
+      item.hidden = !visible;
+      this.applyLayout();
+    }
+  }
+
+  /**
+   * Get drop position from mouse coordinates
+   */
+  getDropPosition(clientX, clientY, dragItem) {
+    const rect = this.gridEl.getBoundingClientRect();
+    const relX = clientX - rect.left;
+    const relY = clientY - rect.top;
+
+    let x = Math.floor(relX / (this.COLW + this.GAP));
+    let y = Math.floor(relY / (this.ROWH + this.GAP));
+
+    // Clamp to grid bounds
+    x = Math.max(0, Math.min(this.COLS - dragItem.w, x));
+    y = Math.max(0, y);
+
+    return { x, y };
+  }
+
+  /**
+   * Preview drop position with collision resolution
+   */
+  previewDrop(x, y, dragItem) {
+    // Create placeholder
+    const placeholder = {
+      id: '__placeholder__',
+      x,
+      y,
+      w: dragItem.w,
+      h: dragItem.h
+    };
+
+    // Get clones of other items
+    const clones = this.items
+      .filter(i => i !== dragItem && !i.hidden)
+      .map(i => ({ id: i.id, x: i.x, y: i.y, w: i.w, h: i.h }));
+
+    // Resolve collisions
+    this.resolveCollisions(placeholder, clones);
+
+    // Show drop hint
+    this.showDropHint(x, y, dragItem.w, dragItem.h);
+
+    // Preview positions
+    clones.forEach(clone => {
+      const item = this.items.find(i => i.id === clone.id);
+      if (item && !item.hidden) {
+        item.el.style.gridColumn = `${clone.x + 1} / span ${clone.w}`;
+        item.el.style.gridRow = `${clone.y + 1} / span ${clone.h}`;
+      }
+    });
+  }
+
+  /**
+   * Commit drag operation
+   */
+  commitDrag(x, y, dragItem) {
+    dragItem.x = x;
+    dragItem.y = y;
+
+    // Create placeholder
+    const placeholder = {
+      id: '__placeholder__',
+      x,
+      y,
+      w: dragItem.w,
+      h: dragItem.h
+    };
+
+    // Get clones of other items
+    const clones = this.items
+      .filter(i => i !== dragItem && !i.hidden)
+      .map(i => ({ id: i.id, x: i.x, y: i.y, w: i.w, h: i.h }));
+
+    // Resolve collisions and apply
+    this.resolveCollisions(placeholder, clones);
+
+    clones.forEach(clone => {
+      const item = this.items.find(i => i.id === clone.id);
+      if (item) {
+        item.x = clone.x;
+        item.y = clone.y;
+      }
+    });
 
     this.applyLayout();
   }
 
-  // ========== Collision Detection & Layout Resolution ==========
-
-  /**
-   * Check if two rectangles overlap
-   */
-  rectsOverlap(rectA, rectB) {
-    if (!rectA || !rectB || rectA.hidden || rectB.hidden) return false;
-    return !(
-      rectA.x + rectA.w <= rectB.x ||
-      rectB.x + rectB.w <= rectA.x ||
-      rectA.y + rectA.h <= rectB.y ||
-      rectB.y + rectB.h <= rectA.y
-    );
-  }
-
-  /**
-   * Create shallow clones of item positions (excluding specified item)
-   */
-  clonePositions(excludeItem) {
-    return this.items
-      .filter(item => item !== excludeItem && !item.hidden)
-      .map(item => ({
-        id: item.id,
-        x: item.x,
-        y: item.y,
-        w: item.w,
-        h: item.h
-      }));
-  }
-
-  /**
-   * Convert array to Map for fast lookups
-   */
-  toMap(posArray) {
-    const map = new Map();
-    posArray.forEach(pos => map.set(pos.id, pos));
-    return map;
-  }
-
   /**
    * Resolve collisions by pushing items down
-   * Given a placeholder and existing items, push items down to avoid overlaps
    */
-  resolveWithPlaceholder(placeholder, itemClones) {
-    const blockers = itemClones.concat([placeholder]);
+  resolveCollisions(placeholder, clones) {
+    const blockers = [...clones, placeholder];
     let changed = true;
-    let guardCounter = 0;
+    let iterations = 0;
+    const maxIterations = 500;
 
-    while (changed && guardCounter < 500) {
+    while (changed && iterations < maxIterations) {
       changed = false;
-      guardCounter++;
+      iterations++;
 
-      // Sort by Y then X so pushes cascade top-down
+      // Sort by position (top-left first)
       blockers.sort((a, b) => (a.y - b.y) || (a.x - b.x));
 
-      for (const item of itemClones) {
+      for (const item of clones) {
         for (const blocker of blockers) {
           if (blocker === item) continue;
 
           if (this.rectsOverlap(item, blocker)) {
-            // Push item directly below the blocker
+            // Push below the blocker
             item.y = blocker.y + blocker.h;
             changed = true;
           }
         }
       }
     }
-
-    return itemClones;
   }
 
   /**
-   * Apply temporary layout positions to DOM (for live preview during drag/resize)
+   * Check if two rectangles overlap
    */
-  applyTempLayout(tempPositionMap, draggingItem = null) {
-    for (const item of this.items) {
-      if (item.hidden) continue;
-      if (draggingItem && item.id === draggingItem.id) continue; // Skip dragging item (uses transform)
-
-      const tempPos = tempPositionMap.get(item.id);
-      const x = tempPos ? tempPos.x : item.x;
-      const y = tempPos ? tempPos.y : item.y;
-      const w = tempPos ? tempPos.w : item.w;
-      const h = tempPos ? tempPos.h : item.h;
-
-      item.el.style.gridColumn = `${x + 1} / span ${w}`;
-      item.el.style.gridRow = `${y + 1} / span ${h}`;
-    }
+  rectsOverlap(a, b) {
+    if (!a || !b) return false;
+    return !(
+      a.x + a.w <= b.x ||
+      b.x + b.w <= a.x ||
+      a.y + a.h <= b.y ||
+      b.y + b.h <= a.y
+    );
   }
 
   /**
-   * Clamp item position and size to grid bounds
+   * Clamp item to grid columns
    */
   clampToCols(item) {
-    if (item.w > this.COLS) item.w = this.COLS;
+    if (item.x + item.w > this.COLS) {
+      item.x = this.COLS - item.w;
+    }
     if (item.x < 0) item.x = 0;
-    if (item.x + item.w > this.COLS) item.x = this.COLS - item.w;
-    if (item.y < 0) item.y = 0;
-  }
-
-  // ========== Drag & Drop Support ==========
-
-  /**
-   * Calculate drop position from mouse coordinates
-   */
-  getDropPosition(mouseX, mouseY, draggedItem) {
-    const gridRect = this.gridEl.getBoundingClientRect();
-    const relativeX = mouseX - gridRect.left;
-    const relativeY = mouseY - gridRect.top;
-
-    const col = Math.round(relativeX / (this.COLW + parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 14));
-    const row = Math.round(relativeY / this.ROWH);
-
-    return {
-      x: Math.max(0, Math.min(this.COLS - draggedItem.w, col)),
-      y: Math.max(0, row)
-    };
   }
 
   /**
-   * Show drop hint at specified position
+   * Show drop hint at position
    */
   showDropHint(x, y, w, h) {
     this.dropHintEl.classList.add('active');
@@ -239,135 +295,175 @@ export class GridManager {
   }
 
   /**
-   * Preview drop position with collision resolution
+   * Add new item to grid
    */
-  previewDrop(targetX, targetY, draggedItem) {
-    // Create placeholder at target position
-    const placeholder = {
-      id: '__placeholder__',
-      x: targetX,
-      y: targetY,
-      w: draggedItem.w,
-      h: draggedItem.h,
-      hidden: false
+  addItem(config) {
+    const {
+      id,
+      title,
+      content,
+      x = 0,
+      y = 0,
+      w = 4,
+      h = 3
+    } = config;
+
+    // Find empty position if not specified
+    const position = this.findEmptyPosition(w, h, x, y);
+
+    // Create element
+    const el = document.createElement('section');
+    el.className = 'card';
+    el.dataset.id = id;
+    el.dataset.x = position.x;
+    el.dataset.y = position.y;
+    el.dataset.w = w;
+    el.dataset.h = h;
+
+    el.innerHTML = `
+      <div class="bar">
+        <div class="title">${title}</div>
+        <div class="handle">⋮⋮</div>
+      </div>
+      <div class="content" id="${id}-content">${content || ''}</div>
+      <div class="resize" aria-hidden="true"></div>
+    `;
+
+    this.gridEl.appendChild(el);
+
+    const item = {
+      el,
+      id,
+      x: position.x,
+      y: position.y,
+      w,
+      h,
+      hidden: false,
+      minW: 2,
+      minH: 2,
+      maxW: this.COLS
     };
 
-    // Get clones of other items and resolve collisions
-    const clones = this.resolveWithPlaceholder(placeholder, this.clonePositions(draggedItem));
-    const tempMap = this.toMap(clones);
+    this.items.push(item);
+    this.applyLayout();
 
-    // Show drop hint
-    this.showDropHint(placeholder.x, placeholder.y, placeholder.w, placeholder.h);
-
-    // Apply temporary layout
-    this.applyTempLayout(tempMap, draggedItem);
-
-    return { placeholder, resolvedPositions: tempMap };
+    return item;
   }
 
   /**
-   * Commit drag operation - update positions permanently
+   * Find empty position for new item
    */
-  commitDrag(targetX, targetY, draggedItem) {
-    // Create final placeholder and resolve positions
-    const placeholder = {
-      id: '__placeholder__',
-      x: targetX,
-      y: targetY,
-      w: draggedItem.w,
-      h: draggedItem.h,
-      hidden: false
-    };
+  findEmptyPosition(w, h, preferX = 0, preferY = 0) {
+    // Try preferred position first
+    if (!this.hasCollision(preferX, preferY, w, h)) {
+      return { x: preferX, y: preferY };
+    }
 
-    const clones = this.resolveWithPlaceholder(placeholder, this.clonePositions(draggedItem));
-    const finalMap = this.toMap(clones);
-
-    // Update dragged item position
-    draggedItem.x = placeholder.x;
-    draggedItem.y = placeholder.y;
-    this.clampToCols(draggedItem);
-
-    // Update other items from resolved positions
-    for (const item of this.items) {
-      if (item === draggedItem || item.hidden) continue;
-
-      const resolvedPos = finalMap.get(item.id);
-      if (resolvedPos) {
-        item.x = resolvedPos.x;
-        item.y = resolvedPos.y;
+    // Scan for empty position
+    for (let y = 0; y < 50; y++) {
+      for (let x = 0; x <= this.COLS - w; x++) {
+        if (!this.hasCollision(x, y, w, h)) {
+          return { x, y };
+        }
       }
     }
 
-    // Apply final layout and hide hint
-    this.hideDropHint();
-    this.applyLayout();
-  }
-
-  // ========== Utility Methods ==========
-
-  /**
-   * Find item by ID
-   */
-  findItemById(id) {
-    return this.items.find(item => item.id === id);
+    // Fallback: place at bottom
+    const maxY = Math.max(...this.items.map(i => i.y + i.h), 0);
+    return { x: 0, y: maxY };
   }
 
   /**
-   * Toggle item visibility
+   * Check if position has collision
    */
-  toggleItemVisibility(id, visible = null) {
-    const item = this.findItemById(id);
-    if (!item) return false;
-
-    item.hidden = visible !== null ? !visible : !item.hidden;
-    this.applyLayout();
-    return true;
+  hasCollision(x, y, w, h) {
+    const testRect = { x, y, w, h };
+    return this.items.some(item =>
+      !item.hidden && this.rectsOverlap(item, testRect)
+    );
   }
 
   /**
-   * Update grid dimensions (responsive breakpoints)
+   * Remove item from grid
    */
-  updateDimensions() {
-    this.COLS = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols')) || 12;
-    this.COLW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--colW')) || 90;
-    this.ROWH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || 90;
+  removeItem(itemId) {
+    const index = this.items.findIndex(i => i.id === itemId);
+    if (index !== -1) {
+      const item = this.items[index];
+      item.el.remove();
+      this.items.splice(index, 1);
+      this.applyLayout();
+    }
+  }
+
+  /**
+   * Get item by ID
+   */
+  getItem(itemId) {
+    return this.items.find(i => i.id === itemId);
+  }
+
+  /**
+   * Get all items
+   */
+  getItems() {
+    return this.items;
+  }
+
+  /**
+   * Get visible items
+   */
+  getVisibleItems() {
+    return this.items.filter(i => !i.hidden);
   }
 
   /**
    * Get grid statistics
    */
   getStats() {
-    const visibleItems = this.items.filter(item => !item.hidden);
-    const totalArea = visibleItems.reduce((sum, item) => sum + (item.w * item.h), 0);
-    const maxY = Math.max(0, ...visibleItems.map(item => item.y + item.h));
-
     return {
       totalItems: this.items.length,
-      visibleItems: visibleItems.length,
-      totalArea,
-      gridHeight: maxY,
-      efficiency: totalArea / (this.COLS * maxY) || 0
+      visibleItems: this.items.filter(i => !i.hidden).length,
+      hiddenItems: this.items.filter(i => i.hidden).length,
+      gridWidth: this.COLS,
+      maxRow: Math.max(...this.items.map(i => i.y + i.h), 0)
     };
+  }
+
+  /**
+   * Compact layout (remove vertical gaps)
+   */
+  compactLayout() {
+    // Sort by position
+    const visible = this.items
+      .filter(i => !i.hidden)
+      .sort((a, b) => (a.y - b.y) || (a.x - b.x));
+
+    visible.forEach(item => {
+      // Try to move up
+      while (item.y > 0) {
+        item.y--;
+        if (this.hasCollisionExcept(item.x, item.y, item.w, item.h, item.id)) {
+          item.y++;
+          break;
+        }
+      }
+    });
+
+    this.applyLayout();
+  }
+
+  /**
+   * Check collision excluding specific item
+   */
+  hasCollisionExcept(x, y, w, h, excludeId) {
+    const testRect = { x, y, w, h };
+    return this.items.some(item =>
+      item.id !== excludeId &&
+      !item.hidden &&
+      this.rectsOverlap(item, testRect)
+    );
   }
 }
 
-// Export utility functions for standalone use
-export const GridUtils = {
-  rectsOverlap(rectA, rectB) {
-    if (!rectA || !rectB) return false;
-    return !(
-      rectA.x + rectA.w <= rectB.x ||
-      rectB.x + rectB.w <= rectA.x ||
-      rectA.y + rectA.h <= rectB.y ||
-      rectB.y + rectB.h <= rectA.y
-    );
-  },
-
-  clampToGrid(x, y, w, h, maxCols = 12) {
-    const clampedW = Math.min(w, maxCols);
-    const clampedX = Math.max(0, Math.min(x, maxCols - clampedW));
-    const clampedY = Math.max(0, y);
-
-    return { x: clampedX, y: clampedY, w: clampedW, h: Math.max(1, h) };
-  }
-};
+export default GridManager;

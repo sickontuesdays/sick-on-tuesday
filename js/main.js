@@ -1,13 +1,15 @@
 /**
- * Main Module - Entry point for modularized dashboard
- * Initializes grid system, storage, and Build Crafter
+ * Main Entry Point - Guardian Command Center Dashboard
+ * Initializes all systems and manages the dashboard
  */
 
+import { authClient } from './core/auth-client.js';
+import { storageManager } from './core/storage-manager.js';
 import { GridManager } from './core/grid-manager.js';
-import { StorageManager } from './core/storage-manager.js';
-import { ManifestLoader } from './api/manifest-loader.js';
-import { BuildAnalyzer } from './core/build-analyzer.js';
-import { BuildCrafter } from './cards/build-crafter.js';
+import { manifestLoader } from './api/manifest-loader.js';
+import { panelManager } from './panels/panel-manager.js';
+import { FriendsList } from './panels/friends-list.js';
+import { loadoutManager } from './utils/loadout-manager.js';
 
 class Dashboard {
   constructor() {
@@ -15,11 +17,12 @@ class Dashboard {
     this.isLocked = false;
 
     // Core systems
+    this.authClient = authClient;
+    this.storageManager = storageManager;
     this.gridManager = null;
-    this.storageManager = null;
-    this.manifestLoader = null;
-    this.buildAnalyzer = null;
-    this.buildCrafter = null;
+    this.manifestLoader = manifestLoader;
+    this.panelManager = panelManager;
+    this.friendsList = null;
 
     // State
     this.activeTabId = null;
@@ -35,145 +38,213 @@ class Dashboard {
   }
 
   /**
-   * Initialize dashboard with modular components
+   * Initialize dashboard
    */
   async init() {
     if (this.isInitialized) return;
 
     try {
-      console.log('Initializing modular dashboard...');
+      console.log('Initializing Guardian Command Center...');
 
       // Initialize DOM references
       this.initializeDOM();
 
-      // Initialize core systems
-      await this.initializeCoreServices();
+      // Initialize auth client
+      await this.authClient.init();
 
-      // Initialize UI components
-      this.initializeUI();
+      // Initialize grid manager
+      this.initializeGrid();
 
-      // Initialize Build Crafter
-      await this.initializeBuildCrafter();
+      // Initialize manifest loader (background)
+      this.manifestLoader.initialize().catch(err => {
+        console.warn('Manifest initialization error:', err);
+      });
 
-      // Set up event listeners
+      // Initialize panels
+      await this.panelManager.init();
+
+      // Initialize friends list
+      this.initializeFriendsList();
+
+      // Initialize loadout manager
+      loadoutManager.init();
+
+      // Setup event listeners
       this.setupEventListeners();
+
+      // Setup auth UI
+      this.setupAuthUI();
 
       // Load initial layout
       this.loadInitialLayout();
 
       this.isInitialized = true;
-      console.log('Dashboard initialization complete');
+      console.log('Dashboard initialized successfully');
+
+      // Make available globally for debugging
+      window.dashboard = this;
+      window.panelManager = this.panelManager;
+      window.friendsList = this.friendsList;
+      window.loadoutManager = loadoutManager;
+      window.manifestLoader = manifestLoader;
+
     } catch (error) {
       console.error('Dashboard initialization failed:', error);
-      throw error;
+      this.showInitError(error);
     }
   }
 
   /**
-   * Initialize DOM element references
+   * Initialize DOM references
    */
   initializeDOM() {
     this.gridEl = document.getElementById('grid');
     this.dropHintEl = document.getElementById('dropHint');
 
-    if (!this.gridEl || !this.dropHintEl) {
-      throw new Error('Required DOM elements not found');
+    if (!this.gridEl) {
+      throw new Error('Grid element not found');
     }
   }
 
   /**
-   * Initialize core services
+   * Initialize grid manager
    */
-  async initializeCoreServices() {
-    // Initialize storage manager
-    this.storageManager = new StorageManager();
-
-    // Initialize grid manager
+  initializeGrid() {
     this.gridManager = new GridManager(this.gridEl, this.dropHintEl);
     this.gridManager.initializeItems();
 
-    // Set up layout change callback
+    // Save layout on change
     this.gridManager.onLayoutChange = (layoutData) => {
       if (this.activeTabId) {
         this.storageManager.saveLayout(this.activeTabId, layoutData);
       }
     };
-
-    // Initialize manifest loader
-    // For local development, pass local path. For production, uses GitHub CDN by default
-    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    this.manifestLoader = new ManifestLoader(isLocal ? './data/manifest/' : null);
-
-    // Initialize build analyzer
-    this.buildAnalyzer = new BuildAnalyzer(this.manifestLoader);
   }
 
   /**
-   * Initialize UI components and state
+   * Initialize friends list
    */
-  initializeUI() {
-    // Load tabs
-    this.tabs = this.storageManager.loadTabsMeta();
-    this.activeTabId = this.storageManager.getActiveTabId() || this.tabs[0]?.id;
-
-    // Initialize lock state
-    this.updateLockState();
-  }
-
-  /**
-   * Initialize Build Crafter component
-   */
-  async initializeBuildCrafter() {
-    try {
-      // Find Build Crafter card element
-      const buildCrafterEl = document.querySelector('[data-id="build-crafter"]');
-      if (!buildCrafterEl) {
-        console.warn('Build Crafter card element not found, skipping initialization');
-        return;
-      }
-
-      // Initialize Build Crafter
-      this.buildCrafter = new BuildCrafter(buildCrafterEl, this.buildAnalyzer);
-      await this.buildCrafter.init();
-
-      console.log('Build Crafter initialized successfully');
-    } catch (error) {
-      console.warn('Build Crafter initialization failed:', error);
+  initializeFriendsList() {
+    const friendsContainer = document.getElementById('friends-list');
+    if (friendsContainer) {
+      this.friendsList = new FriendsList(friendsContainer);
+      this.friendsList.init();
     }
   }
 
   /**
-   * Set up event listeners
+   * Setup auth UI
+   */
+  setupAuthUI() {
+    const authToggle = document.getElementById('authToggle');
+
+    if (authToggle) {
+      // Initial state
+      this.updateAuthUI();
+
+      // Click handler
+      authToggle.addEventListener('click', () => {
+        if (this.authClient.checkAuthenticated()) {
+          // Show user menu or logout
+          if (confirm('Sign out?')) {
+            this.authClient.logout();
+          }
+        } else {
+          this.authClient.login();
+        }
+      });
+
+      // Listen for auth changes
+      this.authClient.onAuthChange(() => {
+        this.updateAuthUI();
+      });
+    }
+  }
+
+  /**
+   * Update auth UI
+   */
+  updateAuthUI() {
+    const authToggle = document.getElementById('authToggle');
+    if (!authToggle) return;
+
+    const textEl = authToggle.querySelector('.text');
+
+    if (this.authClient.checkAuthenticated()) {
+      const user = this.authClient.getUser();
+      authToggle.classList.add('authenticated');
+      authToggle.classList.remove('loading');
+      if (textEl) textEl.textContent = user?.displayName || 'Signed In';
+    } else {
+      authToggle.classList.remove('authenticated', 'loading');
+      if (textEl) textEl.textContent = 'Sign In';
+    }
+  }
+
+  /**
+   * Setup event listeners
    */
   setupEventListeners() {
-    // Lock/unlock toggle
+    // Lock toggle
     const lockToggle = document.getElementById('lockToggle');
     if (lockToggle) {
       lockToggle.addEventListener('click', () => this.toggleLock());
     }
 
+    // Panel visibility dropdown
+    this.setupPanelSelector();
+
     // Drag and drop
-    this.setupDragDropListeners();
+    this.setupDragDrop();
 
     // Resize
-    this.setupResizeListeners();
+    this.setupResize();
 
     // Tab management
-    this.setupTabListeners();
+    this.setupTabs();
 
-    // Panel controls
-    this.setupPanelListeners();
-
-    // Window resize for responsive grid
+    // Window resize
     window.addEventListener('resize', () => {
-      this.gridManager.updateDimensions();
+      this.gridManager?.updateDimensions();
     });
   }
 
   /**
-   * Set up drag and drop event listeners
+   * Setup panel selector in header
    */
-  setupDragDropListeners() {
+  setupPanelSelector() {
+    const panelSelector = document.getElementById('panelSelector');
+    if (!panelSelector) return;
+
+    // Populate with available panels
+    const panels = this.gridManager?.getItems() || [];
+    let html = '<div class="panel-selector-header">Toggle Panels</div>';
+
+    panels.forEach(panel => {
+      const isVisible = !panel.hidden;
+      html += `
+        <label class="panel-checkbox">
+          <input type="checkbox" data-panel-id="${panel.id}" ${isVisible ? 'checked' : ''}>
+          <span>${panel.el.querySelector('.title')?.textContent || panel.id}</span>
+        </label>
+      `;
+    });
+
+    panelSelector.innerHTML = html;
+
+    // Handle checkbox changes
+    panelSelector.addEventListener('change', (e) => {
+      if (e.target.type === 'checkbox') {
+        const panelId = e.target.dataset.panelId;
+        this.gridManager?.toggleItemVisibility(panelId, e.target.checked);
+      }
+    });
+  }
+
+  /**
+   * Setup drag and drop
+   */
+  setupDragDrop() {
     let startMouse = null;
 
     // Mouse down on drag handle
@@ -201,43 +272,29 @@ class Dashboard {
       const deltaX = e.clientX - startMouse.x;
       const deltaY = e.clientY - startMouse.y;
 
-      // Apply transform for visual feedback
       this.dragging.el.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
-      this.dragging.el.style.willChange = 'transform';
 
-      // Calculate drop position
       const dropPos = this.gridManager.getDropPosition(e.clientX, e.clientY, this.dragging);
-
-      // Preview drop with collision resolution
       this.gridManager.previewDrop(dropPos.x, dropPos.y, this.dragging);
     });
 
     // Mouse up to commit drag
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('mouseup', (e) => {
       if (!this.dragging) return;
 
-      // Get final drop position
-      const rect = this.gridEl.getBoundingClientRect();
-      const relativeX = startMouse.x - rect.left + parseFloat(this.dragging.el.style.transform.match(/translateX\((.+)px\)/)?.[1] || 0);
-      const relativeY = startMouse.y - rect.top + parseFloat(this.dragging.el.style.transform.match(/translateY\((.+)px\)/)?.[1] || 0);
+      const dropPos = this.gridManager.getDropPosition(e.clientX, e.clientY, this.dragging);
+      this.gridManager.commitDrag(dropPos.x, dropPos.y, this.dragging);
 
-      const finalPos = this.gridManager.getDropPosition(relativeX, relativeY, this.dragging);
-
-      // Commit the drag operation
-      this.gridManager.commitDrag(finalPos.x, finalPos.y, this.dragging);
-
-      // Clean up
       this.dragging.el.classList.remove('dragging');
       this.dragging.el.style.transform = '';
-      this.dragging.el.style.willChange = '';
       this.dragging = null;
     });
   }
 
   /**
-   * Set up resize event listeners
+   * Setup resize
    */
-  setupResizeListeners() {
+  setupResize() {
     let startMouseR = null;
     let startSize = null;
 
@@ -265,17 +322,14 @@ class Dashboard {
 
       const deltaX = e.clientX - startMouseR.x;
       const deltaY = e.clientY - startMouseR.y;
-      const gridGap = 14; // From CSS
 
-      const deltaW = Math.round(deltaX / (this.gridManager.COLW + gridGap));
+      const deltaW = Math.round(deltaX / (this.gridManager.COLW + this.gridManager.GAP));
       const deltaH = Math.round(deltaY / this.gridManager.ROWH);
 
       this.resizing.w = Math.max(this.resizing.minW, Math.min(this.resizing.maxW, startSize.w + deltaW));
       this.resizing.h = Math.max(this.resizing.minH, startSize.h + deltaH);
 
       this.gridManager.clampToCols(this.resizing);
-
-      // Preview resize with collision resolution
       this.gridManager.previewDrop(this.resizing.x, this.resizing.y, this.resizing);
     });
 
@@ -291,96 +345,101 @@ class Dashboard {
   }
 
   /**
-   * Set up tab management listeners
+   * Setup tab management
    */
-  setupTabListeners() {
-    // Tab switching
+  setupTabs() {
+    // Load tabs
+    this.tabs = this.storageManager.loadTabsMeta();
+    this.activeTabId = this.storageManager.getActiveTabId() || this.tabs[0]?.id;
+
+    // Render tabs
+    this.renderTabs();
+  }
+
+  /**
+   * Render tabs
+   */
+  renderTabs() {
     const tabsEl = document.getElementById('layoutTabs');
-    if (tabsEl) {
-      tabsEl.addEventListener('click', (e) => {
-        const tabBtn = e.target.closest('.tabBtn');
-        if (tabBtn && tabBtn.dataset.tab) {
-          this.setActiveTab(tabBtn.dataset.tab);
-        }
+    if (!tabsEl) return;
+
+    let html = '';
+
+    this.tabs.forEach(tab => {
+      const isActive = tab.id === this.activeTabId ? 'active' : '';
+      html += `
+        <div class="tabRow">
+          <div class="colorChip" style="background: ${tab.color}" data-tab="${tab.id}"></div>
+          <button class="tabBtn ${isActive}" data-tab="${tab.id}">${tab.name}</button>
+        </div>
+      `;
+    });
+
+    // Keep add button and footer
+    const addBtn = tabsEl.querySelector('.addBtn');
+    const bulkBar = tabsEl.querySelector('.bulkBar');
+    const footer = tabsEl.querySelector('.tabFooter');
+
+    tabsEl.innerHTML = html;
+
+    if (addBtn) tabsEl.appendChild(addBtn);
+    if (bulkBar) tabsEl.appendChild(bulkBar);
+    if (footer) tabsEl.appendChild(footer);
+
+    // Tab click handlers
+    tabsEl.querySelectorAll('.tabBtn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.setActiveTab(btn.dataset.tab);
       });
-    }
-
-    // Add tab button
-    const addTabBtn = document.getElementById('addTabBtn');
-    if (addTabBtn) {
-      addTabBtn.addEventListener('click', () => this.createNewTab());
-    }
+    });
   }
 
   /**
-   * Set up panel control listeners
-   */
-  setupPanelListeners() {
-    // Panel visibility
-    const panelList = document.getElementById('panelList');
-    if (panelList) {
-      panelList.addEventListener('change', (e) => {
-        const checkbox = e.target.closest('input[type="checkbox"]');
-        if (!checkbox) return;
-
-        this.gridManager.toggleItemVisibility(checkbox.dataset.id, checkbox.checked);
-      });
-    }
-  }
-
-  /**
-   * Toggle layout lock state
-   */
-  toggleLock() {
-    this.isLocked = !this.isLocked;
-    this.updateLockState();
-  }
-
-  /**
-   * Update lock state UI
-   */
-  updateLockState() {
-    document.body.classList.toggle('locked', this.isLocked);
-  }
-
-  /**
-   * Set active tab and load its layout
+   * Set active tab
    */
   setActiveTab(tabId) {
-    if (this.activeTabId === tabId) return;
-
     this.activeTabId = tabId;
     this.storageManager.setActiveTabId(tabId);
 
-    // Load layout for this tab
-    const layoutData = this.storageManager.loadLayout(tabId, this.gridManager.getDefaultLayout());
-    this.gridManager.restoreLayout(layoutData);
+    const layout = this.storageManager.loadLayout(tabId, this.gridManager.getDefaultLayout());
+    this.gridManager.restoreLayout(layout);
 
-    // Update UI
-    this.updateTabUI();
-  }
-
-  /**
-   * Create new tab
-   */
-  createNewTab() {
-    const name = prompt('Tab name:') || `Layout ${this.tabs.length + 1}`;
-    const newTab = this.storageManager.createTab(name);
-
-    if (newTab) {
-      this.tabs = this.storageManager.loadTabsMeta();
-      this.setActiveTab(newTab.id);
-      this.updateTabUI();
+    // Update accent color
+    const tab = this.tabs.find(t => t.id === tabId);
+    if (tab?.color) {
+      this.setAccentColor(tab.color);
     }
+
+    this.renderTabs();
   }
 
   /**
-   * Update tab UI
+   * Set accent color
    */
-  updateTabUI() {
-    // This would update tab visual state
-    // For now, just log the active tab
-    console.log('Active tab:', this.activeTabId);
+  setAccentColor(hex) {
+    document.documentElement.style.setProperty('--arc', hex);
+    // Calculate darker shade
+    const darker = this.adjustColor(hex, -10);
+    document.documentElement.style.setProperty('--arc2', darker);
+  }
+
+  /**
+   * Adjust color brightness
+   */
+  adjustColor(hex, percent) {
+    const num = parseInt(hex.replace('#', ''), 16);
+    const r = Math.min(255, Math.max(0, (num >> 16) + percent));
+    const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + percent));
+    const b = Math.min(255, Math.max(0, (num & 0x0000FF) + percent));
+    return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+
+  /**
+   * Toggle layout lock
+   */
+  toggleLock() {
+    this.isLocked = !this.isLocked;
+    document.body.classList.toggle('locked', this.isLocked);
   }
 
   /**
@@ -388,9 +447,28 @@ class Dashboard {
    */
   loadInitialLayout() {
     if (this.activeTabId) {
-      const layoutData = this.storageManager.loadLayout(this.activeTabId, this.gridManager.getDefaultLayout());
-      this.gridManager.restoreLayout(layoutData);
+      const layout = this.storageManager.loadLayout(
+        this.activeTabId,
+        this.gridManager.getDefaultLayout()
+      );
+      this.gridManager.restoreLayout(layout);
     }
+  }
+
+  /**
+   * Show initialization error
+   */
+  showInitError(error) {
+    const body = document.body;
+    body.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: center; height: 100vh; color: #fff; font-family: sans-serif;">
+        <div style="text-align: center;">
+          <h1>Failed to Initialize</h1>
+          <p>${error.message}</p>
+          <button onclick="location.reload()" style="padding: 10px 20px; cursor: pointer;">Retry</button>
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -400,30 +478,18 @@ class Dashboard {
     return {
       initialized: this.isInitialized,
       locked: this.isLocked,
+      authenticated: this.authClient.checkAuthenticated(),
       activeTab: this.activeTabId,
       gridStats: this.gridManager?.getStats(),
-      manifestStatus: this.manifestLoader?.getLoadingStatus(),
-      buildCrafterReady: !!this.buildCrafter
+      manifestStatus: this.manifestLoader?.getLoadingStatus()
     };
   }
 }
 
-// Initialize dashboard when DOM is loaded
-let dashboardInstance = null;
-
+// Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    dashboardInstance = new Dashboard();
-    await dashboardInstance.init();
-
-    // Make dashboard globally available for debugging
-    window.dashboard = dashboardInstance;
-
-    console.log('Dashboard ready:', dashboardInstance.getStatus());
-  } catch (error) {
-    console.error('Failed to initialize dashboard:', error);
-  }
+  const dashboard = new Dashboard();
+  await dashboard.init();
 });
 
-// Export for module use
 export default Dashboard;

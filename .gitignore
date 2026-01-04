@@ -1,12 +1,35 @@
-# Large manifest data files (hosted separately on GitHub)
-data/manifest/
+# Dependencies
+node_modules/
+package-lock.json
 
-# Development files
-.DS_Store
+# Environment
 .env
 .env.local
-.vscode/
-node_modules/
+.env.*.local
 
-# Vercel deployment files
-.vercel
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+.vercel/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Large manifest files (hosted separately)
+*.content
+*.sqlite
+manifest-data/
+
+# Test files
+test-*.html

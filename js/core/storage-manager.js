@@ -1,417 +1,380 @@
 /**
- * Storage Manager - Handles localStorage operations for layouts and tabs
- * Extracted from sick-on-tuesday dashboard
+ * Storage Manager - LocalStorage persistence for layouts, settings, and cache
  */
 
 export class StorageManager {
   constructor() {
-    // Storage keys - maintain compatibility with existing data
-    this.TABS_KEY = 'sot_tabs_meta_v5';
-    this.LAYOUT_KEY_PREFIX = 'sot_layout_';
-    this.ACTIVE_TAB_KEY = 'sot_active_tab_id_v5';
+    this.prefix = 'sot_';
+    this.version = 'v1';
+
+    // Storage keys
+    this.KEYS = {
+      TABS_META: `${this.prefix}tabs_meta_${this.version}`,
+      ACTIVE_TAB: `${this.prefix}active_tab_${this.version}`,
+      LAYOUT_PREFIX: `${this.prefix}layout_`,
+      SETTINGS: `${this.prefix}settings_${this.version}`,
+      PANEL_VISIBILITY: `${this.prefix}panels_${this.version}`,
+      LOADOUTS: `${this.prefix}loadouts_${this.version}`,
+      CACHE_PREFIX: `${this.prefix}cache_`
+    };
   }
 
-  // ========== Tab Management ==========
+  // ==================== LAYOUT TABS ====================
 
   /**
-   * Load tabs metadata from localStorage
+   * Load tabs metadata
    */
   loadTabsMeta() {
-    try {
-      const raw = localStorage.getItem(this.TABS_KEY);
-      if (raw) {
+    const raw = localStorage.getItem(this.KEYS.TABS_META);
+    if (raw) {
+      try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length) {
-          return parsed;
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to load tabs metadata:', error);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      } catch { }
     }
 
-    // Return default tab if no valid data
-    const defaultTabs = [{
-      id: 'layout1',
-      name: 'Layout 1',
-      color: '#7dd3fc'
-    }];
-
-    this.saveTabsMeta(defaultTabs);
+    // Default tabs
+    const defaultTabs = [{ id: 'layout1', name: 'Default Layout', color: '#7dd3fc' }];
+    localStorage.setItem(this.KEYS.TABS_META, JSON.stringify(defaultTabs));
     return defaultTabs;
   }
 
   /**
-   * Save tabs metadata to localStorage
+   * Save tabs metadata
    */
   saveTabsMeta(tabs) {
-    try {
-      localStorage.setItem(this.TABS_KEY, JSON.stringify(tabs));
-      return true;
-    } catch (error) {
-      console.error('Failed to save tabs metadata:', error);
+    localStorage.setItem(this.KEYS.TABS_META, JSON.stringify(tabs));
+  }
+
+  /**
+   * Create new tab
+   */
+  createTab(name, color = '#7dd3fc') {
+    const tabs = this.loadTabsMeta();
+    const id = `layout${Date.now()}`;
+    const newTab = { id, name, color };
+    tabs.push(newTab);
+    this.saveTabsMeta(tabs);
+    return newTab;
+  }
+
+  /**
+   * Update tab
+   */
+  updateTab(tabId, updates) {
+    const tabs = this.loadTabsMeta();
+    const index = tabs.findIndex(t => t.id === tabId);
+    if (index !== -1) {
+      tabs[index] = { ...tabs[index], ...updates };
+      this.saveTabsMeta(tabs);
+      return tabs[index];
+    }
+    return null;
+  }
+
+  /**
+   * Delete tab
+   */
+  deleteTab(tabId) {
+    const tabs = this.loadTabsMeta();
+    const filtered = tabs.filter(t => t.id !== tabId);
+    if (filtered.length === 0) {
+      // Keep at least one tab
       return false;
     }
+    this.saveTabsMeta(filtered);
+    // Also delete associated layout
+    localStorage.removeItem(this.KEYS.LAYOUT_PREFIX + tabId);
+    return true;
   }
 
   /**
    * Get active tab ID
    */
   getActiveTabId() {
-    try {
-      return localStorage.getItem(this.ACTIVE_TAB_KEY);
-    } catch (error) {
-      console.warn('Failed to get active tab ID:', error);
-      return null;
-    }
+    return localStorage.getItem(this.KEYS.ACTIVE_TAB);
   }
 
   /**
    * Set active tab ID
    */
   setActiveTabId(tabId) {
-    try {
-      localStorage.setItem(this.ACTIVE_TAB_KEY, tabId);
-      return true;
-    } catch (error) {
-      console.error('Failed to set active tab ID:', error);
-      return false;
-    }
+    localStorage.setItem(this.KEYS.ACTIVE_TAB, tabId);
   }
 
-  /**
-   * Create new tab with unique ID
-   */
-  createTab(name, color = '#7dd3fc') {
-    const tabs = this.loadTabsMeta();
-    const id = `layout${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    const newTab = { id, name, color };
-    tabs.push(newTab);
-
-    if (this.saveTabsMeta(tabs)) {
-      return newTab;
-    }
-
-    return null;
-  }
+  // ==================== LAYOUTS ====================
 
   /**
-   * Delete tab and its associated layout
-   */
-  deleteTab(tabId) {
-    const tabs = this.loadTabsMeta();
-    const tabIndex = tabs.findIndex(tab => tab.id === tabId);
-
-    if (tabIndex === -1) return false;
-
-    // Remove tab from metadata
-    tabs.splice(tabIndex, 1);
-
-    // Delete associated layout
-    this.deleteLayout(tabId);
-
-    return this.saveTabsMeta(tabs);
-  }
-
-  /**
-   * Update tab properties
-   */
-  updateTab(tabId, updates) {
-    const tabs = this.loadTabsMeta();
-    const tab = tabs.find(t => t.id === tabId);
-
-    if (!tab) return false;
-
-    Object.assign(tab, updates);
-    return this.saveTabsMeta(tabs);
-  }
-
-  // ========== Layout Management ==========
-
-  /**
-   * Save layout for a specific tab
+   * Save layout for tab
    */
   saveLayout(tabId, layoutData) {
-    if (!tabId || !layoutData) return false;
-
-    try {
-      const data = Array.isArray(layoutData) ? layoutData : [layoutData];
-      const cleanData = data.map(({ id, x, y, w, h, hidden }) => ({
-        id, x, y, w, h, hidden: !!hidden
-      }));
-
-      localStorage.setItem(this.LAYOUT_KEY_PREFIX + tabId, JSON.stringify(cleanData));
-      return true;
-    } catch (error) {
-      console.error('Failed to save layout:', error);
-      return false;
-    }
+    localStorage.setItem(this.KEYS.LAYOUT_PREFIX + tabId, JSON.stringify(layoutData));
   }
 
   /**
-   * Load layout for a specific tab
+   * Load layout for tab
    */
   loadLayout(tabId, defaultLayout = []) {
-    if (!tabId) return defaultLayout;
-
-    try {
-      const raw = localStorage.getItem(this.LAYOUT_KEY_PREFIX + tabId);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to load layout:', error);
+    const raw = localStorage.getItem(this.KEYS.LAYOUT_PREFIX + tabId);
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch { }
     }
-
     return defaultLayout;
   }
 
+  // ==================== SETTINGS ====================
+
   /**
-   * Delete layout data
+   * Get all settings
    */
-  deleteLayout(tabId) {
-    try {
-      localStorage.removeItem(this.LAYOUT_KEY_PREFIX + tabId);
-      return true;
-    } catch (error) {
-      console.error('Failed to delete layout:', error);
-      return false;
+  getSettings() {
+    const raw = localStorage.getItem(this.KEYS.SETTINGS);
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch { }
     }
+    return this.getDefaultSettings();
   }
 
   /**
-   * Check if layout exists for tab
+   * Save settings
    */
-  hasLayout(tabId) {
-    try {
-      return localStorage.getItem(this.LAYOUT_KEY_PREFIX + tabId) !== null;
-    } catch (error) {
-      return false;
-    }
+  saveSettings(settings) {
+    localStorage.setItem(this.KEYS.SETTINGS, JSON.stringify(settings));
   }
 
   /**
-   * Copy layout from one tab to another
+   * Get single setting
    */
-  copyLayout(fromTabId, toTabId) {
-    const layout = this.loadLayout(fromTabId);
-    if (layout.length > 0) {
-      return this.saveLayout(toTabId, layout);
-    }
-    return false;
+  getSetting(key, defaultValue = null) {
+    const settings = this.getSettings();
+    return settings[key] ?? defaultValue;
   }
 
-  // ========== Bulk Operations ==========
+  /**
+   * Set single setting
+   */
+  setSetting(key, value) {
+    const settings = this.getSettings();
+    settings[key] = value;
+    this.saveSettings(settings);
+  }
 
   /**
-   * Delete multiple tabs and their layouts
-   * Returns undo data for restoration
+   * Default settings
    */
-  bulkDeleteTabs(tabIds) {
-    if (!Array.isArray(tabIds) || tabIds.length === 0) return null;
+  getDefaultSettings() {
+    return {
+      theme: 'dark',
+      accentColor: '#7dd3fc',
+      autoRefresh: true,
+      refreshInterval: 5 * 60 * 1000, // 5 minutes
+      showFriendsOnline: true,
+      compactMode: false,
+      animationsEnabled: true
+    };
+  }
 
-    const tabs = this.loadTabsMeta();
-    const undoData = {
-      metas: [],
-      layouts: {},
-      indices: [],
-      prevActiveId: this.getActiveTabId()
+  // ==================== PANEL VISIBILITY ====================
+
+  /**
+   * Get panel visibility state
+   */
+  getPanelVisibility() {
+    const raw = localStorage.getItem(this.KEYS.PANEL_VISIBILITY);
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch { }
+    }
+    return {};
+  }
+
+  /**
+   * Set panel visibility
+   */
+  setPanelVisibility(panelId, visible) {
+    const visibility = this.getPanelVisibility();
+    visibility[panelId] = visible;
+    localStorage.setItem(this.KEYS.PANEL_VISIBILITY, JSON.stringify(visibility));
+  }
+
+  // ==================== LOADOUTS ====================
+
+  /**
+   * Get saved loadouts
+   */
+  getLoadouts() {
+    const raw = localStorage.getItem(this.KEYS.LOADOUTS);
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch { }
+    }
+    return [];
+  }
+
+  /**
+   * Save loadout
+   */
+  saveLoadout(loadout) {
+    const loadouts = this.getLoadouts();
+    const id = loadout.id || `loadout_${Date.now()}`;
+    const existing = loadouts.findIndex(l => l.id === id);
+
+    const newLoadout = {
+      ...loadout,
+      id,
+      savedAt: Date.now()
     };
 
-    // Collect data for undo
-    tabIds.forEach(id => {
-      const index = tabs.findIndex(t => t.id === id);
-      if (index !== -1) {
-        undoData.metas.push({ ...tabs[index] });
-        undoData.indices.push(index);
+    if (existing !== -1) {
+      loadouts[existing] = newLoadout;
+    } else {
+      loadouts.push(newLoadout);
+    }
 
-        const layoutKey = this.LAYOUT_KEY_PREFIX + id;
-        const layoutData = localStorage.getItem(layoutKey);
-        if (layoutData) {
-          undoData.layouts[id] = layoutData;
+    localStorage.setItem(this.KEYS.LOADOUTS, JSON.stringify(loadouts));
+    return newLoadout;
+  }
+
+  /**
+   * Delete loadout
+   */
+  deleteLoadout(loadoutId) {
+    const loadouts = this.getLoadouts();
+    const filtered = loadouts.filter(l => l.id !== loadoutId);
+    localStorage.setItem(this.KEYS.LOADOUTS, JSON.stringify(filtered));
+  }
+
+  /**
+   * Save all loadouts (bulk save)
+   */
+  saveLoadouts(loadouts) {
+    localStorage.setItem(this.KEYS.LOADOUTS, JSON.stringify(loadouts));
+  }
+
+  // ==================== CACHE ====================
+
+  /**
+   * Get cached data
+   */
+  getCache(key, maxAge = 5 * 60 * 1000) {
+    const raw = localStorage.getItem(this.KEYS.CACHE_PREFIX + key);
+    if (raw) {
+      try {
+        const cached = JSON.parse(raw);
+        if (Date.now() - cached.timestamp < maxAge) {
+          return cached.data;
         }
-      }
-    });
-
-    // Perform deletion
-    const remainingTabs = tabs.filter(t => !tabIds.includes(t.id));
-
-    if (remainingTabs.length < 1) {
-      throw new Error('Cannot delete all tabs');
+      } catch { }
     }
-
-    // Delete layouts
-    tabIds.forEach(id => this.deleteLayout(id));
-
-    // Save remaining tabs
-    if (this.saveTabsMeta(remainingTabs)) {
-      return undoData;
-    }
-
     return null;
   }
 
   /**
-   * Restore tabs from undo data
+   * Set cached data
    */
-  restoreFromUndo(undoData) {
-    if (!undoData || !undoData.metas || !Array.isArray(undoData.metas)) {
-      return false;
-    }
+  setCache(key, data) {
+    localStorage.setItem(this.KEYS.CACHE_PREFIX + key, JSON.stringify({
+      data,
+      timestamp: Date.now()
+    }));
+  }
 
-    const tabs = this.loadTabsMeta();
-
-    // Restore tab metadata
-    undoData.metas.forEach((meta, i) => {
-      const index = undoData.indices[i];
-      tabs.splice(index, 0, meta);
+  /**
+   * Clear cache
+   */
+  clearCache() {
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+      if (key.startsWith(this.KEYS.CACHE_PREFIX)) {
+        localStorage.removeItem(key);
+      }
     });
-
-    // Restore layouts
-    for (const tabId in undoData.layouts) {
-      localStorage.setItem(this.LAYOUT_KEY_PREFIX + tabId, undoData.layouts[tabId]);
-    }
-
-    // Save metadata and restore active tab
-    if (this.saveTabsMeta(tabs)) {
-      if (undoData.prevActiveId) {
-        this.setActiveTabId(undoData.prevActiveId);
-      }
-      return true;
-    }
-
-    return false;
   }
 
-  // ========== Utility Functions ==========
+  // ==================== UTILITIES ====================
 
   /**
-   * Get storage usage information
-   */
-  getStorageStats() {
-    try {
-      const tabs = this.loadTabsMeta();
-      const layouts = {};
-      let totalSize = 0;
-
-      // Calculate size of tabs metadata
-      const tabsSize = JSON.stringify(tabs).length;
-      totalSize += tabsSize;
-
-      // Calculate size of each layout
-      tabs.forEach(tab => {
-        const layoutData = localStorage.getItem(this.LAYOUT_KEY_PREFIX + tab.id);
-        if (layoutData) {
-          layouts[tab.id] = layoutData.length;
-          totalSize += layoutData.length;
-        }
-      });
-
-      return {
-        totalSize,
-        tabsMetaSize: tabsSize,
-        layoutSizes: layouts,
-        tabCount: tabs.length,
-        layoutCount: Object.keys(layouts).length
-      };
-    } catch (error) {
-      console.error('Failed to calculate storage stats:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Clear all dashboard data (with confirmation)
-   */
-  clearAllData() {
-    try {
-      // Get all keys for this dashboard
-      const keysToRemove = [];
-
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (
-          key === this.TABS_KEY ||
-          key === this.ACTIVE_TAB_KEY ||
-          key.startsWith(this.LAYOUT_KEY_PREFIX)
-        )) {
-          keysToRemove.push(key);
-        }
-      }
-
-      // Remove all keys
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-
-      return true;
-    } catch (error) {
-      console.error('Failed to clear data:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Export all data for backup
+   * Export all data
    */
   exportData() {
-    try {
-      const tabs = this.loadTabsMeta();
-      const layouts = {};
+    const data = {
+      tabs: this.loadTabsMeta(),
+      activeTab: this.getActiveTabId(),
+      settings: this.getSettings(),
+      loadouts: this.getLoadouts(),
+      panelVisibility: this.getPanelVisibility(),
+      layouts: {}
+    };
 
-      tabs.forEach(tab => {
-        const layout = this.loadLayout(tab.id);
-        if (layout.length > 0) {
-          layouts[tab.id] = layout;
-        }
+    // Export all layouts
+    const tabs = this.loadTabsMeta();
+    tabs.forEach(tab => {
+      data.layouts[tab.id] = this.loadLayout(tab.id);
+    });
+
+    return data;
+  }
+
+  /**
+   * Import data
+   */
+  importData(data) {
+    if (data.tabs) this.saveTabsMeta(data.tabs);
+    if (data.activeTab) this.setActiveTabId(data.activeTab);
+    if (data.settings) this.saveSettings(data.settings);
+    if (data.loadouts) {
+      localStorage.setItem(this.KEYS.LOADOUTS, JSON.stringify(data.loadouts));
+    }
+    if (data.panelVisibility) {
+      localStorage.setItem(this.KEYS.PANEL_VISIBILITY, JSON.stringify(data.panelVisibility));
+    }
+    if (data.layouts) {
+      Object.entries(data.layouts).forEach(([tabId, layout]) => {
+        this.saveLayout(tabId, layout);
       });
-
-      return {
-        version: '1.0',
-        exportedAt: new Date().toISOString(),
-        tabs,
-        layouts,
-        activeTabId: this.getActiveTabId()
-      };
-    } catch (error) {
-      console.error('Failed to export data:', error);
-      return null;
     }
   }
 
   /**
-   * Import data from backup
+   * Clear all data
    */
-  importData(data) {
-    try {
-      if (!data || !data.tabs || !Array.isArray(data.tabs)) {
-        throw new Error('Invalid import data format');
+  clearAll() {
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+      if (key.startsWith(this.prefix)) {
+        localStorage.removeItem(key);
       }
+    });
+  }
 
-      // Save tabs
-      if (!this.saveTabsMeta(data.tabs)) {
-        throw new Error('Failed to save tabs metadata');
+  /**
+   * Get storage usage
+   */
+  getStorageUsage() {
+    let total = 0;
+    const breakdown = {};
+
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith(this.prefix)) {
+        const size = (localStorage.getItem(key) || '').length * 2; // UTF-16
+        total += size;
+        breakdown[key] = size;
       }
+    });
 
-      // Save layouts
-      if (data.layouts) {
-        for (const tabId in data.layouts) {
-          if (!this.saveLayout(tabId, data.layouts[tabId])) {
-            console.warn(`Failed to import layout for tab ${tabId}`);
-          }
-        }
-      }
-
-      // Set active tab
-      if (data.activeTabId) {
-        this.setActiveTabId(data.activeTabId);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Failed to import data:', error);
-      return false;
-    }
+    return {
+      total,
+      totalKB: (total / 1024).toFixed(2),
+      breakdown
+    };
   }
 }
+
+export const storageManager = new StorageManager();
+export default StorageManager;

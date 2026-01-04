@@ -1,8 +1,13 @@
 // api/manifest/definition.js
-// Server-side API endpoint for fetching Destiny 2 manifest definitions
+// Get manifest definitions (proxies to GitHub CDN or returns from local cache)
 
-export default async function handler(req, res) {
-  // Only allow GET requests
+const MANIFEST_BASE_URL = 'https://raw.githubusercontent.com/sickontuesdays/destiny-manifest-data/main/';
+
+// In-memory cache for small definitions
+const definitionCache = new Map();
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+module.exports = async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -11,93 +16,132 @@ export default async function handler(req, res) {
     const { tableName } = req.query;
 
     if (!tableName) {
-      return res.status(400).json({ error: 'tableName query parameter is required' });
+      return res.status(400).json({ error: 'Missing tableName parameter' });
     }
 
-    console.log(`Fetching manifest definition: ${tableName}`);
+    // Valid definition names
+    const validTables = [
+      'DestinyStatDefinition',
+      'DestinyClassDefinition',
+      'DestinyDamageTypeDefinition',
+      'DestinyTraitDefinition',
+      'DestinyInventoryItemDefinition',
+      'DestinySandboxPerkDefinition',
+      'DestinyPlugSetDefinition',
+      'DestinySocketTypeDefinition',
+      'DestinySocketCategoryDefinition',
+      'DestinyItemCategoryDefinition',
+      'DestinyActivityDefinition',
+      'DestinyActivityModeDefinition',
+      'DestinyActivityTypeDefinition',
+      'DestinyPlaceDefinition',
+      'DestinyDestinationDefinition',
+      'DestinyVendorDefinition',
+      'DestinyFactionDefinition',
+      'DestinyMilestoneDefinition',
+      'DestinySeasonDefinition',
+      'DestinySeasonPassDefinition',
+      'DestinyRecordDefinition',
+      'DestinyCollectibleDefinition',
+      'DestinyPresentationNodeDefinition',
+      'DestinyObjectiveDefinition',
+      'DestinyProgressionDefinition',
+      'DestinyRaceDefinition',
+      'DestinyGenderDefinition',
+      'DestinyTalentGridDefinition',
+      'DestinyEnergyTypeDefinition',
+      'DestinyEquipmentSlotDefinition',
+      'DestinyInventoryBucketDefinition',
+      'DestinyLoreDefinition',
+      'DestinyMetricDefinition',
+      'DestinyPowerCapDefinition',
+      'DestinyBreakerTypeDefinition'
+    ];
 
-    // Step 1: Get manifest metadata from Bungie API
-    const manifestResponse = await fetch('https://www.bungie.net/Platform/Destiny2/Manifest/', {
-      method: 'GET',
-      headers: {
-        'X-API-Key': process.env.BUNGIE_API_KEY,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!manifestResponse.ok) {
-      throw new Error(`Failed to fetch manifest info: ${manifestResponse.status} ${manifestResponse.statusText}`);
-    }
-
-    const manifestData = await manifestResponse.json();
-
-    if (manifestData.ErrorCode !== 1) {
-      throw new Error(`Bungie API error: ${manifestData.ErrorStatus} - ${manifestData.Message}`);
-    }
-
-    // Step 2: Get the URL for the specific definition table
-    const definitionPaths = manifestData.Response.jsonWorldComponentContentPaths.en;
-
-    if (!definitionPaths[tableName]) {
-      return res.status(404).json({
-        error: `Definition table '${tableName}' not found`,
-        availableTables: Object.keys(definitionPaths)
+    // Check if valid table name
+    if (!validTables.includes(tableName)) {
+      return res.status(400).json({
+        error: 'Invalid table name',
+        validTables
       });
     }
 
-    const definitionUrl = `https://www.bungie.net${definitionPaths[tableName]}`;
+    // Check cache for smaller tables
+    const cacheKey = tableName;
+    const cached = definitionCache.get(cacheKey);
 
-    console.log(`Loading definition from: ${definitionUrl}`);
-
-    // Step 3: Fetch the actual definition data
-    const definitionResponse = await fetch(definitionUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!definitionResponse.ok) {
-      throw new Error(`Failed to fetch ${tableName}: ${definitionResponse.status} ${definitionResponse.statusText}`);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.status(200).json(cached.data);
     }
 
-    const definitionData = await definitionResponse.json();
+    // Fetch from GitHub CDN
+    const url = `${MANIFEST_BASE_URL}${tableName}.json`;
 
-    // Filter out blacklisted and redacted items (like the working data viewer does)
-    let filteredData = {};
-    let totalItems = 0;
-    let filteredItems = 0;
+    console.log(`Fetching manifest: ${tableName}`);
 
-    for (const [hash, item] of Object.entries(definitionData)) {
-      totalItems++;
+    const response = await fetch(url);
 
-      // Skip blacklisted and redacted items
-      if (item.blacklisted || item.redacted) {
-        continue;
+    if (!response.ok) {
+      // Try chunked version for large files
+      if (response.status === 404) {
+        // Try loading chunked files
+        const chunks = [];
+        for (let i = 1; i <= 10; i++) {
+          try {
+            const chunkUrl = `${MANIFEST_BASE_URL}${tableName}_part${i}.json`;
+            const chunkResponse = await fetch(chunkUrl);
+            if (chunkResponse.ok) {
+              const chunkData = await chunkResponse.json();
+              chunks.push(chunkData);
+            } else {
+              break;
+            }
+          } catch {
+            break;
+          }
+        }
+
+        if (chunks.length > 0) {
+          // Merge chunks
+          const merged = Object.assign({}, ...chunks);
+
+          // Cache if reasonable size (< 50MB estimated)
+          const size = JSON.stringify(merged).length;
+          if (size < 50 * 1024 * 1024) {
+            definitionCache.set(cacheKey, {
+              data: merged,
+              timestamp: Date.now()
+            });
+          }
+
+          res.setHeader('X-Cache', 'MISS');
+          res.setHeader('X-Chunks', chunks.length.toString());
+          return res.status(200).json(merged);
+        }
       }
 
-      // Skip items without display properties (likely invalid/placeholder items)
-      if (tableName === 'DestinyInventoryItemDefinition' && (!item.displayProperties || !item.displayProperties.name)) {
-        continue;
-      }
-
-      filteredData[hash] = item;
-      filteredItems++;
+      throw new Error(`Failed to fetch ${tableName}: ${response.status}`);
     }
 
-    console.log(`Filtered ${tableName}: ${filteredItems}/${totalItems} items (removed ${totalItems - filteredItems} blacklisted/redacted/invalid items)`);
+    const data = await response.json();
 
-    // Set caching headers for performance (1 hour cache)
-    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
-    res.setHeader('Content-Type', 'application/json');
+    // Cache smaller definitions
+    const size = JSON.stringify(data).length;
+    if (size < 10 * 1024 * 1024) { // Cache if < 10MB
+      definitionCache.set(cacheKey, {
+        data,
+        timestamp: Date.now()
+      });
+    }
 
-    return res.status(200).json(filteredData);
+    res.setHeader('X-Cache', 'MISS');
+    res.status(200).json(data);
 
   } catch (error) {
-    console.error('Error fetching manifest definition:', error);
-    return res.status(500).json({
-      error: 'Failed to fetch manifest definition',
-      details: error.message
+    console.error('Manifest fetch error:', error);
+    res.status(500).json({
+      error: error.message || 'Failed to fetch manifest definition'
     });
   }
-}
+};
