@@ -352,8 +352,229 @@ class Dashboard {
     this.tabs = this.storageManager.loadTabsMeta();
     this.activeTabId = this.storageManager.getActiveTabId() || this.tabs[0]?.id;
 
+    // Create tab editor modal
+    this.createTabEditorModal();
+
     // Render tabs
     this.renderTabs();
+  }
+
+  /**
+   * Create tab editor modal
+   */
+  createTabEditorModal() {
+    // Remove existing modal if any
+    const existing = document.getElementById('tabEditorModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'tabEditorModal';
+    modal.className = 'tab-editor-modal';
+    modal.innerHTML = `
+      <div class="tab-editor-content">
+        <div class="tab-editor-header">
+          <h3>Edit Layout</h3>
+          <button class="tab-editor-close">&times;</button>
+        </div>
+        <div class="tab-editor-body">
+          <div class="form-group">
+            <label>Layout Name</label>
+            <input type="text" id="tabEditorName" class="tab-editor-input" placeholder="Enter layout name">
+          </div>
+          <div class="form-group">
+            <label>Accent Color</label>
+            <div class="color-picker-grid">
+              <div class="color-option" data-color="#7dd3fc" style="background: #7dd3fc"></div>
+              <div class="color-option" data-color="#60a5fa" style="background: #60a5fa"></div>
+              <div class="color-option" data-color="#a855f7" style="background: #a855f7"></div>
+              <div class="color-option" data-color="#f97316" style="background: #f97316"></div>
+              <div class="color-option" data-color="#22c55e" style="background: #22c55e"></div>
+              <div class="color-option" data-color="#ef4444" style="background: #ef4444"></div>
+              <div class="color-option" data-color="#eab308" style="background: #eab308"></div>
+              <div class="color-option" data-color="#ec4899" style="background: #ec4899"></div>
+              <div class="color-option" data-color="#14b8a6" style="background: #14b8a6"></div>
+              <div class="color-option" data-color="#8b5cf6" style="background: #8b5cf6"></div>
+              <div class="color-option" data-color="#f43f5e" style="background: #f43f5e"></div>
+              <div class="color-option" data-color="#06b6d4" style="background: #06b6d4"></div>
+            </div>
+            <input type="color" id="tabEditorColor" class="tab-editor-color-input">
+          </div>
+        </div>
+        <div class="tab-editor-footer">
+          <button class="tab-editor-delete">Delete Layout</button>
+          <div class="tab-editor-actions">
+            <button class="tab-editor-cancel">Cancel</button>
+            <button class="tab-editor-save">Save</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Setup modal event listeners
+    this.setupTabEditorListeners(modal);
+  }
+
+  /**
+   * Setup tab editor modal listeners
+   */
+  setupTabEditorListeners(modal) {
+    const closeBtn = modal.querySelector('.tab-editor-close');
+    const cancelBtn = modal.querySelector('.tab-editor-cancel');
+    const saveBtn = modal.querySelector('.tab-editor-save');
+    const deleteBtn = modal.querySelector('.tab-editor-delete');
+    const colorOptions = modal.querySelectorAll('.color-option');
+    const colorInput = modal.querySelector('#tabEditorColor');
+
+    // Close modal
+    closeBtn.addEventListener('click', () => this.closeTabEditor());
+    cancelBtn.addEventListener('click', () => this.closeTabEditor());
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) this.closeTabEditor();
+    });
+
+    // Color option click
+    colorOptions.forEach(opt => {
+      opt.addEventListener('click', () => {
+        colorOptions.forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        colorInput.value = opt.dataset.color;
+      });
+    });
+
+    // Color input change
+    colorInput.addEventListener('input', () => {
+      colorOptions.forEach(o => o.classList.remove('selected'));
+    });
+
+    // Save
+    saveBtn.addEventListener('click', () => this.saveTabEdit());
+
+    // Delete
+    deleteBtn.addEventListener('click', () => this.deleteCurrentTab());
+  }
+
+  /**
+   * Open tab editor
+   */
+  openTabEditor(tabId) {
+    const modal = document.getElementById('tabEditorModal');
+    if (!modal) return;
+
+    const tab = this.tabs.find(t => t.id === tabId);
+    if (!tab) return;
+
+    // Store current editing tab
+    modal.dataset.tabId = tabId;
+
+    // Fill form
+    const nameInput = modal.querySelector('#tabEditorName');
+    const colorInput = modal.querySelector('#tabEditorColor');
+    const colorOptions = modal.querySelectorAll('.color-option');
+    const deleteBtn = modal.querySelector('.tab-editor-delete');
+
+    nameInput.value = tab.name;
+    colorInput.value = tab.color;
+
+    // Select matching color option
+    colorOptions.forEach(opt => {
+      opt.classList.toggle('selected', opt.dataset.color === tab.color);
+    });
+
+    // Hide delete button if only one tab
+    deleteBtn.style.display = this.tabs.length > 1 ? 'block' : 'none';
+
+    // Show modal
+    modal.classList.add('active');
+  }
+
+  /**
+   * Close tab editor
+   */
+  closeTabEditor() {
+    const modal = document.getElementById('tabEditorModal');
+    if (modal) {
+      modal.classList.remove('active');
+      delete modal.dataset.tabId;
+    }
+  }
+
+  /**
+   * Save tab edit
+   */
+  saveTabEdit() {
+    const modal = document.getElementById('tabEditorModal');
+    if (!modal) return;
+
+    const tabId = modal.dataset.tabId;
+    const nameInput = modal.querySelector('#tabEditorName');
+    const colorInput = modal.querySelector('#tabEditorColor');
+
+    const name = nameInput.value.trim() || 'Untitled Layout';
+    const color = colorInput.value;
+
+    // Update tab
+    const tabIndex = this.tabs.findIndex(t => t.id === tabId);
+    if (tabIndex !== -1) {
+      this.tabs[tabIndex].name = name;
+      this.tabs[tabIndex].color = color;
+      this.storageManager.saveTabsMeta(this.tabs);
+
+      // Update accent color if this is active tab
+      if (this.activeTabId === tabId) {
+        this.setAccentColor(color);
+      }
+
+      this.renderTabs();
+    }
+
+    this.closeTabEditor();
+  }
+
+  /**
+   * Delete current tab
+   */
+  deleteCurrentTab() {
+    const modal = document.getElementById('tabEditorModal');
+    if (!modal) return;
+
+    const tabId = modal.dataset.tabId;
+
+    if (this.tabs.length <= 1) {
+      alert('Cannot delete the last layout');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete this layout?')) {
+      return;
+    }
+
+    // Delete tab
+    this.storageManager.deleteTab(tabId);
+    this.tabs = this.tabs.filter(t => t.id !== tabId);
+
+    // Switch to another tab if we deleted the active one
+    if (this.activeTabId === tabId) {
+      this.setActiveTab(this.tabs[0].id);
+    } else {
+      this.renderTabs();
+    }
+
+    this.closeTabEditor();
+  }
+
+  /**
+   * Add new tab
+   */
+  addNewTab() {
+    const colors = ['#7dd3fc', '#60a5fa', '#a855f7', '#f97316', '#22c55e', '#ef4444'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+    const newTab = this.storageManager.createTab(`Layout ${this.tabs.length + 1}`, randomColor);
+    this.tabs.push(newTab);
+
+    // Switch to the new tab
+    this.setActiveTab(newTab.id);
   }
 
   /**
@@ -363,28 +584,23 @@ class Dashboard {
     const tabsEl = document.getElementById('layoutTabs');
     if (!tabsEl) return;
 
-    let html = '';
+    let html = '<div class="tabs-header">Layouts</div>';
 
     this.tabs.forEach(tab => {
       const isActive = tab.id === this.activeTabId ? 'active' : '';
       html += `
         <div class="tabRow">
-          <div class="colorChip" style="background: ${tab.color}" data-tab="${tab.id}"></div>
+          <div class="colorChip" style="background: ${tab.color}" data-tab="${tab.id}" title="Click to edit"></div>
           <button class="tabBtn ${isActive}" data-tab="${tab.id}">${tab.name}</button>
         </div>
       `;
     });
 
-    // Keep add button and footer
-    const addBtn = tabsEl.querySelector('.addBtn');
-    const bulkBar = tabsEl.querySelector('.bulkBar');
-    const footer = tabsEl.querySelector('.tabFooter');
+    // Add button
+    html += '<button class="addBtn" id="addTabBtn">+ Add Layout</button>';
+    html += '<div class="tabFooter">Drag panels to customize</div>';
 
     tabsEl.innerHTML = html;
-
-    if (addBtn) tabsEl.appendChild(addBtn);
-    if (bulkBar) tabsEl.appendChild(bulkBar);
-    if (footer) tabsEl.appendChild(footer);
 
     // Tab click handlers
     tabsEl.querySelectorAll('.tabBtn').forEach(btn => {
@@ -392,6 +608,20 @@ class Dashboard {
         this.setActiveTab(btn.dataset.tab);
       });
     });
+
+    // Color chip click handlers (to edit)
+    tabsEl.querySelectorAll('.colorChip').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.openTabEditor(chip.dataset.tab);
+      });
+    });
+
+    // Add button handler
+    const addBtn = tabsEl.querySelector('#addTabBtn');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => this.addNewTab());
+    }
   }
 
   /**

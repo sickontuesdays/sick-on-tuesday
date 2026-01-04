@@ -30,11 +30,12 @@
       --rowH: 85px;
       --gap: 12px;
       --friendsW: 260px;
+      --layoutsW: 130px;
     }
 
-    @media (max-width: 1400px) { :root { --colW: 75px; --rowH: 75px; --friendsW: 240px; } }
-    @media (max-width: 1200px) { :root { --colW: 65px; --rowH: 65px; --friendsW: 220px; } }
-    @media (max-width: 1000px) { :root { --colW: 55px; --rowH: 55px; --friendsW: 200px; } }
+    @media (max-width: 1400px) { :root { --colW: 75px; --rowH: 75px; --friendsW: 240px; --layoutsW: 120px; } }
+    @media (max-width: 1200px) { :root { --colW: 65px; --rowH: 65px; --friendsW: 220px; --layoutsW: 110px; } }
+    @media (max-width: 1000px) { :root { --colW: 55px; --rowH: 55px; --friendsW: 200px; --layoutsW: 100px; } }
 
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
@@ -70,6 +71,7 @@
     .main-content {
       flex: 1;
       padding: 16px;
+      padding-left: calc(var(--layoutsW) + 32px);
       padding-right: calc(var(--friendsW) + 32px);
       max-width: 100%;
       overflow-x: hidden;
@@ -79,33 +81,37 @@
     header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center;
       gap: 16px;
       margin-bottom: 16px;
       flex-wrap: wrap;
+      position: relative;
     }
 
     .brand {
       display: flex;
-      align-items: baseline;
-      gap: 12px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
     }
 
     .brand h1 {
       margin: 0;
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 700;
       letter-spacing: .04em;
     }
 
-    .brand .badge {
-      color: var(--muted);
-      font-size: 12px;
-      letter-spacing: .12em;
-      text-transform: uppercase;
+    .brand .accent {
+      color: var(--arc);
     }
 
     .header-controls {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
       display: flex;
       align-items: center;
       gap: 10px;
@@ -682,20 +688,31 @@
       font-size: 12px;
     }
 
-    /* Layout Tabs (Left) */
-    .leftTabs {
+    /* Layouts Sidebar (Left) */
+    .layouts-sidebar {
       position: fixed;
-      left: 16px;
-      top: 80px;
-      width: 200px;
-      z-index: 20;
+      top: 0;
+      left: 0;
+      width: var(--layoutsW);
+      height: 100vh;
+      background: linear-gradient(180deg, var(--panel), var(--panel2));
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      z-index: 30;
     }
 
     .tabs {
-      background: linear-gradient(180deg, var(--panel), var(--panel2));
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .tabs-header {
+      padding: 16px 12px 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+      border-bottom: 1px solid var(--border);
     }
 
     .tabRow {
@@ -707,48 +724,240 @@
     .colorChip {
       width: 14px;
       height: 14px;
+      min-width: 14px;
       margin: 0 8px;
       border-radius: 4px;
       cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .colorChip:hover {
+      transform: scale(1.15);
+      box-shadow: 0 0 8px currentColor;
     }
 
     .tabBtn {
       flex: 1;
-      padding: 10px;
+      padding: 10px 8px;
       background: none;
       border: none;
       color: var(--ink);
       cursor: pointer;
       text-align: left;
-      font-size: 13px;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .tabBtn:hover { background: rgba(125,211,252,.08); }
-    .tabBtn.active { background: rgba(125,211,252,.15); }
+    .tabBtn.active {
+      background: rgba(125,211,252,.15);
+      color: var(--arc);
+      font-weight: 600;
+    }
 
     .addBtn {
       width: 100%;
-      padding: 10px;
+      padding: 12px 10px;
       background: none;
       border: none;
+      border-top: 1px solid var(--border);
       color: var(--arc);
       cursor: pointer;
-      font-size: 13px;
+      font-size: 12px;
       text-align: center;
+      margin-top: auto;
+      transition: background 0.2s;
     }
 
-    .addBtn:hover { background: rgba(125,211,252,.08); }
+    .addBtn:hover { background: rgba(125,211,252,.1); }
 
     .tabFooter {
-      padding: 8px 10px;
+      padding: 10px;
       font-size: 10px;
       color: var(--muted);
       border-top: 1px solid var(--border);
+      text-align: center;
     }
 
-    /* Responsive - Hide left tabs on small screens */
+    /* Tab Editor Modal */
+    .tab-editor-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tab-editor-modal.active {
+      display: flex;
+    }
+
+    .tab-editor-content {
+      background: linear-gradient(180deg, var(--panel), var(--panel2));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 360px;
+      max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .tab-editor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab-editor-header h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .tab-editor-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .tab-editor-close:hover {
+      color: var(--ink);
+    }
+
+    .tab-editor-body {
+      padding: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .tab-editor-input {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .tab-editor-input:focus {
+      outline: none;
+      border-color: var(--arc);
+    }
+
+    .color-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .color-option {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .color-option:hover {
+      transform: scale(1.1);
+    }
+
+    .color-option.selected {
+      border-color: white;
+      box-shadow: 0 0 10px currentColor;
+    }
+
+    .tab-editor-color-input {
+      width: 100%;
+      height: 36px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .tab-editor-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .tab-editor-delete {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid #ef4444;
+      color: #ef4444;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .tab-editor-delete:hover {
+      background: rgba(239, 68, 68, 0.3);
+    }
+
+    .tab-editor-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .tab-editor-cancel {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .tab-editor-cancel:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .tab-editor-save {
+      background: var(--arc);
+      border: none;
+      color: var(--bg);
+      padding: 8px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .tab-editor-save:hover {
+      opacity: 0.9;
+    }
+
+    /* Responsive - Hide sidebars on small screens */
     @media (max-width: 1000px) {
-      .leftTabs { display: none; }
+      .layouts-sidebar { display: none; }
       .main-content { padding-left: 16px; }
     }
 
@@ -764,8 +973,7 @@
     <div class="main-content">
       <header>
         <div class="brand">
-          <h1>Guardian Command</h1>
-          <span class="badge">Sick on Tuesdays</span>
+          <h1><span class="accent">SoT</span> Guardian Command Center</h1>
         </div>
 
         <div class="header-controls">
@@ -895,15 +1103,10 @@
       </div>
     </aside>
 
-    <!-- Layout Tabs (Left) -->
-    <aside class="leftTabs">
+    <!-- Layouts Sidebar (Left) -->
+    <aside class="layouts-sidebar">
       <div class="tabs" id="layoutTabs">
-        <div class="tabRow">
-          <div class="colorChip" style="background: #7dd3fc" data-tab="layout1"></div>
-          <button class="tabBtn active" data-tab="layout1">Default Layout</button>
-        </div>
-        <button class="addBtn" id="addTabBtn">+ Add Layout</button>
-        <div class="tabFooter">Drag panels to customize your dashboard</div>
+        <!-- Populated by JS -->
       </div>
     </aside>
   </div>

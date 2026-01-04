@@ -1,5 +1,5 @@
 /**
- * Inventory Panel - DIM-style inventory display with filtering and sorting
+ * Inventory Panel - Full DIM-style inventory management with transfers and equipping
  */
 
 import { apiClient } from '../api/bungie-api-client.js';
@@ -10,16 +10,30 @@ export class InventoryPanel {
   constructor(containerEl) {
     this.container = containerEl;
     this.inventory = null;
-    this.currentView = 'all'; // all, weapons, armor, mods
+    this.profileData = null;
+
+    // View state
+    this.currentView = 'character'; // character, vault
     this.currentCharacter = null;
-    this.sortBy = 'power';
+    this.currentCategory = 'all'; // all, weapons, armor, general
+
+    // Filter state
+    this.sortBy = 'default';
     this.filterTier = 'all';
+    this.searchTerm = '';
+
+    // Selected item for actions
+    this.selectedItem = null;
+
+    // Transfer state
+    this.isTransferring = false;
   }
 
   /**
    * Initialize inventory panel
    */
   async init() {
+    this.createItemModal();
     this.render();
   }
 
@@ -30,8 +44,8 @@ export class InventoryPanel {
     try {
       this.showLoading();
 
-      const profileData = await apiClient.getProfile();
-      this.inventory = inventoryProcessor.processProfile(profileData);
+      this.profileData = await apiClient.getProfile();
+      this.inventory = inventoryProcessor.processProfile(this.profileData);
 
       // Set default character
       const charIds = Object.keys(this.inventory.characters);
@@ -47,6 +61,55 @@ export class InventoryPanel {
   }
 
   /**
+   * Create item details modal
+   */
+  createItemModal() {
+    const existing = document.getElementById('itemModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'itemModal';
+    modal.className = 'item-modal';
+    modal.innerHTML = `
+      <div class="item-modal-content">
+        <div class="item-modal-header">
+          <div class="item-modal-icon"></div>
+          <div class="item-modal-info">
+            <h3 class="item-modal-name">Item Name</h3>
+            <div class="item-modal-type">Item Type</div>
+          </div>
+          <button class="item-modal-close">&times;</button>
+        </div>
+        <div class="item-modal-body">
+          <div class="item-modal-stats"></div>
+          <div class="item-modal-perks"></div>
+        </div>
+        <div class="item-modal-actions">
+          <button class="item-action-equip" data-action="equip">Equip</button>
+          <button class="item-action-transfer" data-action="transfer">Transfer</button>
+          <button class="item-action-vault" data-action="vault">Send to Vault</button>
+        </div>
+        <div class="item-modal-transfer-targets" style="display: none;">
+          <div class="transfer-header">Transfer to:</div>
+          <div class="transfer-options"></div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Setup modal listeners
+    modal.querySelector('.item-modal-close').addEventListener('click', () => this.closeItemModal());
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) this.closeItemModal();
+    });
+
+    // Action buttons
+    modal.querySelector('.item-action-equip').addEventListener('click', () => this.equipSelectedItem());
+    modal.querySelector('.item-action-vault').addEventListener('click', () => this.sendToVault());
+    modal.querySelector('.item-action-transfer').addEventListener('click', () => this.showTransferOptions());
+  }
+
+  /**
    * Render inventory panel
    */
   render() {
@@ -55,15 +118,14 @@ export class InventoryPanel {
       return;
     }
 
-    let html = `
-      <div class="inventory-panel">
-        <div class="inventory-toolbar">
-          ${this.renderCharacterSelector()}
-          ${this.renderViewTabs()}
-          ${this.renderFilters()}
-        </div>
-        <div class="inventory-content">
-          ${this.renderInventoryContent()}
+    const html = `
+      <div class="inventory-panel-full">
+        ${this.renderToolbar()}
+        <div class="inventory-main">
+          ${this.renderCharacterBar()}
+          <div class="inventory-grid-container">
+            ${this.renderInventoryContent()}
+          </div>
         </div>
       </div>
     `;
@@ -73,31 +135,73 @@ export class InventoryPanel {
   }
 
   /**
-   * Render character selector
+   * Render toolbar with filters and search
    */
-  renderCharacterSelector() {
-    const chars = this.inventory.characters;
-    let html = '<div class="char-selector">';
+  renderToolbar() {
+    return `
+      <div class="inventory-toolbar">
+        <div class="toolbar-left">
+          <div class="category-tabs">
+            <button class="cat-tab ${this.currentCategory === 'all' ? 'active' : ''}" data-cat="all">All</button>
+            <button class="cat-tab ${this.currentCategory === 'weapons' ? 'active' : ''}" data-cat="weapons">Weapons</button>
+            <button class="cat-tab ${this.currentCategory === 'armor' ? 'active' : ''}" data-cat="armor">Armor</button>
+            <button class="cat-tab ${this.currentCategory === 'general' ? 'active' : ''}" data-cat="general">General</button>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <input type="text" class="inventory-search" placeholder="Search items..." value="${this.searchTerm}">
+          <select class="inventory-filter-tier">
+            <option value="all" ${this.filterTier === 'all' ? 'selected' : ''}>All Tiers</option>
+            <option value="6" ${this.filterTier === '6' ? 'selected' : ''}>Exotic</option>
+            <option value="5" ${this.filterTier === '5' ? 'selected' : ''}>Legendary</option>
+            <option value="4" ${this.filterTier === '4' ? 'selected' : ''}>Rare</option>
+          </select>
+          <select class="inventory-sort">
+            <option value="default" ${this.sortBy === 'default' ? 'selected' : ''}>Default</option>
+            <option value="power" ${this.sortBy === 'power' ? 'selected' : ''}>Power</option>
+            <option value="name" ${this.sortBy === 'name' ? 'selected' : ''}>Name</option>
+            <option value="rarity" ${this.sortBy === 'rarity' ? 'selected' : ''}>Rarity</option>
+          </select>
+          <button class="refresh-btn" title="Refresh inventory">↻</button>
+        </div>
+      </div>
+    `;
+  }
 
+  /**
+   * Render character selection bar
+   */
+  renderCharacterBar() {
+    const chars = this.inventory.characters;
+    let html = '<div class="character-bar">';
+
+    // Character buttons
     for (const [charId, char] of Object.entries(chars)) {
-      const isActive = charId === this.currentCharacter ? 'active' : '';
-      const emblem = char.emblemPath ? `https://www.bungie.net${char.emblemPath}` : '';
+      const isActive = this.currentView === 'character' && charId === this.currentCharacter;
+      const emblem = char.emblemBackgroundPath ? `https://www.bungie.net${char.emblemBackgroundPath}` : '';
 
       html += `
-        <button class="char-btn ${isActive}" data-char-id="${charId}">
-          ${emblem ? `<img src="${emblem}" alt="${char.className}">` : ''}
-          <span class="char-class">${char.className}</span>
-          <span class="char-power">${char.light}</span>
+        <button class="char-select-btn ${isActive ? 'active' : ''}" data-char-id="${charId}">
+          <div class="char-emblem" style="background-image: url('${emblem}')">
+            <span class="char-class-icon">${this.getClassIcon(char.classType)}</span>
+          </div>
+          <div class="char-details">
+            <span class="char-class-name">${char.className}</span>
+            <span class="char-light-level">${char.light}</span>
+          </div>
         </button>
       `;
     }
 
     // Vault button
+    const vaultCount = this.inventory.vault?.items?.length || 0;
     html += `
-      <button class="char-btn ${this.currentCharacter === 'vault' ? 'active' : ''}" data-char-id="vault">
-        <span class="vault-icon">📦</span>
-        <span class="char-class">Vault</span>
-        <span class="char-power">${this.inventory.vault?.items?.length || 0}</span>
+      <button class="char-select-btn vault-btn ${this.currentView === 'vault' ? 'active' : ''}" data-view="vault">
+        <div class="vault-icon">🔒</div>
+        <div class="char-details">
+          <span class="char-class-name">Vault</span>
+          <span class="char-light-level">${vaultCount} items</span>
+        </div>
       </button>
     `;
 
@@ -106,261 +210,269 @@ export class InventoryPanel {
   }
 
   /**
-   * Render view tabs
-   */
-  renderViewTabs() {
-    const views = [
-      { id: 'all', label: 'All' },
-      { id: 'weapons', label: 'Weapons' },
-      { id: 'armor', label: 'Armor' },
-      { id: 'mods', label: 'Mods' }
-    ];
-
-    let html = '<div class="view-tabs">';
-    views.forEach(view => {
-      const isActive = this.currentView === view.id ? 'active' : '';
-      html += `<button class="view-tab ${isActive}" data-view="${view.id}">${view.label}</button>`;
-    });
-    html += '</div>';
-
-    return html;
-  }
-
-  /**
-   * Render filters
-   */
-  renderFilters() {
-    return `
-      <div class="inventory-filters">
-        <select class="filter-tier" data-filter="tier">
-          <option value="all">All Tiers</option>
-          <option value="6">Exotic</option>
-          <option value="5">Legendary</option>
-          <option value="4">Rare</option>
-          <option value="3">Common</option>
-        </select>
-        <select class="filter-sort" data-filter="sort">
-          <option value="power">Power</option>
-          <option value="name">Name</option>
-          <option value="type">Type</option>
-          <option value="tier">Tier</option>
-        </select>
-      </div>
-    `;
-  }
-
-  /**
    * Render inventory content
    */
   renderInventoryContent() {
-    if (this.currentCharacter === 'vault') {
-      return this.renderVaultContent();
+    if (this.currentView === 'vault') {
+      return this.renderVaultInventory();
     }
+    return this.renderCharacterInventory();
+  }
 
-    const char = this.inventory.characters[this.currentCharacter];
+  /**
+   * Render character inventory with equipped items
+   */
+  renderCharacterInventory() {
+    const charId = this.currentCharacter;
+    const char = this.inventory.characters[charId];
+    const equipped = this.inventory.equipped[charId];
+
     if (!char) return '<div class="no-data">No character selected</div>';
 
-    const equipped = this.inventory.equipped[this.currentCharacter];
-    const inventory = char.inventory;
+    let html = '<div class="character-inventory">';
 
-    let html = '';
+    // Equipped Items Section
+    html += '<div class="equipped-section">';
+    html += '<div class="section-header"><h4>Equipped</h4></div>';
+    html += '<div class="equipped-grid">';
 
-    // Equipped section
-    if (equipped && this.currentView !== 'mods') {
-      html += this.renderEquippedSection(equipped);
-    }
-
-    // Inventory section
-    if (inventory) {
-      html += this.renderInventorySection(inventory);
-    }
-
-    return html;
-  }
-
-  /**
-   * Render equipped items section
-   */
-  renderEquippedSection(equipped) {
-    let html = '<div class="equipped-section">';
-    html += '<h4 class="section-title">Equipped</h4>';
-
-    // Weapons row
-    if (this.currentView === 'all' || this.currentView === 'weapons') {
-      html += '<div class="equipped-row weapons">';
-      html += this.renderEquippedItem(equipped.weapons.kinetic, 'Kinetic');
-      html += this.renderEquippedItem(equipped.weapons.energy, 'Energy');
-      html += this.renderEquippedItem(equipped.weapons.power, 'Power');
-      html += '</div>';
-    }
-
-    // Armor row
-    if (this.currentView === 'all' || this.currentView === 'armor') {
-      html += '<div class="equipped-row armor">';
-      html += this.renderEquippedItem(equipped.armor.helmet, 'Helmet');
-      html += this.renderEquippedItem(equipped.armor.gauntlets, 'Gauntlets');
-      html += this.renderEquippedItem(equipped.armor.chest, 'Chest');
-      html += this.renderEquippedItem(equipped.armor.legs, 'Legs');
-      html += this.renderEquippedItem(equipped.armor.class, 'Class');
-      html += '</div>';
-    }
-
+    // Weapons
+    html += '<div class="equip-column weapons-column">';
+    html += '<div class="column-label">Weapons</div>';
+    html += this.renderEquippedSlot(equipped?.weapons?.kinetic, 'Kinetic', charId);
+    html += this.renderEquippedSlot(equipped?.weapons?.energy, 'Energy', charId);
+    html += this.renderEquippedSlot(equipped?.weapons?.power, 'Power', charId);
     html += '</div>';
-    return html;
-  }
 
-  /**
-   * Render single equipped item
-   */
-  renderEquippedItem(item, slotName) {
-    if (!item) {
-      return `<div class="equipped-slot empty"><span class="slot-name">${slotName}</span></div>`;
-    }
+    // Armor
+    html += '<div class="equip-column armor-column">';
+    html += '<div class="column-label">Armor</div>';
+    html += this.renderEquippedSlot(equipped?.armor?.helmet, 'Helmet', charId);
+    html += this.renderEquippedSlot(equipped?.armor?.gauntlets, 'Arms', charId);
+    html += this.renderEquippedSlot(equipped?.armor?.chest, 'Chest', charId);
+    html += this.renderEquippedSlot(equipped?.armor?.legs, 'Legs', charId);
+    html += this.renderEquippedSlot(equipped?.armor?.class, 'Class', charId);
+    html += '</div>';
 
-    const tierClass = `tier-${item.tierTypeName?.toLowerCase() || 'common'}`;
-    const damageColor = inventoryProcessor.getDamageTypeColor(item.damageType);
+    html += '</div></div>';
 
-    return `
-      <div class="equipped-slot ${tierClass}" data-item-id="${item.itemInstanceId}" title="${item.name}">
-        ${item.icon ? `<img src="${item.icon}" alt="${item.name}" class="item-icon">` : ''}
-        <div class="item-power" style="color: ${damageColor}">${item.primaryStat?.value || ''}</div>
-        <span class="slot-name">${slotName}</span>
-      </div>
-    `;
-  }
+    // Inventory Section
+    html += '<div class="inventory-section">';
+    html += '<div class="section-header"><h4>Inventory</h4></div>';
 
-  /**
-   * Render inventory section
-   */
-  renderInventorySection(inventory) {
-    let items = [];
-
-    switch (this.currentView) {
-      case 'weapons':
-        items = inventory.weapons || [];
-        break;
-      case 'armor':
-        items = inventory.armor || [];
-        break;
-      case 'mods':
-        items = inventory.mods || [];
-        break;
-      default:
-        items = [
-          ...(inventory.weapons || []),
-          ...(inventory.armor || []),
-          ...(inventory.mods || []),
-          ...(inventory.consumables || [])
-        ];
-    }
-
-    // Apply filters
-    items = this.applyFilters(items);
-
-    // Apply sorting
-    items = this.applySorting(items);
+    const inventory = char.inventory || {};
+    let items = this.getFilteredItems(inventory);
 
     if (items.length === 0) {
-      return '<div class="no-items">No items found</div>';
+      html += '<div class="no-items">No items match your filters</div>';
+    } else {
+      html += '<div class="inventory-items-grid">';
+      items.forEach(item => {
+        html += this.renderInventoryItem(item, charId);
+      });
+      html += '</div>';
     }
 
-    let html = '<div class="inventory-grid">';
-    items.forEach(item => {
-      html += this.renderInventoryItem(item);
-    });
-    html += '</div>';
-
+    html += '</div></div>';
     return html;
   }
 
   /**
-   * Render vault content
+   * Render vault inventory
    */
-  renderVaultContent() {
+  renderVaultInventory() {
     const vault = this.inventory.vault;
     if (!vault || !vault.items) {
       return '<div class="no-data">Vault empty</div>';
     }
 
-    let items = [];
+    let items = this.getFilteredVaultItems(vault);
 
-    switch (this.currentView) {
-      case 'weapons':
-        items = [
-          ...vault.categories.weapons.kinetic,
-          ...vault.categories.weapons.energy,
-          ...vault.categories.weapons.power
-        ];
-        break;
-      case 'armor':
-        items = [
-          ...vault.categories.armor.helmet,
-          ...vault.categories.armor.gauntlets,
-          ...vault.categories.armor.chest,
-          ...vault.categories.armor.legs,
-          ...vault.categories.armor.class
-        ];
-        break;
-      case 'mods':
-        items = vault.categories.mods || [];
-        break;
-      default:
-        items = vault.items;
+    let html = '<div class="vault-inventory">';
+    html += '<div class="section-header"><h4>Vault Items</h4><span class="item-count">' + items.length + ' items</span></div>';
+
+    if (items.length === 0) {
+      html += '<div class="no-items">No items match your filters</div>';
+    } else {
+      // Group by category
+      const weapons = items.filter(i => i.isWeapon);
+      const armor = items.filter(i => i.isArmor);
+      const other = items.filter(i => !i.isWeapon && !i.isArmor);
+
+      if (this.currentCategory === 'all' || this.currentCategory === 'weapons') {
+        if (weapons.length > 0) {
+          html += '<div class="vault-category">';
+          html += '<div class="category-label">Weapons (' + weapons.length + ')</div>';
+          html += '<div class="inventory-items-grid">';
+          weapons.forEach(item => {
+            html += this.renderInventoryItem(item, 'vault');
+          });
+          html += '</div></div>';
+        }
+      }
+
+      if (this.currentCategory === 'all' || this.currentCategory === 'armor') {
+        if (armor.length > 0) {
+          html += '<div class="vault-category">';
+          html += '<div class="category-label">Armor (' + armor.length + ')</div>';
+          html += '<div class="inventory-items-grid">';
+          armor.forEach(item => {
+            html += this.renderInventoryItem(item, 'vault');
+          });
+          html += '</div></div>';
+        }
+      }
+
+      if (this.currentCategory === 'all' || this.currentCategory === 'general') {
+        if (other.length > 0) {
+          html += '<div class="vault-category">';
+          html += '<div class="category-label">General (' + other.length + ')</div>';
+          html += '<div class="inventory-items-grid">';
+          other.forEach(item => {
+            html += this.renderInventoryItem(item, 'vault');
+          });
+          html += '</div></div>';
+        }
+      }
     }
-
-    items = this.applyFilters(items);
-    items = this.applySorting(items);
-
-    let html = `
-      <div class="vault-header">
-        <span>Vault Items: ${items.length}</span>
-      </div>
-      <div class="inventory-grid">
-    `;
-
-    items.forEach(item => {
-      html += this.renderInventoryItem(item);
-    });
 
     html += '</div>';
     return html;
   }
 
   /**
-   * Render single inventory item
+   * Render equipped slot
    */
-  renderInventoryItem(item) {
+  renderEquippedSlot(item, slotName, charId) {
+    if (!item) {
+      return `
+        <div class="equipped-slot empty">
+          <div class="slot-placeholder"></div>
+          <span class="slot-label">${slotName}</span>
+        </div>
+      `;
+    }
+
     const tierClass = `tier-${item.tierTypeName?.toLowerCase() || 'common'}`;
     const damageColor = item.isWeapon ? inventoryProcessor.getDamageTypeColor(item.damageType) : '';
 
     return `
-      <div class="inventory-item ${tierClass}" data-item-id="${item.itemInstanceId}" data-item-hash="${item.itemHash}">
+      <div class="equipped-slot ${tierClass}"
+           data-instance-id="${item.itemInstanceId}"
+           data-item-hash="${item.itemHash}"
+           data-location="equipped"
+           data-char-id="${charId}">
+        ${item.icon ? `<img src="${item.icon}" alt="${item.name}" class="slot-icon">` : '<div class="slot-placeholder"></div>'}
+        <div class="slot-power" style="color: ${damageColor}">${item.primaryStat?.value || ''}</div>
+        <span class="slot-label">${slotName}</span>
+        ${item.isExotic ? '<div class="exotic-marker"></div>' : ''}
+      </div>
+    `;
+  }
+
+  /**
+   * Render inventory item
+   */
+  renderInventoryItem(item, location) {
+    const tierClass = `tier-${item.tierTypeName?.toLowerCase() || 'common'}`;
+    const damageColor = item.isWeapon ? inventoryProcessor.getDamageTypeColor(item.damageType) : '';
+
+    return `
+      <div class="inventory-item ${tierClass}"
+           data-instance-id="${item.itemInstanceId}"
+           data-item-hash="${item.itemHash}"
+           data-location="${location}">
         ${item.icon ? `<img src="${item.icon}" alt="${item.name}" class="item-icon">` : '<div class="item-placeholder"></div>'}
         ${item.primaryStat?.value ? `<div class="item-power" style="color: ${damageColor}">${item.primaryStat.value}</div>` : ''}
-        ${item.quantity > 1 ? `<div class="item-quantity">${item.quantity}</div>` : ''}
-        <div class="item-tooltip">
-          <div class="tooltip-name">${item.name}</div>
-          <div class="tooltip-type">${item.tierTypeName} ${item.isWeapon ? inventoryProcessor.getWeaponTypeName(item.itemSubType) : ''}</div>
+        ${item.quantity > 1 ? `<div class="item-quantity">x${item.quantity}</div>` : ''}
+        ${item.isExotic ? '<div class="exotic-marker"></div>' : ''}
+        <div class="item-hover-info">
+          <div class="hover-name">${item.name}</div>
+          <div class="hover-type">${item.tierTypeName || ''}</div>
         </div>
       </div>
     `;
   }
 
   /**
-   * Apply filters to items
+   * Get filtered items from character inventory
    */
-  applyFilters(items) {
-    if (this.filterTier !== 'all') {
-      const tier = parseInt(this.filterTier);
-      items = items.filter(i => i.tierType === tier);
+  getFilteredItems(inventory) {
+    let items = [];
+
+    switch (this.currentCategory) {
+      case 'weapons':
+        items = [...(inventory.weapons || [])];
+        break;
+      case 'armor':
+        items = [...(inventory.armor || [])];
+        break;
+      case 'general':
+        items = [...(inventory.mods || []), ...(inventory.consumables || []), ...(inventory.other || [])];
+        break;
+      default:
+        items = [
+          ...(inventory.weapons || []),
+          ...(inventory.armor || []),
+          ...(inventory.mods || []),
+          ...(inventory.consumables || []),
+          ...(inventory.other || [])
+        ];
     }
+
+    // Apply tier filter
+    if (this.filterTier !== 'all') {
+      items = items.filter(i => i.tierType === parseInt(this.filterTier));
+    }
+
+    // Apply search
+    if (this.searchTerm) {
+      const term = this.searchTerm.toLowerCase();
+      items = items.filter(i => i.name?.toLowerCase().includes(term));
+    }
+
+    // Apply sorting
+    items = this.sortItems(items);
+
     return items;
   }
 
   /**
-   * Apply sorting to items
+   * Get filtered vault items
    */
-  applySorting(items) {
+  getFilteredVaultItems(vault) {
+    let items = [...vault.items];
+
+    // Apply category filter
+    if (this.currentCategory === 'weapons') {
+      items = items.filter(i => i.isWeapon);
+    } else if (this.currentCategory === 'armor') {
+      items = items.filter(i => i.isArmor);
+    } else if (this.currentCategory === 'general') {
+      items = items.filter(i => !i.isWeapon && !i.isArmor);
+    }
+
+    // Apply tier filter
+    if (this.filterTier !== 'all') {
+      items = items.filter(i => i.tierType === parseInt(this.filterTier));
+    }
+
+    // Apply search
+    if (this.searchTerm) {
+      const term = this.searchTerm.toLowerCase();
+      items = items.filter(i => i.name?.toLowerCase().includes(term));
+    }
+
+    // Apply sorting
+    items = this.sortItems(items);
+
+    return items;
+  }
+
+  /**
+   * Sort items
+   */
+  sortItems(items) {
     const sorted = [...items];
 
     switch (this.sortBy) {
@@ -368,13 +480,13 @@ export class InventoryPanel {
         sorted.sort((a, b) => (b.primaryStat?.value || 0) - (a.primaryStat?.value || 0));
         break;
       case 'name':
-        sorted.sort((a, b) => a.name.localeCompare(b.name));
+        sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         break;
-      case 'tier':
-        sorted.sort((a, b) => b.tierType - a.tierType);
+      case 'rarity':
+        sorted.sort((a, b) => (b.tierType || 0) - (a.tierType || 0));
         break;
-      case 'type':
-        sorted.sort((a, b) => (a.itemSubType || 0) - (b.itemSubType || 0));
+      default:
+        // Keep default order
         break;
     }
 
@@ -385,89 +497,368 @@ export class InventoryPanel {
    * Attach event listeners
    */
   attachEventListeners() {
-    // Character selector
-    this.container.querySelectorAll('.char-btn').forEach(btn => {
+    // Character selection
+    this.container.querySelectorAll('.char-select-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        this.currentCharacter = btn.dataset.charId;
+        const charId = btn.dataset.charId;
+        const view = btn.dataset.view;
+
+        if (view === 'vault') {
+          this.currentView = 'vault';
+        } else if (charId) {
+          this.currentView = 'character';
+          this.currentCharacter = charId;
+        }
         this.render();
       });
     });
 
-    // View tabs
-    this.container.querySelectorAll('.view-tab').forEach(tab => {
+    // Category tabs
+    this.container.querySelectorAll('.cat-tab').forEach(tab => {
       tab.addEventListener('click', () => {
-        this.currentView = tab.dataset.view;
+        this.currentCategory = tab.dataset.cat;
         this.render();
       });
     });
 
     // Filters
-    this.container.querySelectorAll('select[data-filter]').forEach(select => {
-      select.addEventListener('change', () => {
-        if (select.dataset.filter === 'tier') {
-          this.filterTier = select.value;
-        } else if (select.dataset.filter === 'sort') {
-          this.sortBy = select.value;
-        }
+    const tierFilter = this.container.querySelector('.inventory-filter-tier');
+    if (tierFilter) {
+      tierFilter.addEventListener('change', () => {
+        this.filterTier = tierFilter.value;
         this.render();
       });
-    });
+    }
 
-    // Item click for details
-    this.container.querySelectorAll('.inventory-item, .equipped-slot').forEach(item => {
+    const sortSelect = this.container.querySelector('.inventory-sort');
+    if (sortSelect) {
+      sortSelect.addEventListener('change', () => {
+        this.sortBy = sortSelect.value;
+        this.render();
+      });
+    }
+
+    // Search
+    const searchInput = this.container.querySelector('.inventory-search');
+    if (searchInput) {
+      let debounceTimer;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          this.searchTerm = searchInput.value;
+          this.render();
+        }, 300);
+      });
+    }
+
+    // Refresh button
+    const refreshBtn = this.container.querySelector('.refresh-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => this.load());
+    }
+
+    // Item click - open modal
+    this.container.querySelectorAll('.equipped-slot:not(.empty), .inventory-item').forEach(item => {
       item.addEventListener('click', () => {
-        const itemId = item.dataset.itemId;
-        const itemHash = item.dataset.itemHash;
-        if (itemId || itemHash) {
-          this.showItemDetails(itemId, itemHash);
-        }
+        this.openItemModal(item);
       });
     });
   }
 
   /**
-   * Show item details modal
+   * Open item modal
    */
-  showItemDetails(itemInstanceId, itemHash) {
+  openItemModal(itemEl) {
+    const instanceId = itemEl.dataset.instanceId;
+    const itemHash = itemEl.dataset.itemHash;
+    const location = itemEl.dataset.location;
+    const charId = itemEl.dataset.charId;
+
     // Find the item
-    let item = null;
+    const item = this.findItem(instanceId, itemHash);
+    if (!item) return;
 
-    // Search equipped
+    this.selectedItem = {
+      ...item,
+      location,
+      characterId: charId || this.currentCharacter
+    };
+
+    const modal = document.getElementById('itemModal');
+    if (!modal) return;
+
+    // Populate modal
+    const iconEl = modal.querySelector('.item-modal-icon');
+    const nameEl = modal.querySelector('.item-modal-name');
+    const typeEl = modal.querySelector('.item-modal-type');
+    const statsEl = modal.querySelector('.item-modal-stats');
+    const perksEl = modal.querySelector('.item-modal-perks');
+
+    iconEl.innerHTML = item.icon ? `<img src="${item.icon}" alt="${item.name}">` : '';
+    iconEl.className = `item-modal-icon tier-${item.tierTypeName?.toLowerCase() || 'common'}`;
+    nameEl.textContent = item.name;
+    typeEl.textContent = `${item.tierTypeName || ''} ${item.isWeapon ? inventoryProcessor.getWeaponTypeName(item.itemSubType) : 'Armor'}`;
+
+    // Stats
+    let statsHtml = '';
+    if (item.primaryStat?.value) {
+      const statName = item.isWeapon ? 'Attack' : 'Defense';
+      statsHtml += `<div class="modal-stat"><span class="stat-name">${statName}</span><span class="stat-value">${item.primaryStat.value}</span></div>`;
+    }
+    if (item.stats) {
+      for (const [name, value] of Object.entries(item.stats)) {
+        if (name !== 'total') {
+          statsHtml += `<div class="modal-stat"><span class="stat-name">${name}</span><span class="stat-value">${value}</span></div>`;
+        }
+      }
+    }
+    statsEl.innerHTML = statsHtml;
+
+    // Show/hide action buttons based on context
+    const equipBtn = modal.querySelector('.item-action-equip');
+    const transferBtn = modal.querySelector('.item-action-transfer');
+    const vaultBtn = modal.querySelector('.item-action-vault');
+
+    equipBtn.style.display = location !== 'equipped' && location !== 'vault' ? 'block' : 'none';
+    vaultBtn.style.display = location !== 'vault' ? 'block' : 'none';
+    transferBtn.style.display = 'block';
+
+    // Hide transfer targets
+    modal.querySelector('.item-modal-transfer-targets').style.display = 'none';
+
+    modal.classList.add('active');
+  }
+
+  /**
+   * Close item modal
+   */
+  closeItemModal() {
+    const modal = document.getElementById('itemModal');
+    if (modal) {
+      modal.classList.remove('active');
+      this.selectedItem = null;
+    }
+  }
+
+  /**
+   * Find item by instance ID or hash
+   */
+  findItem(instanceId, itemHash) {
+    // Search in equipped
     for (const charEquip of Object.values(this.inventory.equipped)) {
-      for (const slotItems of [charEquip.weapons, charEquip.armor]) {
-        for (const slot of Object.values(slotItems)) {
-          if (slot?.itemInstanceId === itemInstanceId) {
-            item = slot;
-            break;
-          }
+      for (const category of [charEquip.weapons, charEquip.armor]) {
+        for (const item of Object.values(category || {})) {
+          if (item?.itemInstanceId === instanceId) return item;
         }
       }
     }
 
-    // Search inventory
-    if (!item) {
-      for (const char of Object.values(this.inventory.characters)) {
-        if (char.inventory) {
-          for (const category of Object.values(char.inventory)) {
-            const found = category.find(i => i.itemInstanceId === itemInstanceId);
-            if (found) {
-              item = found;
-              break;
-            }
-          }
+    // Search in character inventories
+    for (const char of Object.values(this.inventory.characters)) {
+      if (char.inventory) {
+        for (const items of Object.values(char.inventory)) {
+          const found = items?.find(i => i.itemInstanceId === instanceId);
+          if (found) return found;
         }
       }
     }
 
-    // Search vault
-    if (!item && this.inventory.vault?.items) {
-      item = this.inventory.vault.items.find(i => i.itemInstanceId === itemInstanceId);
+    // Search in vault
+    if (this.inventory.vault?.items) {
+      const found = this.inventory.vault.items.find(i => i.itemInstanceId === instanceId);
+      if (found) return found;
     }
 
-    if (item) {
-      console.log('Item details:', item);
-      // TODO: Show modal with item details
+    return null;
+  }
+
+  /**
+   * Equip selected item
+   */
+  async equipSelectedItem() {
+    if (!this.selectedItem || this.isTransferring) return;
+
+    try {
+      this.isTransferring = true;
+      this.showTransferStatus('Equipping...');
+
+      await apiClient.equipItem(this.selectedItem.itemInstanceId, this.selectedItem.characterId);
+
+      this.showTransferStatus('Equipped!', 'success');
+      setTimeout(() => {
+        this.closeItemModal();
+        this.load(); // Refresh inventory
+      }, 500);
+
+    } catch (error) {
+      console.error('Equip error:', error);
+      this.showTransferStatus('Failed to equip: ' + error.message, 'error');
+    } finally {
+      this.isTransferring = false;
     }
+  }
+
+  /**
+   * Send item to vault
+   */
+  async sendToVault() {
+    if (!this.selectedItem || this.isTransferring) return;
+
+    try {
+      this.isTransferring = true;
+      this.showTransferStatus('Sending to vault...');
+
+      await apiClient.transferItem(
+        this.selectedItem.itemHash,
+        this.selectedItem.itemInstanceId,
+        this.selectedItem.characterId,
+        true // toVault
+      );
+
+      this.showTransferStatus('Sent to vault!', 'success');
+      setTimeout(() => {
+        this.closeItemModal();
+        this.load();
+      }, 500);
+
+    } catch (error) {
+      console.error('Transfer error:', error);
+      this.showTransferStatus('Failed to transfer: ' + error.message, 'error');
+    } finally {
+      this.isTransferring = false;
+    }
+  }
+
+  /**
+   * Show transfer options
+   */
+  showTransferOptions() {
+    const modal = document.getElementById('itemModal');
+    if (!modal) return;
+
+    const targetsEl = modal.querySelector('.item-modal-transfer-targets');
+    const optionsEl = modal.querySelector('.transfer-options');
+
+    // Build transfer options
+    let html = '';
+
+    // Add character options
+    for (const [charId, char] of Object.entries(this.inventory.characters)) {
+      if (charId !== this.selectedItem?.characterId) {
+        html += `
+          <button class="transfer-target" data-target="${charId}">
+            <span class="target-icon">${this.getClassIcon(char.classType)}</span>
+            <span class="target-name">${char.className}</span>
+          </button>
+        `;
+      }
+    }
+
+    // Add vault option if not already in vault
+    if (this.selectedItem?.location !== 'vault') {
+      html += `
+        <button class="transfer-target" data-target="vault">
+          <span class="target-icon">🔒</span>
+          <span class="target-name">Vault</span>
+        </button>
+      `;
+    }
+
+    optionsEl.innerHTML = html;
+    targetsEl.style.display = 'block';
+
+    // Add click handlers
+    optionsEl.querySelectorAll('.transfer-target').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.transferToTarget(btn.dataset.target);
+      });
+    });
+  }
+
+  /**
+   * Transfer item to target
+   */
+  async transferToTarget(target) {
+    if (!this.selectedItem || this.isTransferring) return;
+
+    try {
+      this.isTransferring = true;
+
+      if (target === 'vault') {
+        this.showTransferStatus('Sending to vault...');
+        await apiClient.transferItem(
+          this.selectedItem.itemHash,
+          this.selectedItem.itemInstanceId,
+          this.selectedItem.characterId,
+          true
+        );
+      } else {
+        // Transfer to vault first if coming from another character
+        if (this.selectedItem.location !== 'vault') {
+          this.showTransferStatus('Moving via vault...');
+          await apiClient.transferItem(
+            this.selectedItem.itemHash,
+            this.selectedItem.itemInstanceId,
+            this.selectedItem.characterId,
+            true
+          );
+        }
+
+        // Then transfer from vault to target character
+        this.showTransferStatus('Transferring...');
+        await apiClient.transferItem(
+          this.selectedItem.itemHash,
+          this.selectedItem.itemInstanceId,
+          target,
+          false
+        );
+      }
+
+      this.showTransferStatus('Transferred!', 'success');
+      setTimeout(() => {
+        this.closeItemModal();
+        this.load();
+      }, 500);
+
+    } catch (error) {
+      console.error('Transfer error:', error);
+      this.showTransferStatus('Failed: ' + error.message, 'error');
+    } finally {
+      this.isTransferring = false;
+    }
+  }
+
+  /**
+   * Show transfer status
+   */
+  showTransferStatus(message, type = 'info') {
+    const modal = document.getElementById('itemModal');
+    if (!modal) return;
+
+    let statusEl = modal.querySelector('.transfer-status');
+    if (!statusEl) {
+      statusEl = document.createElement('div');
+      statusEl.className = 'transfer-status';
+      modal.querySelector('.item-modal-content').appendChild(statusEl);
+    }
+
+    statusEl.textContent = message;
+    statusEl.className = `transfer-status ${type}`;
+    statusEl.style.display = 'block';
+
+    if (type !== 'info') {
+      setTimeout(() => {
+        statusEl.style.display = 'none';
+      }, 3000);
+    }
+  }
+
+  /**
+   * Get class icon
+   */
+  getClassIcon(classType) {
+    const icons = ['⚔️', '🏹', '✨'];
+    return icons[classType] || '❓';
   }
 
   /**
