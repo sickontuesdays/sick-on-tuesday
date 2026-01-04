@@ -3,13 +3,13 @@
  */
 
 import { apiClient } from '../api/bungie-api-client.js';
-import { manifestLoader } from '../api/manifest-loader.js';
 
 export class ActivitiesPanel {
   constructor(containerEl) {
     this.container = containerEl;
     this.activities = null;
     this.milestones = null;
+    this.characterId = null;
     this.currentTab = 'weekly';
   }
 
@@ -27,13 +27,26 @@ export class ActivitiesPanel {
     try {
       this.showLoading();
 
-      const [activities, milestones] = await Promise.all([
-        apiClient.getActivities().catch(() => null),
-        apiClient.getMilestones().catch(() => null)
+      // Get profile to find character ID
+      let profile = null;
+      try {
+        profile = await apiClient.getProfile();
+        const charIds = Object.keys(profile?.profileData?.characters?.data || {});
+        this.characterId = charIds[0] || null;
+      } catch (e) {
+        // Not authenticated - continue without activities
+      }
+
+      // Load milestones (public, no auth needed) and activities (needs characterId)
+      const [milestones, activities] = await Promise.all([
+        apiClient.getMilestones().catch(() => null),
+        this.characterId
+          ? apiClient.getActivities(this.characterId).catch(() => null)
+          : Promise.resolve(null)
       ]);
 
+      this.milestones = milestones?.milestones || milestones;
       this.activities = activities;
-      this.milestones = milestones?.milestones;
 
       this.render();
     } catch (error) {
@@ -86,25 +99,28 @@ export class ActivitiesPanel {
    * Render weekly milestones
    */
   renderWeeklyContent() {
-    if (!this.milestones) {
-      return '<div class="no-data">Sign in to view weekly activities</div>';
+    if (!this.milestones || Object.keys(this.milestones).length === 0) {
+      // Show static weekly content when no milestone data available
+      return this.renderStaticWeeklyContent();
     }
 
     let html = '<div class="weekly-activities">';
+    let hasContent = false;
 
     for (const [hash, milestone] of Object.entries(this.milestones)) {
-      const definition = manifestLoader.getMilestoneDefinition(hash);
-      if (!definition) continue;
-
-      const name = definition.displayProperties?.name || 'Unknown';
-      const desc = definition.displayProperties?.description || '';
-      const icon = definition.displayProperties?.icon
-        ? `https://www.bungie.net${definition.displayProperties.icon}`
+      // Milestones from API include displayProperties directly in the milestone data
+      // or we can display basic info from the milestone object itself
+      const displayProps = milestone?.displayProperties || {};
+      const name = displayProps.name || milestone?.milestoneName || `Milestone ${hash}`;
+      const desc = displayProps.description || milestone?.milestoneDescription || '';
+      const icon = displayProps.icon
+        ? `https://www.bungie.net${displayProps.icon}`
         : null;
 
-      // Check if this is a weekly/important milestone
-      if (!definition.displayProperties?.name) continue;
+      // Skip if no name
+      if (!name || name === `Milestone ${hash}`) continue;
 
+      hasContent = true;
       html += `
         <div class="activity-card">
           <div class="activity-icon">
@@ -117,6 +133,43 @@ export class ActivitiesPanel {
         </div>
       `;
     }
+
+    if (!hasContent) {
+      return this.renderStaticWeeklyContent();
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  /**
+   * Render static weekly content as fallback
+   */
+  renderStaticWeeklyContent() {
+    const weeklyActivities = [
+      { name: "Weekly Nightfall", desc: "Complete the weekly Nightfall Strike", icon: "🌙" },
+      { name: "Weekly Crucible", desc: "Complete Crucible matches for Powerful gear", icon: "⚔️" },
+      { name: "Weekly Gambit", desc: "Complete Gambit matches for Powerful gear", icon: "🎲" },
+      { name: "Weekly Raid", desc: "Complete a raid for Pinnacle rewards", icon: "👑" },
+      { name: "Weekly Dungeon", desc: "Complete a dungeon for Pinnacle rewards", icon: "🏛️" },
+      { name: "Seasonal Challenges", desc: "Complete weekly seasonal challenges", icon: "📜" }
+    ];
+
+    let html = '<div class="weekly-activities">';
+
+    weeklyActivities.forEach(activity => {
+      html += `
+        <div class="activity-card">
+          <div class="activity-icon">
+            <div class="icon-placeholder">${activity.icon}</div>
+          </div>
+          <div class="activity-info">
+            <div class="activity-name">${activity.name}</div>
+            <div class="activity-desc">${activity.desc}</div>
+          </div>
+        </div>
+      `;
+    });
 
     html += '</div>';
     return html;

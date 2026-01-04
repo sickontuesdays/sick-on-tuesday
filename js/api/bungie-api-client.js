@@ -144,9 +144,11 @@ export class BungieAPIClient {
 
   /**
    * Get specific vendor
+   * @param {number} vendorHash - The vendor's hash (e.g., 2190858386 for Xur)
+   * @param {string} characterId - The character ID to check vendor for
    */
-  async getVendor(vendor, characterId) {
-    return this.request(`/api/destiny/vendors?vendor=${vendor}&characterId=${characterId}`);
+  async getVendor(vendorHash, characterId) {
+    return this.request(`/api/destiny/vendors?vendor=${vendorHash}&characterId=${characterId}`);
   }
 
   // ==================== ACTIVITIES & MILESTONES ====================
@@ -209,8 +211,13 @@ export class BungieAPIClient {
   /**
    * Get Destiny news
    */
-  async getNews(page = '', category = 'destiny') {
-    return this.request(`/api/destiny/news?page=${page}&category=${category}`, {
+  async getNews(page = 0, category = 'destiny') {
+    const params = [];
+    if (page !== null && page !== undefined) params.push(`page=${page}`);
+    if (category) params.push(`category=${category}`);
+    const queryString = params.length > 0 ? `?${params.join('&')}` : '';
+
+    return this.request(`/api/destiny/news${queryString}`, {
       cacheTTL: 15 * 60 * 1000 // 15 min
     });
   }

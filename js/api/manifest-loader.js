@@ -228,6 +228,17 @@ export class ManifestLoader {
   }
 
   /**
+   * Get milestone definition by hash
+   * Note: Milestones are dynamic and come from the API response directly,
+   * this is a fallback that returns null (milestones should use API data)
+   */
+  getMilestoneDefinition(hash) {
+    // Milestones definitions are not cached in manifest - return null
+    // The activities panel should use the milestone data from the API response directly
+    return null;
+  }
+
+  /**
    * Search items by name
    */
   searchItems(query, limit = 20) {

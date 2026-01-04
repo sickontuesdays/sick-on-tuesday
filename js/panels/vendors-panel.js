@@ -67,7 +67,8 @@ export class VendorsPanel {
 
       for (const vendorHash of vendorsToLoad) {
         try {
-          const vendorData = await apiClient.getVendor(this.characterId, vendorHash);
+          // Parameters: vendorHash first, characterId second
+          const vendorData = await apiClient.getVendor(vendorHash, this.characterId);
           if (vendorData) {
             this.vendors[vendorHash] = vendorData;
           }
