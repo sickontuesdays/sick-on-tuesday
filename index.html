@@ -72,7 +72,7 @@
       flex: 1;
       padding: 16px;
       padding-left: calc(var(--layoutsW) + 32px);
-      padding-right: calc(var(--friendsW) + 32px);
+      padding-right: 16px; /* Friends sidebar now overlays, no need to reserve space */
       max-width: 100%;
       overflow-x: hidden;
     }
@@ -214,9 +214,10 @@
     .grid {
       position: relative;
       display: grid;
-      grid-template-columns: repeat(var(--cols), minmax(var(--colW), 1fr));
+      grid-template-columns: repeat(var(--cols), 1fr);
       grid-auto-rows: var(--rowH);
       gap: var(--gap);
+      width: 100%;
     }
 
     /* Drop Hint */

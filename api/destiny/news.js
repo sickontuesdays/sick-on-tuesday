@@ -18,17 +18,29 @@ module.exports = async function handler(req, res) {
     const news = await bungieAPI.getNewsArticles(pageToken, categoryFilter);
 
     // Process news articles
-    const articles = (news.NewsArticles || []).map(article => ({
-      title: article.Title,
-      subtitle: article.Subtitle,
-      description: article.Description,
-      link: article.Link,
-      pubDate: article.PubDate,
-      uniqueIdentifier: article.UniqueIdentifier,
-      imageUrl: article.ImagePath ? `https://www.bungie.net${article.ImagePath}` : null,
-      optionalMobileImagePath: article.OptionalMobileImagePath,
-      htmlContent: article.HtmlContent
-    }));
+    const articles = (news.NewsArticles || []).map(article => {
+      // Handle image path - may be full URL or relative path
+      let imageUrl = null;
+      if (article.ImagePath) {
+        if (article.ImagePath.startsWith('http')) {
+          imageUrl = article.ImagePath;
+        } else {
+          imageUrl = `https://www.bungie.net${article.ImagePath.startsWith('/') ? '' : '/'}${article.ImagePath}`;
+        }
+      }
+
+      return {
+        title: article.Title,
+        subtitle: article.Subtitle,
+        description: article.Description,
+        link: article.Link,
+        pubDate: article.PubDate,
+        uniqueIdentifier: article.UniqueIdentifier,
+        imageUrl,
+        optionalMobileImagePath: article.OptionalMobileImagePath,
+        htmlContent: article.HtmlContent
+      };
+    });
 
     res.status(200).json({
       articles,
