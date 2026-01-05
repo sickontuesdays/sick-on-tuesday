@@ -239,6 +239,96 @@ export class ManifestLoader {
   }
 
   /**
+   * Get activity definition by hash
+   */
+  async getActivityDefinition(hash) {
+    if (!this.activityDefinitions) {
+      try {
+        this.activityDefinitions = await this.loadDefinition('DestinyActivityDefinition');
+      } catch (e) {
+        console.warn('Failed to load activity definitions:', e);
+        this.activityDefinitions = {};
+      }
+    }
+    return this.activityDefinitions?.[hash] || null;
+  }
+
+  /**
+   * Get activity mode definition by mode number
+   */
+  getActivityModeName(mode) {
+    const modeNames = {
+      0: 'None',
+      2: 'Story',
+      3: 'Strike',
+      4: 'Raid',
+      5: 'All PvP',
+      6: 'Patrol',
+      7: 'All PvE',
+      10: 'Control',
+      12: 'Clash',
+      15: 'Crimson Doubles',
+      16: 'Nightfall',
+      17: 'Heroic Nightfall',
+      18: 'All Strikes',
+      19: 'Iron Banner',
+      25: 'All Mayhem',
+      31: 'Supremacy',
+      32: 'Private Matches',
+      37: 'Survival',
+      38: 'Countdown',
+      39: 'Trials of the Nine',
+      40: 'Social',
+      43: 'Iron Banner Control',
+      44: 'Iron Banner Clash',
+      45: 'Iron Banner Supremacy',
+      46: 'Nightfall Scored',
+      47: 'Nightfall Scored Prestige',
+      48: 'Rumble',
+      49: 'All Doubles',
+      50: 'Doubles',
+      54: 'Black Armory Run',
+      55: 'Salvage',
+      56: 'Iron Banner Salvage',
+      57: 'PvP Competitive',
+      58: 'PvP Quickplay',
+      59: 'Clash Quickplay',
+      60: 'Clash Competitive',
+      61: 'Control Quickplay',
+      62: 'Control Competitive',
+      63: 'Gambit',
+      64: 'All PvE Competitive',
+      65: 'Breakthrough',
+      66: 'Black Armory Forge',
+      67: 'Salvage Competitive',
+      68: 'Iron Banner Rumble',
+      69: 'Iron Banner Lockdown',
+      70: 'Reckoning',
+      71: 'Menagerie',
+      72: 'Vex Offensive',
+      73: 'Nightmare Hunt',
+      74: 'Elimination',
+      75: 'Momentum',
+      76: 'Dungeon',
+      77: 'Sundial',
+      78: 'Trials of Osiris',
+      79: 'Dares of Eternity',
+      80: 'Offensive',
+      81: 'Rift',
+      82: 'Zone Control',
+      83: 'Iron Banner Rift',
+      84: 'Trials of Osiris',
+      85: 'Wellspring',
+      86: 'PsiOps Battleground',
+      87: 'Iron Banner Fortress',
+      88: 'Lightfall',
+      89: 'Defiant Battleground',
+      90: 'Terminal Overload'
+    };
+    return modeNames[mode] || `Mode ${mode}`;
+  }
+
+  /**
    * Search items by name
    */
   searchItems(query, limit = 20) {

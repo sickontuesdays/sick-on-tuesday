@@ -12,6 +12,7 @@ export class StorageManager {
       TABS_META: `${this.prefix}tabs_meta_${this.version}`,
       ACTIVE_TAB: `${this.prefix}active_tab_${this.version}`,
       LAYOUT_PREFIX: `${this.prefix}layout_`,
+      PANEL_STATE_PREFIX: `${this.prefix}panel_state_`,
       SETTINGS: `${this.prefix}settings_${this.version}`,
       PANEL_VISIBILITY: `${this.prefix}panels_${this.version}`,
       LOADOUTS: `${this.prefix}loadouts_${this.version}`,
@@ -122,6 +123,70 @@ export class StorageManager {
       } catch { }
     }
     return defaultLayout;
+  }
+
+  // ==================== PANEL STATE ====================
+
+  /**
+   * Save panel state (current tab, view mode, etc.)
+   * @param {string} panelId - Panel identifier
+   * @param {object} state - Panel state object
+   */
+  savePanelState(panelId, state) {
+    localStorage.setItem(this.KEYS.PANEL_STATE_PREFIX + panelId, JSON.stringify({
+      ...state,
+      savedAt: Date.now()
+    }));
+  }
+
+  /**
+   * Load panel state
+   * @param {string} panelId - Panel identifier
+   * @param {object} defaultState - Default state if not found
+   */
+  loadPanelState(panelId, defaultState = {}) {
+    const raw = localStorage.getItem(this.KEYS.PANEL_STATE_PREFIX + panelId);
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch { }
+    }
+    return defaultState;
+  }
+
+  /**
+   * Get all panel states
+   */
+  getAllPanelStates() {
+    const states = {};
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith(this.KEYS.PANEL_STATE_PREFIX)) {
+        const panelId = key.replace(this.KEYS.PANEL_STATE_PREFIX, '');
+        try {
+          states[panelId] = JSON.parse(localStorage.getItem(key));
+        } catch { }
+      }
+    });
+    return states;
+  }
+
+  /**
+   * Clear panel state
+   * @param {string} panelId - Panel identifier
+   */
+  clearPanelState(panelId) {
+    localStorage.removeItem(this.KEYS.PANEL_STATE_PREFIX + panelId);
+  }
+
+  /**
+   * Clear all panel states
+   */
+  clearAllPanelStates() {
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith(this.KEYS.PANEL_STATE_PREFIX)) {
+        localStorage.removeItem(key);
+      }
+    });
   }
 
   // ==================== SETTINGS ====================

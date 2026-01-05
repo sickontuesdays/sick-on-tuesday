@@ -140,14 +140,27 @@ export class GridManager {
 
   /**
    * Get drop position from mouse coordinates
+   * @param {number} clientX - Mouse X position
+   * @param {number} clientY - Mouse Y position
+   * @param {object} dragItem - The item being dragged
+   * @param {object} grabOffset - Offset from card's top-left where user grabbed {x, y}
    */
-  getDropPosition(clientX, clientY, dragItem) {
+  getDropPosition(clientX, clientY, dragItem, grabOffset = null) {
     const rect = this.gridEl.getBoundingClientRect();
-    const relX = clientX - rect.left;
-    const relY = clientY - rect.top;
 
-    let x = Math.floor(relX / (this.COLW + this.GAP));
-    let y = Math.floor(relY / (this.ROWH + this.GAP));
+    // Calculate where the TOP-LEFT of the card would be based on mouse position and grab offset
+    let cardLeft = clientX - rect.left;
+    let cardTop = clientY - rect.top;
+
+    // If we know where on the card the user grabbed, adjust to get card's top-left position
+    if (grabOffset) {
+      cardLeft -= grabOffset.x;
+      cardTop -= grabOffset.y;
+    }
+
+    // Convert to grid coordinates
+    let x = Math.round(cardLeft / (this.COLW + this.GAP));
+    let y = Math.round(cardTop / (this.ROWH + this.GAP));
 
     // Clamp to grid bounds
     x = Math.max(0, Math.min(this.COLS - dragItem.w, x));

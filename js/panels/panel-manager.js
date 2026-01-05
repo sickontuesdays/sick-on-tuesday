@@ -11,6 +11,7 @@ import { authClient } from '../core/auth-client.js';
 import { InventoryPanel } from './inventory-panel.js';
 import { VendorsPanel } from './vendors-panel.js';
 import { ActivitiesPanel } from './activities-panel.js';
+import { RecentActivitiesPanel } from './recent-activities-panel.js';
 import { StatsPanel } from './stats-panel.js';
 import { ClanPanel } from './clan-panel.js';
 import { NewsPanel } from './news-panel.js';
@@ -118,8 +119,8 @@ export class PanelManager {
           this.loadInventoryPanel(),
           this.loadVendorsPanel(),
           this.loadStatsPanel(),
-          this.loadClanPanel(),
-          this.loadActivitiesPanel()
+          this.loadClanPanel()
+          // Activities panel is handled by ActivitiesPanel class instance
         ]);
       }
 
@@ -612,10 +613,15 @@ export class PanelManager {
       if (newsData.articles?.length > 0) {
         newsData.articles.slice(0, 5).forEach(article => {
           const date = new Date(article.pubDate).toLocaleDateString();
+          // Ensure links are absolute URLs to bungie.net
+          let link = article.link || article.Link || '#';
+          if (link && link !== '#' && !link.startsWith('http')) {
+            link = `https://www.bungie.net${link.startsWith('/') ? '' : '/'}${link}`;
+          }
           html += `
             <div class="news-item">
-              <a href="${article.link}" target="_blank" rel="noopener">
-                <div class="news-title">${article.title}</div>
+              <a href="${link}" target="_blank" rel="noopener">
+                <div class="news-title">${article.title || article.Title || 'Untitled'}</div>
                 <div class="news-date">${date}</div>
               </a>
             </div>

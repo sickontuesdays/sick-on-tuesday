@@ -175,19 +175,17 @@ export class InventoryPanel {
     const chars = this.inventory.characters;
     let html = '<div class="character-bar">';
 
-    // Character buttons
+    // Character buttons - using text labels instead of icons
     for (const [charId, char] of Object.entries(chars)) {
       const isActive = this.currentView === 'character' && charId === this.currentCharacter;
-      const emblem = char.emblemBackgroundPath ? `https://www.bungie.net${char.emblemBackgroundPath}` : '';
+      // Use text class name: Titan, Warlock, Hunter
+      const className = this.getClassName(char.classType);
 
       html += `
         <button class="char-select-btn ${isActive ? 'active' : ''}" data-char-id="${charId}">
-          <div class="char-emblem" style="background-image: url('${emblem}')">
-            <span class="char-class-icon">${this.getClassIcon(char.classType)}</span>
-          </div>
-          <div class="char-details">
-            <span class="char-class-name">${char.className}</span>
-            <span class="char-light-level">${char.light}</span>
+          <div class="char-label">
+            <span class="char-class-text">${className}</span>
+            <span class="char-power-level">${char.light}</span>
           </div>
         </button>
       `;
@@ -197,16 +195,23 @@ export class InventoryPanel {
     const vaultCount = this.inventory.vault?.items?.length || 0;
     html += `
       <button class="char-select-btn vault-btn ${this.currentView === 'vault' ? 'active' : ''}" data-view="vault">
-        <div class="vault-icon">🔒</div>
-        <div class="char-details">
-          <span class="char-class-name">Vault</span>
-          <span class="char-light-level">${vaultCount} items</span>
+        <div class="char-label">
+          <span class="char-class-text">Vault</span>
+          <span class="char-power-level">${vaultCount} items</span>
         </div>
       </button>
     `;
 
     html += '</div>';
     return html;
+  }
+
+  /**
+   * Get class name text
+   */
+  getClassName(classType) {
+    const classNames = ['Titan', 'Hunter', 'Warlock'];
+    return classNames[classType] || 'Unknown';
   }
 
   /**

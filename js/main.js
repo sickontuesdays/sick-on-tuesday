@@ -203,10 +203,92 @@ class Dashboard {
     // Tab management
     this.setupTabs();
 
+    // Panel navigation buttons
+    this.setupPanelNavigation();
+
     // Window resize
     window.addEventListener('resize', () => {
       this.gridManager?.updateDimensions();
     });
+  }
+
+  /**
+   * Setup panel navigation buttons in card bars
+   */
+  setupPanelNavigation() {
+    // Store navigation callbacks for each panel
+    this.panelNavCallbacks = new Map();
+
+    // Setup click handlers for nav buttons
+    this.gridEl.addEventListener('click', (e) => {
+      const navBtn = e.target.closest('.panel-nav-btn');
+      if (!navBtn) return;
+
+      const card = navBtn.closest('.card');
+      if (!card) return;
+
+      const panelId = card.dataset.id;
+      const action = navBtn.dataset.nav;
+
+      // Call the registered callback for this panel
+      const callbacks = this.panelNavCallbacks.get(panelId);
+      if (callbacks && callbacks[action]) {
+        callbacks[action]();
+      }
+    });
+
+    // Make panel nav utility available globally
+    window.panelNav = {
+      /**
+       * Show navigation buttons for a panel
+       * @param {string} panelId - The panel data-id
+       * @param {object} options - { back: callback, home: callback }
+       */
+      show: (panelId, options = {}) => {
+        const card = this.gridEl.querySelector(`[data-id="${panelId}"]`);
+        if (!card) return;
+
+        // Store callbacks
+        this.panelNavCallbacks.set(panelId, options);
+
+        // Show back button if callback provided
+        const backBtn = card.querySelector('[data-nav="back"]');
+        if (backBtn) {
+          if (options.back) {
+            backBtn.classList.add('visible');
+          } else {
+            backBtn.classList.remove('visible');
+          }
+        }
+
+        // Show home button if callback provided
+        const homeBtn = card.querySelector('[data-nav="home"]');
+        if (homeBtn) {
+          if (options.home) {
+            homeBtn.classList.add('visible');
+          } else {
+            homeBtn.classList.remove('visible');
+          }
+        }
+      },
+
+      /**
+       * Hide navigation buttons for a panel
+       * @param {string} panelId - The panel data-id
+       */
+      hide: (panelId) => {
+        const card = this.gridEl.querySelector(`[data-id="${panelId}"]`);
+        if (!card) return;
+
+        // Remove callbacks
+        this.panelNavCallbacks.delete(panelId);
+
+        // Hide all nav buttons
+        card.querySelectorAll('.panel-nav-btn').forEach(btn => {
+          btn.classList.remove('visible');
+        });
+      }
+    };
   }
 
   /**
@@ -246,6 +328,7 @@ class Dashboard {
    */
   setupDragDrop() {
     let startMouse = null;
+    let grabOffset = null; // Offset from card's top-left where user grabbed
 
     // Mouse down on drag handle
     this.gridEl.addEventListener('mousedown', (e) => {
@@ -261,6 +344,13 @@ class Dashboard {
       this.dragging = item;
       startMouse = { x: e.clientX, y: e.clientY };
 
+      // Calculate where on the card the user grabbed (offset from card's top-left)
+      const cardRect = cardEl.getBoundingClientRect();
+      grabOffset = {
+        x: e.clientX - cardRect.left,
+        y: e.clientY - cardRect.top
+      };
+
       item.el.classList.add('dragging');
       e.preventDefault();
     });
@@ -274,7 +364,8 @@ class Dashboard {
 
       this.dragging.el.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
 
-      const dropPos = this.gridManager.getDropPosition(e.clientX, e.clientY, this.dragging);
+      // Use grab offset to calculate correct drop position
+      const dropPos = this.gridManager.getDropPosition(e.clientX, e.clientY, this.dragging, grabOffset);
       this.gridManager.previewDrop(dropPos.x, dropPos.y, this.dragging);
     });
 
@@ -282,12 +373,13 @@ class Dashboard {
     window.addEventListener('mouseup', (e) => {
       if (!this.dragging) return;
 
-      const dropPos = this.gridManager.getDropPosition(e.clientX, e.clientY, this.dragging);
+      const dropPos = this.gridManager.getDropPosition(e.clientX, e.clientY, this.dragging, grabOffset);
       this.gridManager.commitDrag(dropPos.x, dropPos.y, this.dragging);
 
       this.dragging.el.classList.remove('dragging');
       this.dragging.el.style.transform = '';
       this.dragging = null;
+      grabOffset = null;
     });
   }
 

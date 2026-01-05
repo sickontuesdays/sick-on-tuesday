@@ -3,14 +3,32 @@
  */
 
 import { apiClient } from '../api/bungie-api-client.js';
+import { storageManager } from '../core/storage-manager.js';
+
+// PVP Mode definitions for Destiny 2
+const PVP_MODES = {
+  all: { name: 'All PvP', mode: 5 },
+  trials: { name: 'Trials', mode: 84 },
+  ironBanner: { name: 'Iron Banner', mode: 19 },
+  competitive: { name: 'Competitive', mode: 37 },
+  control: { name: 'Control', mode: 10 },
+  clash: { name: 'Clash', mode: 12 },
+  rumble: { name: 'Rumble', mode: 48 },
+  elimination: { name: 'Elimination', mode: 80 }
+};
 
 export class StatsPanel {
   constructor(containerEl) {
     this.container = containerEl;
     this.stats = null;
+    this.modeStats = {}; // Cache for mode-specific stats
     this.characters = null;
     this.currentTab = 'overall';
+    this.currentPvpMode = 'all'; // PVP sub-mode
     this.currentCharacter = null;
+
+    // Restore saved state
+    this.restoreState();
   }
 
   /**
@@ -18,6 +36,28 @@ export class StatsPanel {
    */
   async init() {
     this.render();
+  }
+
+  /**
+   * Restore saved state from storage
+   */
+  restoreState() {
+    const savedState = storageManager.loadPanelState('stats', {
+      currentTab: 'overall',
+      currentPvpMode: 'all'
+    });
+    this.currentTab = savedState.currentTab || 'overall';
+    this.currentPvpMode = savedState.currentPvpMode || 'all';
+  }
+
+  /**
+   * Save current state to storage
+   */
+  saveState() {
+    storageManager.savePanelState('stats', {
+      currentTab: this.currentTab,
+      currentPvpMode: this.currentPvpMode
+    });
   }
 
   /**
@@ -167,12 +207,45 @@ export class StatsPanel {
   }
 
   /**
-   * Render PvP stats
+   * Render PvP stats with mode selection tabs
    */
   renderPvPStats(stats) {
-    const pvp = stats.allPvP?.allTime || {};
+    // Get stats based on current mode selection
+    let pvp;
+    const modeKey = this.currentPvpMode;
+
+    if (modeKey === 'all') {
+      pvp = stats.allPvP?.allTime || {};
+    } else {
+      // Try to get mode-specific stats from the stats object
+      // Mode-specific stats are typically keyed differently
+      pvp = this.getModeStats(stats, modeKey);
+    }
+
+    // Render mode tabs
+    let modeTabsHtml = '<div class="pvp-mode-tabs">';
+    for (const [key, mode] of Object.entries(PVP_MODES)) {
+      const isActive = this.currentPvpMode === key ? 'active' : '';
+      modeTabsHtml += `<button class="pvp-mode-tab ${isActive}" data-pvp-mode="${key}">${mode.name}</button>`;
+    }
+    modeTabsHtml += '</div>';
+
+    // Check if we have stats for this mode
+    const hasStats = pvp && Object.keys(pvp).length > 0 && pvp.kills;
+    const modeName = PVP_MODES[modeKey]?.name || 'PvP';
+
+    if (!hasStats && modeKey !== 'all') {
+      return `
+        ${modeTabsHtml}
+        <div class="no-data">No ${modeName} stats available<br><small>Play some ${modeName} to see stats here!</small></div>
+      `;
+    }
 
     return `
+      ${modeTabsHtml}
+      <div class="pvp-mode-header">
+        <h3>${modeName} Statistics</h3>
+      </div>
       <div class="stats-grid">
         <div class="stats-section">
           <h4>Combat</h4>
@@ -201,6 +274,32 @@ export class StatsPanel {
         </div>
       </div>
     `;
+  }
+
+  /**
+   * Get mode-specific stats
+   */
+  getModeStats(stats, modeKey) {
+    // The Bungie API returns stats under different keys based on mode
+    // Common mappings:
+    const modeKeyMap = {
+      'trials': 'trials_of_osiris',
+      'ironBanner': 'iron_banner',
+      'competitive': 'competitive',
+      'control': 'control',
+      'clash': 'clash',
+      'rumble': 'rumble',
+      'elimination': 'elimination'
+    };
+
+    // Check if stats has mode-specific data
+    const apiKey = modeKeyMap[modeKey];
+    if (apiKey && stats[apiKey]?.allTime) {
+      return stats[apiKey].allTime;
+    }
+
+    // Fallback: Return all PvP stats
+    return stats.allPvP?.allTime || {};
   }
 
   /**
@@ -308,9 +407,24 @@ export class StatsPanel {
    * Attach event listeners
    */
   attachEventListeners() {
+    // Main tabs (Overall, PvE, PvP, Gambit)
     this.container.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         this.currentTab = btn.dataset.tab;
+        // Reset PvP mode when switching tabs
+        if (btn.dataset.tab !== 'pvp') {
+          this.currentPvpMode = 'all';
+        }
+        this.saveState(); // Persist tab selection
+        this.render();
+      });
+    });
+
+    // PVP mode sub-tabs (Trials, IB, Comp, etc.)
+    this.container.querySelectorAll('.pvp-mode-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.currentPvpMode = btn.dataset.pvpMode;
+        this.saveState(); // Persist PvP mode selection
         this.render();
       });
     });

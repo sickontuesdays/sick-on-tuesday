@@ -5,11 +5,32 @@
 import { apiClient } from '../api/bungie-api-client.js';
 import { manifestLoader } from '../api/manifest-loader.js';
 
+// Known season data - updated regularly
+const SEASON_DATA = {
+  // Season hashes mapped to episode names (from Bungie API)
+  seasons: {
+    4243480805: { name: 'Episode: Heresy', number: 28, episode: 'Heresy' },
+    2758726568: { name: 'Episode: Revenant', number: 27, episode: 'Revenant' },
+    2139932084: { name: 'Episode: Echoes', number: 26, episode: 'Echoes' },
+    3749926913: { name: 'The Final Shape', number: 25, episode: 'The Final Shape' }
+  },
+  // Fallback if season hash not found
+  current: {
+    name: 'Episode: Heresy',
+    number: 28,
+    episode: 'Heresy',
+    startDate: '2025-01-07',
+    endDate: '2025-04-08'
+  }
+};
+
 export class SeasonPanel {
   constructor(containerEl) {
     this.container = containerEl;
-    this.seasonData = null;
+    this.profileData = null;
+    this.seasonHash = null;
     this.characterProgressions = null;
+    this.characters = null;
   }
 
   /**
@@ -30,8 +51,10 @@ export class SeasonPanel {
 
       // Extract season data
       if (profile?.profileData) {
-        this.seasonData = profile.profileData.profile?.data?.currentSeasonHash;
+        this.profileData = profile.profileData;
+        this.seasonHash = profile.profileData.profile?.data?.currentSeasonHash;
         this.characterProgressions = profile.profileData.characterProgressions?.data;
+        this.characters = profile.profileData.characters?.data;
       }
 
       this.render();
@@ -64,20 +87,44 @@ export class SeasonPanel {
     // Season info from manifest or calculated
     const seasonInfo = this.getSeasonInfo();
 
+    // Get character light levels if available
+    let charactersHtml = '';
+    if (this.characters) {
+      charactersHtml = '<div class="season-characters">';
+      for (const [charId, char] of Object.entries(this.characters)) {
+        const className = ['Titan', 'Hunter', 'Warlock'][char.classType] || 'Unknown';
+        charactersHtml += `
+          <div class="season-char">
+            <span class="char-class">${className}</span>
+            <span class="char-power">${char.light}</span>
+          </div>
+        `;
+      }
+      charactersHtml += '</div>';
+    }
+
     return `
       <div class="season-header">
         <div class="season-logo">
-          <span class="season-icon">☀️</span>
+          <span class="season-icon">⚡</span>
         </div>
         <div class="season-info">
           <h3 class="season-name">${seasonInfo.name}</h3>
+          <div class="season-number">Season ${seasonInfo.number}</div>
           <div class="season-dates">
             <span>${seasonInfo.startDate} - ${seasonInfo.endDate}</span>
           </div>
           <div class="season-remaining">
-            ${seasonInfo.daysRemaining} days remaining
+            ${seasonInfo.daysRemaining > 0 ? `${seasonInfo.daysRemaining} days remaining` : 'Season ended'}
           </div>
         </div>
+      </div>
+      <div class="season-power-info">
+        <div class="power-cap-display">
+          <span class="power-label">Power Cap</span>
+          <span class="power-value">${seasonInfo.powerCap}</span>
+        </div>
+        ${charactersHtml}
       </div>
     `;
   }
@@ -176,16 +223,27 @@ export class SeasonPanel {
    * Get season info
    */
   getSeasonInfo() {
-    // Calculate current season (Season of The Final Shape era)
-    const now = new Date();
-    const seasonStart = new Date('2024-06-04');
-    const seasonEnd = new Date('2025-02-25');
+    // Try to get season info from API hash
+    let seasonInfo = SEASON_DATA.current;
 
+    if (this.seasonHash && SEASON_DATA.seasons[this.seasonHash]) {
+      seasonInfo = SEASON_DATA.seasons[this.seasonHash];
+    }
+
+    // Get power cap from API if available
+    const powerCap = this.profileData?.profile?.data?.currentSeasonRewardPowerCap || 2010;
+
+    // Calculate dates
+    const now = new Date();
+    const seasonStart = new Date(seasonInfo.startDate || SEASON_DATA.current.startDate);
+    const seasonEnd = new Date(seasonInfo.endDate || SEASON_DATA.current.endDate);
     const daysRemaining = Math.max(0, Math.ceil((seasonEnd - now) / (1000 * 60 * 60 * 24)));
 
     return {
-      name: 'Episode: Revenant',
-      number: 25,
+      name: seasonInfo.name,
+      number: seasonInfo.number,
+      episode: seasonInfo.episode,
+      powerCap,
       startDate: seasonStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       endDate: seasonEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       daysRemaining

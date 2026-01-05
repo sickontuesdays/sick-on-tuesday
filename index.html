@@ -270,6 +270,46 @@
 
     body.locked .handle { opacity: .3; }
 
+    /* Panel Navigation Buttons */
+    .panel-nav {
+      display: flex;
+      gap: 4px;
+      margin-right: 8px;
+    }
+
+    .panel-nav-btn {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .panel-nav-btn.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .panel-nav-btn:hover {
+      background: rgba(255,255,255,0.1);
+      color: var(--txt);
+      border-color: var(--arc);
+    }
+
+    .panel-nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
     .content {
       flex: 1;
       padding: 10px;
@@ -1008,7 +1048,14 @@
 
         <!-- Season Overview -->
         <section class="card" data-id="season" data-x="0" data-y="0" data-w="4" data-h="3" data-min-w="3" data-min-h="2">
-          <div class="bar"><div class="title">Season Overview</div><div class="handle">⋮⋮</div></div>
+          <div class="bar">
+            <div class="panel-nav">
+              <button class="panel-nav-btn" data-nav="back" title="Back"><</button>
+              <button class="panel-nav-btn" data-nav="home" title="Home">H</button>
+            </div>
+            <div class="title">Season Overview</div>
+            <div class="handle">⋮⋮</div>
+          </div>
           <div class="content" id="season-panel">
             <div class="panel-auth">Sign in to view season data</div>
           </div>
@@ -1017,7 +1064,14 @@
 
         <!-- Rotators -->
         <section class="card" data-id="rotators" data-x="4" data-y="0" data-w="4" data-h="3" data-min-w="3" data-min-h="2">
-          <div class="bar"><div class="title">Weekly Rotators</div><div class="handle">⋮⋮</div></div>
+          <div class="bar">
+            <div class="panel-nav">
+              <button class="panel-nav-btn" data-nav="back" title="Back"><</button>
+              <button class="panel-nav-btn" data-nav="home" title="Home">H</button>
+            </div>
+            <div class="title">Active Rotators</div>
+            <div class="handle">⋮⋮</div>
+          </div>
           <div class="content" id="rotators-panel">
             <div class="panel-loading"><div class="loading-spinner"></div>Loading...</div>
           </div>
@@ -1026,7 +1080,14 @@
 
         <!-- Vendors -->
         <section class="card" data-id="vendors" data-x="8" data-y="0" data-w="4" data-h="3" data-min-w="3" data-min-h="2">
-          <div class="bar"><div class="title">Vendors</div><div class="handle">⋮⋮</div></div>
+          <div class="bar">
+            <div class="panel-nav">
+              <button class="panel-nav-btn" data-nav="back" title="Back"><</button>
+              <button class="panel-nav-btn" data-nav="home" title="Home">H</button>
+            </div>
+            <div class="title">Vendors</div>
+            <div class="handle">⋮⋮</div>
+          </div>
           <div class="content" id="vendors-panel">
             <div class="panel-auth">Sign in to view vendors</div>
           </div>
@@ -1035,7 +1096,14 @@
 
         <!-- Player Stats -->
         <section class="card" data-id="stats" data-x="0" data-y="3" data-w="4" data-h="4" data-min-w="3" data-min-h="3">
-          <div class="bar"><div class="title">Player Stats</div><div class="handle">⋮⋮</div></div>
+          <div class="bar">
+            <div class="panel-nav">
+              <button class="panel-nav-btn" data-nav="back" title="Back"><</button>
+              <button class="panel-nav-btn" data-nav="home" title="Home">H</button>
+            </div>
+            <div class="title">Player Stats</div>
+            <div class="handle">⋮⋮</div>
+          </div>
           <div class="content" id="stats-panel">
             <div class="panel-auth">Sign in to view stats</div>
           </div>
@@ -1044,7 +1112,14 @@
 
         <!-- Clan -->
         <section class="card" data-id="clan" data-x="4" data-y="3" data-w="4" data-h="4" data-min-w="3" data-min-h="3">
-          <div class="bar"><div class="title">Clan</div><div class="handle">⋮⋮</div></div>
+          <div class="bar">
+            <div class="panel-nav">
+              <button class="panel-nav-btn" data-nav="back" title="Back"><</button>
+              <button class="panel-nav-btn" data-nav="home" title="Home">H</button>
+            </div>
+            <div class="title">Clan</div>
+            <div class="handle">⋮⋮</div>
+          </div>
           <div class="content" id="clan-panel">
             <div class="panel-auth">Sign in to view clan</div>
           </div>
@@ -1053,7 +1128,14 @@
 
         <!-- News / Intel Feed -->
         <section class="card" data-id="news" data-x="8" data-y="3" data-w="4" data-h="4" data-min-w="3" data-min-h="3">
-          <div class="bar"><div class="title">Intel Feed</div><div class="handle">⋮⋮</div></div>
+          <div class="bar">
+            <div class="panel-nav">
+              <button class="panel-nav-btn" data-nav="back" title="Back"><</button>
+              <button class="panel-nav-btn" data-nav="home" title="Home">H</button>
+            </div>
+            <div class="title">Intel Feed</div>
+            <div class="handle">⋮⋮</div>
+          </div>
           <div class="content" id="news-panel">
             <div class="panel-loading"><div class="loading-spinner"></div>Loading news...</div>
           </div>
@@ -1062,7 +1144,14 @@
 
         <!-- Build Crafter -->
         <section class="card" data-id="build-crafter" data-x="0" data-y="7" data-w="6" data-h="3" data-min-w="4" data-min-h="3">
-          <div class="bar"><div class="title">Build Crafter</div><div class="handle">⋮⋮</div></div>
+          <div class="bar">
+            <div class="panel-nav">
+              <button class="panel-nav-btn" data-nav="back" title="Back"><</button>
+              <button class="panel-nav-btn" data-nav="home" title="Home">H</button>
+            </div>
+            <div class="title">Build Crafter</div>
+            <div class="handle">⋮⋮</div>
+          </div>
           <div class="content" id="build-crafter-panel">
             <div class="build-input-container">
               <input type="text" class="build-input" placeholder="Describe your build (e.g., 'Solar Titan for GMs')">
@@ -1075,7 +1164,14 @@
 
         <!-- Recent Activities -->
         <section class="card" data-id="activities" data-x="6" data-y="7" data-w="6" data-h="3" data-min-w="4" data-min-h="2">
-          <div class="bar"><div class="title">Recent Activities</div><div class="handle">⋮⋮</div></div>
+          <div class="bar">
+            <div class="panel-nav">
+              <button class="panel-nav-btn" data-nav="back" title="Back"><</button>
+              <button class="panel-nav-btn" data-nav="home" title="Home">H</button>
+            </div>
+            <div class="title">Recent Activities</div>
+            <div class="handle">⋮⋮</div>
+          </div>
           <div class="content" id="activities-panel">
             <div class="panel-auth">Sign in to view activities</div>
           </div>
@@ -1084,7 +1180,14 @@
 
         <!-- Inventory -->
         <section class="card" data-id="inventory" data-x="0" data-y="10" data-w="12" data-h="5" data-min-w="6" data-min-h="4">
-          <div class="bar"><div class="title">Inventory</div><div class="handle">⋮⋮</div></div>
+          <div class="bar">
+            <div class="panel-nav">
+              <button class="panel-nav-btn" data-nav="back" title="Back"><</button>
+              <button class="panel-nav-btn" data-nav="home" title="Home">H</button>
+            </div>
+            <div class="title">Inventory</div>
+            <div class="handle">⋮⋮</div>
+          </div>
           <div class="content" id="inventory-panel">
             <div class="panel-auth">Sign in to view your inventory</div>
           </div>

@@ -85,16 +85,26 @@ export class NewsPanel {
    * Render single article
    */
   renderArticle(article) {
-    const title = article.Title || 'Untitled';
-    const description = article.Description || '';
-    const image = article.ImagePath
-      ? `https://www.bungie.net${article.ImagePath}`
+    const title = article.Title || article.title || 'Untitled';
+    const description = article.Description || article.description || '';
+    const imagePath = article.ImagePath || article.imagePath;
+    const image = imagePath
+      ? `https://www.bungie.net${imagePath.startsWith('/') ? '' : '/'}${imagePath}`
       : null;
-    const link = article.Link
-      ? `https://www.bungie.net${article.Link}`
-      : '#';
-    const date = article.PubDate
-      ? this.formatDate(article.PubDate)
+
+    // Ensure link is absolute URL to bungie.net
+    let linkPath = article.Link || article.link;
+    let link = '#';
+    if (linkPath) {
+      if (linkPath.startsWith('http')) {
+        link = linkPath;
+      } else {
+        link = `https://www.bungie.net${linkPath.startsWith('/') ? '' : '/'}${linkPath}`;
+      }
+    }
+
+    const date = article.PubDate || article.pubDate
+      ? this.formatDate(article.PubDate || article.pubDate)
       : '';
     const category = this.getArticleCategory(article);
 
