@@ -9,6 +9,7 @@ export class NewsPanel {
     this.container = containerEl;
     this.articles = [];
     this.currentFilter = 'all';
+    this.lastFetched = null;
   }
 
   /**
@@ -27,6 +28,9 @@ export class NewsPanel {
 
       // News doesn't require authentication
       try {
+        // Clear cache to get fresh data
+        apiClient.clearCacheEntry('/api/destiny/news');
+
         const data = await apiClient.getNews();
         let articles = data.articles || [];
 
@@ -34,6 +38,12 @@ export class NewsPanel {
         articles = this.sortByDate(articles);
 
         this.articles = articles;
+        this.lastFetched = new Date();
+
+        // Log for debugging
+        if (articles.length > 0) {
+          console.log('News loaded:', articles.length, 'articles. Most recent:', articles[0]?.title, articles[0]?.pubDate);
+        }
       } catch (apiError) {
         console.warn('News load API error:', apiError);
         this.articles = [];
@@ -61,6 +71,10 @@ export class NewsPanel {
    * Render news panel
    */
   render() {
+    const newestArticleDate = this.articles.length > 0
+      ? this.formatDate(this.articles[0].pubDate || this.articles[0].PubDate)
+      : 'N/A';
+
     let html = `
       <div class="news-panel">
         <div class="news-filters">
@@ -68,6 +82,10 @@ export class NewsPanel {
           <button class="filter-btn ${this.currentFilter === 'twid' ? 'active' : ''}" data-filter="twid">TWID</button>
           <button class="filter-btn ${this.currentFilter === 'updates' ? 'active' : ''}" data-filter="updates">Updates</button>
           <button class="filter-btn ${this.currentFilter === 'community' ? 'active' : ''}" data-filter="community">Community</button>
+          <button class="filter-btn refresh-btn" data-action="refresh" title="Refresh news">↻</button>
+        </div>
+        <div class="news-status">
+          <span>Latest: ${newestArticleDate}</span>
         </div>
         <div class="news-content">
           ${this.renderArticles()}
@@ -252,8 +270,16 @@ export class NewsPanel {
   attachEventListeners() {
     this.container.querySelectorAll('.filter-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        this.currentFilter = btn.dataset.filter;
-        this.render();
+        // Handle refresh button
+        if (btn.dataset.action === 'refresh') {
+          this.load();
+          return;
+        }
+        // Handle filter buttons
+        if (btn.dataset.filter) {
+          this.currentFilter = btn.dataset.filter;
+          this.render();
+        }
       });
     });
   }

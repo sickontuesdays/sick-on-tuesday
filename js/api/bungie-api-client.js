@@ -218,7 +218,7 @@ export class BungieAPIClient {
     const queryString = params.length > 0 ? `?${params.join('&')}` : '';
 
     return this.request(`/api/destiny/news${queryString}`, {
-      cacheTTL: 15 * 60 * 1000 // 15 min
+      cacheTTL: 5 * 60 * 1000 // 5 min cache for fresher news
     });
   }
 

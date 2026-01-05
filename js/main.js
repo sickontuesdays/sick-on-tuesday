@@ -321,12 +321,19 @@ class Dashboard {
     if (panelSelectorBtn && panelSelectorWrapper) {
       // Toggle dropdown when clicking the "Panels" button
       panelSelectorBtn.addEventListener('click', (e) => {
+        e.preventDefault();
         e.stopPropagation();
         panelSelectorWrapper.classList.toggle('open');
       });
 
-      // Prevent clicks inside the dropdown from closing it
+      // Prevent ALL clicks inside the dropdown from closing it or bubbling
       panelSelector.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      });
+
+      // Also prevent mousedown from bubbling (some browsers use this)
+      panelSelector.addEventListener('mousedown', (e) => {
         e.stopPropagation();
       });
 
@@ -342,8 +349,10 @@ class Dashboard {
     panelSelector.addEventListener('change', (e) => {
       if (e.target.type === 'checkbox') {
         e.stopPropagation();
+        e.stopImmediatePropagation();
         const panelId = e.target.dataset.panelId;
-        this.gridManager?.toggleItemVisibility(panelId, e.target.checked);
+        const isChecked = e.target.checked;
+        this.gridManager?.toggleItemVisibility(panelId, isChecked);
       }
     });
   }

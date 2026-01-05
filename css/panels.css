@@ -820,6 +820,24 @@
   border-color: var(--arc, #7dd3fc);
 }
 
+.filter-btn.refresh-btn {
+  margin-left: auto;
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+.filter-btn.refresh-btn:hover {
+  background: rgba(125, 211, 252, 0.2);
+  color: var(--arc, #7dd3fc);
+}
+
+.news-status {
+  padding: 4px 12px 8px;
+  font-size: 10px;
+  color: #6b7280;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
 .news-content {
   flex: 1;
   padding: 12px;

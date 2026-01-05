@@ -12,6 +12,7 @@ module.exports = async function handler(req, res) {
     const { page, category } = req.query;
 
     const pageToken = page || '';
+    // Use 'destiny' category to filter to Destiny 2 news only
     const categoryFilter = category || 'destiny';
 
     const news = await bungieAPI.getNewsArticles(pageToken, categoryFilter);
