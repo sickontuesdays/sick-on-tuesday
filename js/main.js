@@ -301,21 +301,8 @@ class Dashboard {
 
     if (!panelSelector) return;
 
-    // Populate with available panels
-    const panels = this.gridManager?.getItems() || [];
-    let html = '<div class="panel-selector-header">Toggle Panels</div>';
-
-    panels.forEach(panel => {
-      const isVisible = !panel.hidden;
-      html += `
-        <label class="panel-checkbox">
-          <input type="checkbox" data-panel-id="${panel.id}" ${isVisible ? 'checked' : ''}>
-          <span>${panel.el.querySelector('.title')?.textContent || panel.id}</span>
-        </label>
-      `;
-    });
-
-    panelSelector.innerHTML = html;
+    // Build the panel selector HTML
+    this.buildPanelSelectorHTML();
 
     // Click-based dropdown toggle
     if (panelSelectorBtn && panelSelectorWrapper) {
@@ -323,6 +310,10 @@ class Dashboard {
       panelSelectorBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+
+        // Refresh checkbox states before opening
+        this.refreshPanelSelectorState();
+
         panelSelectorWrapper.classList.toggle('open');
       });
 
@@ -353,6 +344,46 @@ class Dashboard {
         const panelId = e.target.dataset.panelId;
         const isChecked = e.target.checked;
         this.gridManager?.toggleItemVisibility(panelId, isChecked);
+      }
+    });
+  }
+
+  /**
+   * Build the panel selector HTML structure
+   */
+  buildPanelSelectorHTML() {
+    const panelSelector = document.getElementById('panelSelector');
+    if (!panelSelector) return;
+
+    const panels = this.gridManager?.getItems() || [];
+    let html = '<div class="panel-selector-header">Toggle Panels</div>';
+
+    panels.forEach(panel => {
+      const isVisible = !panel.hidden;
+      html += `
+        <label class="panel-checkbox">
+          <input type="checkbox" data-panel-id="${panel.id}" ${isVisible ? 'checked' : ''}>
+          <span>${panel.el.querySelector('.title')?.textContent || panel.id}</span>
+        </label>
+      `;
+    });
+
+    panelSelector.innerHTML = html;
+  }
+
+  /**
+   * Refresh panel selector checkbox states to match actual panel visibility
+   */
+  refreshPanelSelectorState() {
+    const panelSelector = document.getElementById('panelSelector');
+    if (!panelSelector) return;
+
+    const panels = this.gridManager?.getItems() || [];
+
+    panels.forEach(panel => {
+      const checkbox = panelSelector.querySelector(`input[data-panel-id="${panel.id}"]`);
+      if (checkbox) {
+        checkbox.checked = !panel.hidden;
       }
     });
   }
@@ -792,6 +823,9 @@ class Dashboard {
     if (tab?.color) {
       this.setAccentColor(tab.color);
     }
+
+    // Refresh panel selector to match new layout's panel visibility
+    this.refreshPanelSelectorState();
 
     this.renderTabs();
   }
