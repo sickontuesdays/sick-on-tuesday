@@ -47,14 +47,24 @@ export class SeasonPanel {
     try {
       this.showLoading();
 
-      const profile = await apiClient.getProfile();
+      // Try to get profile data if authenticated
+      try {
+        const profile = await apiClient.getProfile();
 
-      // Extract season data
-      if (profile?.profileData) {
-        this.profileData = profile.profileData;
-        this.seasonHash = profile.profileData.profile?.data?.currentSeasonHash;
-        this.characterProgressions = profile.profileData.characterProgressions?.data;
-        this.characters = profile.profileData.characters?.data;
+        // Extract season data
+        if (profile?.profileData) {
+          this.profileData = profile.profileData;
+          this.seasonHash = profile.profileData.profile?.data?.currentSeasonHash;
+          this.characterProgressions = profile.profileData.characterProgressions?.data;
+          this.characters = profile.profileData.characters?.data;
+        }
+      } catch (authError) {
+        // Not authenticated - use static season data only
+        console.log('Season panel: Using static data (not authenticated)');
+        this.profileData = null;
+        this.seasonHash = null;
+        this.characterProgressions = null;
+        this.characters = null;
       }
 
       this.render();

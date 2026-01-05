@@ -28,10 +28,17 @@ export class RotatorsPanel {
     try {
       this.showLoading();
 
-      const data = await apiClient.getMilestones();
-      this.milestones = data?.milestones || data;
+      // Try to get milestones from API (may fail if not authenticated)
+      try {
+        const data = await apiClient.getMilestones();
+        this.milestones = data?.milestones || data;
+      } catch (apiError) {
+        // Not authenticated or API error - use static rotation data
+        console.log('Rotators panel: Using static data');
+        this.milestones = null;
+      }
 
-      // Parse rotations from milestones
+      // Parse rotations - works with or without milestones data
       this.parseRotations();
 
       this.render();

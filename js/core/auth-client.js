@@ -9,12 +9,23 @@ export class AuthClient {
     this.isAuthenticated = false;
     this.sessionCheckInterval = null;
     this.listeners = new Set();
+
+    // localStorage keys for persistence
+    this.STORAGE_KEYS = {
+      AUTH_STATE: 'sot_auth_state',
+      USER_DATA: 'sot_user_data',
+      LAST_CHECK: 'sot_auth_last_check'
+    };
   }
 
   /**
    * Initialize auth client and check session
    */
   async init() {
+    // Restore cached auth state immediately for faster UI update
+    this.restoreCachedAuthState();
+
+    // Verify with server (will update if different)
     await this.checkSession();
 
     // Check session every 5 minutes
@@ -26,6 +37,50 @@ export class AuthClient {
     this.handleAuthParams();
 
     return this;
+  }
+
+  /**
+   * Restore cached auth state from localStorage
+   */
+  restoreCachedAuthState() {
+    try {
+      const cachedState = localStorage.getItem(this.STORAGE_KEYS.AUTH_STATE);
+      const cachedUser = localStorage.getItem(this.STORAGE_KEYS.USER_DATA);
+      const lastCheck = localStorage.getItem(this.STORAGE_KEYS.LAST_CHECK);
+
+      if (cachedState === 'authenticated' && cachedUser) {
+        // Check if the cached state is still reasonably fresh (within 24 hours)
+        const lastCheckTime = lastCheck ? parseInt(lastCheck, 10) : 0;
+        const hoursSinceCheck = (Date.now() - lastCheckTime) / (1000 * 60 * 60);
+
+        if (hoursSinceCheck < 24) {
+          this.isAuthenticated = true;
+          this.user = JSON.parse(cachedUser);
+          console.log('Auth: Restored cached session');
+        }
+      }
+    } catch (error) {
+      console.warn('Auth: Failed to restore cached state:', error);
+    }
+  }
+
+  /**
+   * Cache auth state to localStorage
+   */
+  cacheAuthState() {
+    try {
+      if (this.isAuthenticated && this.user) {
+        localStorage.setItem(this.STORAGE_KEYS.AUTH_STATE, 'authenticated');
+        localStorage.setItem(this.STORAGE_KEYS.USER_DATA, JSON.stringify(this.user));
+        localStorage.setItem(this.STORAGE_KEYS.LAST_CHECK, Date.now().toString());
+      } else {
+        localStorage.removeItem(this.STORAGE_KEYS.AUTH_STATE);
+        localStorage.removeItem(this.STORAGE_KEYS.USER_DATA);
+        localStorage.removeItem(this.STORAGE_KEYS.LAST_CHECK);
+      }
+    } catch (error) {
+      console.warn('Auth: Failed to cache state:', error);
+    }
   }
 
   /**
@@ -44,6 +99,9 @@ export class AuthClient {
       this.isAuthenticated = data.authenticated;
       this.user = data.user || null;
 
+      // Cache the auth state for persistence
+      this.cacheAuthState();
+
       // Notify listeners if auth state changed
       if (wasAuthenticated !== this.isAuthenticated) {
         this.notifyListeners();
@@ -52,9 +110,9 @@ export class AuthClient {
       return data;
     } catch (error) {
       console.error('Session check failed:', error);
-      this.isAuthenticated = false;
-      this.user = null;
-      return { authenticated: false, user: null };
+      // Don't clear auth state on network errors - keep cached state
+      // Only clear if we get a definitive "not authenticated" response
+      return { authenticated: this.isAuthenticated, user: this.user };
     }
   }
 
@@ -102,6 +160,10 @@ export class AuthClient {
 
       this.isAuthenticated = false;
       this.user = null;
+
+      // Clear cached auth state
+      this.cacheAuthState();
+
       this.notifyListeners();
 
       // Optionally redirect

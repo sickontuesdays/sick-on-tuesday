@@ -36,12 +36,17 @@ export class PanelManager {
     // Initialize panel instances
     this.initializePanelInstances();
 
+    // Load panels that don't require authentication immediately
+    await this.loadPublicPanels();
+
     // Listen for auth changes
     this.authClient.onAuthChange(({ isAuthenticated }) => {
       if (isAuthenticated) {
         this.loadAllPanels();
       } else {
-        this.clearAllPanels();
+        this.clearAuthPanels();
+        // Reload public panels to show non-auth view
+        this.loadPublicPanels();
       }
     });
 
@@ -52,6 +57,25 @@ export class PanelManager {
 
     // Start refresh intervals
     this.startRefreshIntervals();
+  }
+
+  /**
+   * Load panels that don't require authentication
+   */
+  async loadPublicPanels() {
+    const publicPanelIds = ['rotators-panel', 'news-panel', 'season-panel'];
+
+    const loadPromises = publicPanelIds.map(id => {
+      const instance = this.panelInstances.get(id);
+      if (instance && typeof instance.load === 'function') {
+        return instance.load().catch(err => {
+          console.warn(`Failed to load public panel ${id}:`, err);
+        });
+      }
+      return Promise.resolve();
+    });
+
+    await Promise.all(loadPromises);
   }
 
   /**
@@ -107,12 +131,9 @@ export class PanelManager {
 
       await Promise.all(loadPromises);
 
-      // Also run legacy panel loaders for backwards compatibility
-      await Promise.all([
-        this.loadSeasonPanel(),
-        this.loadMilestonesPanel(),
-        this.loadNewsPanel()
-      ]);
+      // Note: Legacy loaders for season/milestones/news are no longer called
+      // The panel class instances (SeasonPanel, RotatorsPanel, NewsPanel) handle rendering
+      // This prevents overwriting the detailed data with simpler views
 
       if (this.profileData && this.characterId) {
         await Promise.all([
@@ -798,6 +819,21 @@ export class PanelManager {
     this.panels.forEach((_, panelId) => {
       this.showPanelAuth(panelId);
     });
+    this.profileData = null;
+    this.characterId = null;
+  }
+
+  /**
+   * Clear only auth-required panels (not public ones)
+   */
+  clearAuthPanels() {
+    const publicPanelIds = ['rotators-panel', 'news-panel', 'season-panel'];
+    const authPanelIds = ['inventory-panel', 'vendors-panel', 'stats-panel', 'clan-panel', 'activities-panel', 'build-crafter-panel'];
+
+    authPanelIds.forEach(panelId => {
+      this.showPanelAuth(panelId);
+    });
+
     this.profileData = null;
     this.characterId = null;
   }

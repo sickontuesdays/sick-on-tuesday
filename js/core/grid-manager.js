@@ -269,6 +269,45 @@ export class GridManager {
   }
 
   /**
+   * Resolve collisions after resize operation
+   */
+  resolveResizeCollisions(resizedItem) {
+    // Get all other visible items
+    const otherItems = this.items.filter(i => i !== resizedItem && !i.hidden);
+
+    // Check if the resized item now overlaps with any other items
+    let changed = true;
+    let iterations = 0;
+    const maxIterations = 100;
+
+    while (changed && iterations < maxIterations) {
+      changed = false;
+      iterations++;
+
+      for (const item of otherItems) {
+        if (this.rectsOverlap(resizedItem, item)) {
+          // Push the other item down below the resized item
+          item.y = resizedItem.y + resizedItem.h;
+          changed = true;
+        }
+
+        // Also check if other items overlap each other after being pushed
+        for (const otherItem of otherItems) {
+          if (item !== otherItem && this.rectsOverlap(item, otherItem)) {
+            // Push the one that's on top of the other down
+            if (item.y >= otherItem.y) {
+              item.y = otherItem.y + otherItem.h;
+            } else {
+              otherItem.y = item.y + item.h;
+            }
+            changed = true;
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Check if two rectangles overlap
    */
   rectsOverlap(a, b) {

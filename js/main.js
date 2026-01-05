@@ -296,6 +296,9 @@ class Dashboard {
    */
   setupPanelSelector() {
     const panelSelector = document.getElementById('panelSelector');
+    const panelSelectorBtn = document.getElementById('panelSelectorBtn');
+    const panelSelectorWrapper = panelSelectorBtn?.closest('.panel-selector-wrapper');
+
     if (!panelSelector) return;
 
     // Populate with available panels
@@ -313,6 +316,21 @@ class Dashboard {
     });
 
     panelSelector.innerHTML = html;
+
+    // Click-based dropdown toggle
+    if (panelSelectorBtn && panelSelectorWrapper) {
+      panelSelectorBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        panelSelectorWrapper.classList.toggle('open');
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!panelSelectorWrapper.contains(e.target)) {
+          panelSelectorWrapper.classList.remove('open');
+        }
+      });
+    }
 
     // Handle checkbox changes
     panelSelector.addEventListener('change', (e) => {
@@ -428,6 +446,9 @@ class Dashboard {
     window.addEventListener('mouseup', () => {
       if (!this.resizing) return;
 
+      // Resolve any collisions caused by resize
+      this.gridManager.resolveResizeCollisions(this.resizing);
+
       this.resizing.el.classList.remove('dragging');
       this.gridManager.hideDropHint();
       this.gridManager.applyLayout();
@@ -489,7 +510,11 @@ class Dashboard {
               <div class="color-option" data-color="#f43f5e" style="background: #f43f5e"></div>
               <div class="color-option" data-color="#06b6d4" style="background: #06b6d4"></div>
             </div>
-            <input type="color" id="tabEditorColor" class="tab-editor-color-input">
+            <div class="custom-color-row">
+              <span class="custom-color-label">Custom Color:</span>
+              <input type="color" id="tabEditorColor" class="tab-editor-color-input">
+              <span class="color-hex-display" id="colorHexDisplay">#7dd3fc</span>
+            </div>
           </div>
         </div>
         <div class="tab-editor-footer">
@@ -531,12 +556,22 @@ class Dashboard {
         colorOptions.forEach(o => o.classList.remove('selected'));
         opt.classList.add('selected');
         colorInput.value = opt.dataset.color;
+        // Update hex display
+        const hexDisplay = modal.querySelector('#colorHexDisplay');
+        if (hexDisplay) {
+          hexDisplay.textContent = opt.dataset.color.toUpperCase();
+        }
       });
     });
 
     // Color input change
     colorInput.addEventListener('input', () => {
       colorOptions.forEach(o => o.classList.remove('selected'));
+      // Update hex display
+      const hexDisplay = modal.querySelector('#colorHexDisplay');
+      if (hexDisplay) {
+        hexDisplay.textContent = colorInput.value.toUpperCase();
+      }
     });
 
     // Save
@@ -567,6 +602,12 @@ class Dashboard {
 
     nameInput.value = tab.name;
     colorInput.value = tab.color;
+
+    // Update hex display
+    const hexDisplay = modal.querySelector('#colorHexDisplay');
+    if (hexDisplay) {
+      hexDisplay.textContent = tab.color.toUpperCase();
+    }
 
     // Select matching color option
     colorOptions.forEach(opt => {
@@ -701,18 +742,22 @@ class Dashboard {
       });
     });
 
-    // Color chip click handlers (to edit)
+    // Color chip click handlers (to edit) - only when not locked
     tabsEl.querySelectorAll('.colorChip').forEach(chip => {
       chip.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (this.isLocked) return; // Don't allow editing when locked
         this.openTabEditor(chip.dataset.tab);
       });
     });
 
-    // Add button handler
+    // Add button handler - only when not locked
     const addBtn = tabsEl.querySelector('#addTabBtn');
     if (addBtn) {
-      addBtn.addEventListener('click', () => this.addNewTab());
+      addBtn.addEventListener('click', () => {
+        if (this.isLocked) return; // Don't allow adding when locked
+        this.addNewTab();
+      });
     }
   }
 

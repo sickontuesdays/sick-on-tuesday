@@ -25,14 +25,36 @@ export class NewsPanel {
     try {
       this.showLoading();
 
-      const data = await apiClient.getNews();
-      this.articles = data.articles || [];
+      // News doesn't require authentication
+      try {
+        const data = await apiClient.getNews();
+        let articles = data.articles || [];
+
+        // Sort articles by publication date (most recent first)
+        articles = this.sortByDate(articles);
+
+        this.articles = articles;
+      } catch (apiError) {
+        console.warn('News load API error:', apiError);
+        this.articles = [];
+      }
 
       this.render();
     } catch (error) {
       console.error('News load error:', error);
       this.showError(error.message);
     }
+  }
+
+  /**
+   * Sort articles by publication date (most recent first)
+   */
+  sortByDate(articles) {
+    return articles.sort((a, b) => {
+      const dateA = new Date(a.PubDate || a.pubDate || 0);
+      const dateB = new Date(b.PubDate || b.pubDate || 0);
+      return dateB - dateA; // Most recent first
+    });
   }
 
   /**

@@ -11,12 +11,22 @@ export class FriendsList {
     this.friends = [];
     this.refreshInterval = null;
     this.isExpanded = true;
+    this.isSidebarCollapsed = false;
+
+    // Load sidebar state from localStorage
+    const savedState = localStorage.getItem('sot_friends_sidebar_collapsed');
+    if (savedState === 'true') {
+      this.isSidebarCollapsed = true;
+    }
   }
 
   /**
    * Initialize friends list
    */
   async init() {
+    // Apply initial sidebar state
+    this.applySidebarState();
+
     // Listen for auth changes
     authClient.onAuthChange(({ isAuthenticated }) => {
       if (isAuthenticated) {
@@ -39,6 +49,29 @@ export class FriendsList {
         this.load();
       }
     }, 60 * 1000);
+  }
+
+  /**
+   * Apply sidebar collapsed/expanded state
+   */
+  applySidebarState() {
+    const sidebar = this.container.closest('.friends-sidebar');
+    if (sidebar) {
+      sidebar.classList.toggle('collapsed', this.isSidebarCollapsed);
+      document.body.classList.toggle('friends-collapsed', this.isSidebarCollapsed);
+    }
+  }
+
+  /**
+   * Toggle sidebar collapsed state
+   */
+  toggleSidebar() {
+    this.isSidebarCollapsed = !this.isSidebarCollapsed;
+    localStorage.setItem('sot_friends_sidebar_collapsed', this.isSidebarCollapsed.toString());
+    this.applySidebarState();
+
+    // Trigger window resize for grid manager to recalculate
+    window.dispatchEvent(new Event('resize'));
   }
 
   /**
@@ -66,9 +99,15 @@ export class FriendsList {
     const online = this.friends.filter(f => this.isOnline(f));
     const offline = this.friends.filter(f => !this.isOnline(f));
 
+    const collapseIcon = this.isSidebarCollapsed ? '◀' : '▶';
+    const collapseTitle = this.isSidebarCollapsed ? 'Expand friends' : 'Collapse friends';
+
     let html = `
       <div class="friends-list-container">
         <div class="friends-header">
+          <button class="friends-collapse-btn" onclick="window.friendsList?.toggleSidebar()" title="${collapseTitle}">
+            ${collapseIcon}
+          </button>
           <h4>Friends</h4>
           <div class="friends-count">
             <span class="online-count">${online.length}</span> online
@@ -207,10 +246,20 @@ export class FriendsList {
    * Show auth required state
    */
   showAuthRequired() {
+    const collapseIcon = this.isSidebarCollapsed ? '◀' : '▶';
+    const collapseTitle = this.isSidebarCollapsed ? 'Expand friends' : 'Collapse friends';
+
     this.container.innerHTML = `
-      <div class="friends-auth">
-        <h4>Friends</h4>
-        <p>Sign in to see your friends</p>
+      <div class="friends-list-container">
+        <div class="friends-header">
+          <button class="friends-collapse-btn" onclick="window.friendsList?.toggleSidebar()" title="${collapseTitle}">
+            ${collapseIcon}
+          </button>
+          <h4>Friends</h4>
+        </div>
+        <div class="friends-auth-content">
+          <p>Sign in to see your friends</p>
+        </div>
       </div>
     `;
   }
