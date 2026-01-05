@@ -5,7 +5,7 @@
 import { apiClient } from '../api/bungie-api-client.js';
 import { manifestLoader } from '../api/manifest-loader.js';
 
-// All vendor hashes with metadata
+// All vendor hashes with metadata - Only actual D2 vendors
 const VENDORS = {
   // Tower Vendors
   ZAVALA: { hash: 69482069, name: 'Commander Zavala', icon: '🛡️', location: 'Tower', category: 'vanguard' },
@@ -17,31 +17,20 @@ const VENDORS = {
   DRIFTER: { hash: 248695599, name: 'The Drifter', icon: '🎲', location: 'Tower', category: 'gambit' },
   HAWTHORNE: { hash: 3347378076, name: 'Suraya Hawthorne', icon: '🦅', location: 'Tower', category: 'clan' },
   RAHOOL: { hash: 2255782930, name: 'Master Rahool', icon: '💎', location: 'Tower', category: 'cryptarch' },
-  POSTMASTER: { hash: 2398407866, name: 'Postmaster', icon: '📦', location: 'Tower', category: 'utility' },
-  VAULT: { hash: 1037843411, name: 'Vault', icon: '🗄️', location: 'Tower', category: 'utility' },
 
   // Special Vendors
-  XUR: { hash: 2190858386, name: 'Xûr', icon: '🌑', location: 'Rotating', category: 'exotic' },
+  XUR: { hash: 2190858386, name: 'Xûr', icon: '🌑', location: 'Weekend Only', category: 'exotic' },
   EVERVERSE: { hash: 3361454721, name: 'Tess Everis', icon: '✨', location: 'Tower', category: 'eververse' },
 
   // Destination Vendors
   DEVRIM: { hash: 396892126, name: 'Devrim Kay', icon: '🎯', location: 'EDZ', category: 'destination' },
   FAILSAFE: { hash: 1576276905, name: 'Failsafe', icon: '🤖', location: 'Nessus', category: 'destination' },
   ERIS: { hash: 1616085565, name: 'Eris Morn', icon: '🌙', location: 'Moon', category: 'destination' },
-  SHAW_HAN: { hash: 1816541247, name: 'Shaw Han', icon: '🌍', location: 'Cosmodrome', category: 'destination' },
   VARIKS: { hash: 2531198101, name: 'Variks', icon: '❄️', location: 'Europa', category: 'destination' },
   PETRA: { hash: 1841717884, name: 'Petra Venj', icon: '👁️', location: 'Dreaming City', category: 'destination' },
 
-  // Seasonal/Event Vendors
-  STARHORSE: { hash: 2140454730, name: 'Starhorse', icon: '🐴', location: 'Eternity', category: 'event' },
-  XANDER: { hash: 2894222926, name: 'Xander 99-40', icon: '🎖️', location: 'Tower', category: 'bounties' },
-  SALADIN: { hash: 895295461, name: 'Lord Saladin', icon: '🔥', location: 'Tower', category: 'iron_banner' },
-
-  // War Table / Season Vendors
-  WAR_TABLE: { hash: 4095127185, name: 'War Table', icon: '🗺️', location: 'H.E.L.M.', category: 'seasonal' },
-  NIMBUS: { hash: 1708831037, name: 'Nimbus', icon: '☁️', location: 'Neomuna', category: 'destination' },
-  ROHAN: { hash: 2407082107, name: 'Quinn Laghari', icon: '🏛️', location: 'Neomuna', category: 'destination' },
-  FYNCH: { hash: 2646049057, name: 'Fynch', icon: '👻', location: 'Throne World', category: 'destination' }
+  // Event Vendors (only available during events)
+  SALADIN: { hash: 895295461, name: 'Lord Saladin', icon: '🔥', location: 'Tower (Iron Banner)', category: 'iron_banner' }
 };
 
 export class VendorsPanel {
@@ -247,8 +236,13 @@ export class VendorsPanel {
    * Render vendor inventory (items, bounties, quests)
    */
   renderVendorInventory(vendorData) {
-    const sales = vendorData.sales?.data || {};
+    // API response wraps data in vendorData property
+    const actualData = vendorData.vendorData || vendorData;
+    const sales = actualData.sales?.data || {};
     const items = Object.values(sales);
+
+    console.log('Vendor data structure:', Object.keys(vendorData));
+    console.log('Sales items found:', items.length);
 
     if (items.length === 0) {
       return '<div class="no-items">No items currently available from this vendor</div>';

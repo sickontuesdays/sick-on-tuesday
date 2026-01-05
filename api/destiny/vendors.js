@@ -4,7 +4,7 @@
 const bungieOAuth = require('../../lib/bungie-oauth');
 const bungieAPI = require('../../lib/bungie-api');
 
-// Known vendor hashes
+// Known vendor hashes (name -> hash mapping for convenience)
 const VENDOR_HASHES = {
   xur: 2190858386,
   banshee: 672118013,
@@ -15,7 +15,14 @@ const VENDOR_HASHES = {
   saint14: 765357505,
   saladin: 895295461,
   rahool: 2255782930,
-  tess: 3361454721
+  tess: 3361454721,
+  ikora: 1976548992,
+  hawthorne: 3347378076,
+  devrim: 396892126,
+  failsafe: 1576276905,
+  eris: 1616085565,
+  petra: 1841717884,
+  variks: 2531198101
 };
 
 module.exports = async function handler(req, res) {
@@ -45,9 +52,21 @@ module.exports = async function handler(req, res) {
 
     let result;
 
-    if (vendor && VENDOR_HASHES[vendor.toLowerCase()]) {
+    if (vendor) {
+      // Determine vendor hash - accept either name string or hash number
+      let vendorHash;
+
+      if (!isNaN(vendor)) {
+        // It's a number (hash passed directly)
+        vendorHash = parseInt(vendor);
+      } else if (VENDOR_HASHES[vendor.toLowerCase()]) {
+        // It's a known vendor name
+        vendorHash = VENDOR_HASHES[vendor.toLowerCase()];
+      } else {
+        return res.status(400).json({ error: 'Unknown vendor' });
+      }
+
       // Get specific vendor
-      const vendorHash = VENDOR_HASHES[vendor.toLowerCase()];
       result = await bungieAPI.getVendor(
         user.primaryMembershipType,
         user.primaryMembershipId,
