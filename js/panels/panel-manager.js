@@ -314,7 +314,7 @@ export class PanelManager {
   }
 
   /**
-   * Load Vendors panel
+   * Load Vendors panel - uses VendorsPanel class
    */
   async loadVendorsPanel() {
     const panelEl = document.getElementById('vendors-panel');
@@ -326,49 +326,14 @@ export class PanelManager {
     }
 
     try {
-      this.showPanelLoading('vendors-panel');
-
-      const vendorData = await apiClient.getVendors(this.characterId);
-
-      let html = '<div class="vendors-content">';
-
-      const vendorNames = {
-        2190858386: { name: 'Xur', icon: '🌀' },
-        672118013: { name: 'Banshee-44', icon: '🔫' },
-        350061650: { name: 'Ada-1', icon: '⚙️' }
-      };
-
-      const vendors = vendorData.vendorData?.vendors?.data || {};
-      let foundVendors = [];
-
-      for (const [hash, info] of Object.entries(vendorNames)) {
-        const vendor = vendors[hash];
-        if (vendor) {
-          foundVendors.push({
-            ...info,
-            hash,
-            enabled: vendor.enabled,
-            canPurchase: vendor.canPurchase
-          });
-        }
+      // Use VendorsPanel class for full vendor functionality
+      if (!this.vendorsPanel) {
+        this.vendorsPanel = new VendorsPanel(panelEl);
+        await this.vendorsPanel.init();
       }
 
-      if (foundVendors.length > 0) {
-        foundVendors.forEach(v => {
-          html += `
-            <div class="vendor-item ${v.enabled ? 'active' : 'inactive'}">
-              <span class="vendor-icon">${v.icon}</span>
-              <span class="vendor-name">${v.name}</span>
-              <span class="vendor-status">${v.enabled ? 'Available' : 'Unavailable'}</span>
-            </div>
-          `;
-        });
-      } else {
-        html += '<div class="no-data">No vendor data available</div>';
-      }
-
-      html += '</div>';
-      panelEl.innerHTML = html;
+      // Load the vendors data
+      await this.vendorsPanel.load();
       this.panels.set('vendors-panel', { loaded: true });
 
     } catch (error) {
