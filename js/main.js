@@ -319,12 +319,18 @@ class Dashboard {
 
     // Click-based dropdown toggle
     if (panelSelectorBtn && panelSelectorWrapper) {
+      // Toggle dropdown when clicking the "Panels" button
       panelSelectorBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         panelSelectorWrapper.classList.toggle('open');
       });
 
-      // Close dropdown when clicking outside
+      // Prevent clicks inside the dropdown from closing it
+      panelSelector.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+
+      // Close dropdown when clicking outside (but not inside dropdown or button)
       document.addEventListener('click', (e) => {
         if (!panelSelectorWrapper.contains(e.target)) {
           panelSelectorWrapper.classList.remove('open');
@@ -332,9 +338,10 @@ class Dashboard {
       });
     }
 
-    // Handle checkbox changes
+    // Handle checkbox changes - keep dropdown open while toggling panels
     panelSelector.addEventListener('change', (e) => {
       if (e.target.type === 'checkbox') {
+        e.stopPropagation();
         const panelId = e.target.dataset.panelId;
         this.gridManager?.toggleItemVisibility(panelId, e.target.checked);
       }

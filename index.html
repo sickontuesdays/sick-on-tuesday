@@ -344,99 +344,98 @@
       z-index: 50;
     }
 
-    /* Friends Sidebar */
+    /* Friends Sidebar - stays fixed width, expands vertically */
     .friends-sidebar {
       position: fixed;
       top: 0;
       right: 0;
       width: var(--friendsW);
-      height: 100vh;
       background: linear-gradient(180deg, var(--panel), var(--panel2));
       border-left: 1px solid var(--border);
-      overflow-y: auto;
       z-index: 30;
-      transition: width 0.3s ease, transform 0.3s ease;
-    }
-
-    /* Collapsed friends sidebar */
-    .friends-sidebar.collapsed {
-      width: 48px;
-      overflow: hidden;
-    }
-
-    .friends-sidebar.collapsed .friends-sections,
-    .friends-sidebar.collapsed .friends-count,
-    .friends-sidebar.collapsed .friends-auth-content {
-      display: none;
-    }
-
-    .friends-sidebar.collapsed .friends-header {
+      display: flex;
       flex-direction: column;
-      padding: 8px 4px;
-      gap: 8px;
     }
 
-    .friends-sidebar.collapsed .friends-header h4 {
-      writing-mode: vertical-rl;
-      text-orientation: mixed;
-      font-size: 12px;
-    }
-
-    /* Collapse button */
-    .friends-collapse-btn {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 4px;
-      color: var(--muted);
-      width: 24px;
-      height: 24px;
-      cursor: pointer;
+    /* Header bar - always visible */
+    .friends-header-bar {
       display: flex;
       align-items: center;
-      justify-content: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: linear-gradient(180deg, #132033, #0e1726);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .friends-header-bar:hover {
+      background: linear-gradient(180deg, #1a2940, #121d2e);
+    }
+
+    .friends-toggle-icon {
       font-size: 10px;
-      transition: all 0.2s;
-      flex-shrink: 0;
+      color: var(--muted);
+      transition: transform 0.3s ease;
     }
 
-    .friends-collapse-btn:hover {
-      background: rgba(255,255,255,0.1);
+    .friends-sidebar.expanded .friends-toggle-icon {
+      transform: rotate(180deg);
+    }
+
+    .friends-header-bar h4 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
       color: var(--ink);
-      border-color: var(--arc);
+      flex: 1;
     }
 
-    /* Adjust main content when friends collapsed */
-    body.friends-collapsed .main-content {
-      padding-right: 64px;
+    .friends-online-badge {
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.05);
+      padding: 3px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .friends-online-badge .online-count {
+      color: var(--good);
+      font-weight: 600;
+    }
+
+    /* Friends content - expandable */
+    .friends-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      background: linear-gradient(180deg, var(--panel), var(--panel2));
+    }
+
+    .friends-sidebar.expanded .friends-content {
+      max-height: calc(100vh - 50px);
+      overflow-y: auto;
     }
 
     .friends-list-container {
       padding: 12px;
     }
 
-    .friends-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 0 12px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 12px;
+    /* Old header inside content - hide it since we have header bar */
+    .friends-list-container .friends-header {
+      display: none;
     }
 
-    .friends-header h4 {
-      flex: 1;
-      margin: 0;
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .friends-header .friends-count {
-      flex-shrink: 0;
-    }
-
-    .friends-count {
-      font-size: 12px;
+    .friends-auth-content {
+      padding: 20px;
+      text-align: center;
       color: var(--muted);
+    }
+
+    .friends-auth-content p {
+      margin: 0;
+      font-size: 13px;
     }
 
     .online-count {
@@ -1310,11 +1309,19 @@
     </div>
 
     <!-- Friends Sidebar (Right) -->
-    <aside class="friends-sidebar">
-      <div id="friends-list">
-        <div class="friends-auth">
-          <h4>Friends</h4>
-          <p>Sign in to see your friends</p>
+    <aside class="friends-sidebar expanded" id="friendsSidebar">
+      <div class="friends-header-bar" id="friendsHeaderBar">
+        <span class="friends-toggle-icon">▼</span>
+        <h4>Friends</h4>
+        <div class="friends-online-badge">
+          <span class="online-count" id="friendsOnlineCount">0</span> online
+        </div>
+      </div>
+      <div class="friends-content">
+        <div id="friends-list">
+          <div class="friends-auth">
+            <p>Sign in to see your friends</p>
+          </div>
         </div>
       </div>
     </aside>

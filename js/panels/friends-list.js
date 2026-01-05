@@ -11,21 +11,21 @@ export class FriendsList {
     this.friends = [];
     this.refreshInterval = null;
     this.isExpanded = true;
-    this.isSidebarCollapsed = false;
 
-    // Load sidebar state from localStorage
-    const savedState = localStorage.getItem('sot_friends_sidebar_collapsed');
-    if (savedState === 'true') {
-      this.isSidebarCollapsed = true;
-    }
+    // Load expanded state from localStorage (default to expanded)
+    const savedState = localStorage.getItem('sot_friends_expanded');
+    this.isExpanded = savedState !== 'false';
   }
 
   /**
    * Initialize friends list
    */
   async init() {
-    // Apply initial sidebar state
-    this.applySidebarState();
+    // Apply initial expanded state
+    this.applyExpandedState();
+
+    // Setup header bar click handler
+    this.setupHeaderToggle();
 
     // Listen for auth changes
     authClient.onAuthChange(({ isAuthenticated }) => {
@@ -52,26 +52,42 @@ export class FriendsList {
   }
 
   /**
-   * Apply sidebar collapsed/expanded state
+   * Setup header bar toggle
    */
-  applySidebarState() {
-    const sidebar = this.container.closest('.friends-sidebar');
-    if (sidebar) {
-      sidebar.classList.toggle('collapsed', this.isSidebarCollapsed);
-      document.body.classList.toggle('friends-collapsed', this.isSidebarCollapsed);
+  setupHeaderToggle() {
+    const headerBar = document.getElementById('friendsHeaderBar');
+    if (headerBar) {
+      headerBar.addEventListener('click', () => this.toggleExpanded());
     }
   }
 
   /**
-   * Toggle sidebar collapsed state
+   * Apply expanded/collapsed state
    */
-  toggleSidebar() {
-    this.isSidebarCollapsed = !this.isSidebarCollapsed;
-    localStorage.setItem('sot_friends_sidebar_collapsed', this.isSidebarCollapsed.toString());
-    this.applySidebarState();
+  applyExpandedState() {
+    const sidebar = document.getElementById('friendsSidebar');
+    if (sidebar) {
+      sidebar.classList.toggle('expanded', this.isExpanded);
+    }
+  }
 
-    // Trigger window resize for grid manager to recalculate
-    window.dispatchEvent(new Event('resize'));
+  /**
+   * Toggle expanded/collapsed state
+   */
+  toggleExpanded() {
+    this.isExpanded = !this.isExpanded;
+    localStorage.setItem('sot_friends_expanded', this.isExpanded.toString());
+    this.applyExpandedState();
+  }
+
+  /**
+   * Update online count in header bar
+   */
+  updateOnlineCount(count) {
+    const countEl = document.getElementById('friendsOnlineCount');
+    if (countEl) {
+      countEl.textContent = count;
+    }
   }
 
   /**
@@ -99,21 +115,11 @@ export class FriendsList {
     const online = this.friends.filter(f => this.isOnline(f));
     const offline = this.friends.filter(f => !this.isOnline(f));
 
-    const collapseIcon = this.isSidebarCollapsed ? '◀' : '▶';
-    const collapseTitle = this.isSidebarCollapsed ? 'Expand friends' : 'Collapse friends';
+    // Update the online count in the header bar
+    this.updateOnlineCount(online.length);
 
     let html = `
       <div class="friends-list-container">
-        <div class="friends-header">
-          <button class="friends-collapse-btn" onclick="window.friendsList?.toggleSidebar()" title="${collapseTitle}">
-            ${collapseIcon}
-          </button>
-          <h4>Friends</h4>
-          <div class="friends-count">
-            <span class="online-count">${online.length}</span> online
-          </div>
-        </div>
-
         <div class="friends-sections">
     `;
 
@@ -246,17 +252,11 @@ export class FriendsList {
    * Show auth required state
    */
   showAuthRequired() {
-    const collapseIcon = this.isSidebarCollapsed ? '◀' : '▶';
-    const collapseTitle = this.isSidebarCollapsed ? 'Expand friends' : 'Collapse friends';
+    // Reset online count
+    this.updateOnlineCount(0);
 
     this.container.innerHTML = `
       <div class="friends-list-container">
-        <div class="friends-header">
-          <button class="friends-collapse-btn" onclick="window.friendsList?.toggleSidebar()" title="${collapseTitle}">
-            ${collapseIcon}
-          </button>
-          <h4>Friends</h4>
-        </div>
         <div class="friends-auth-content">
           <p>Sign in to see your friends</p>
         </div>

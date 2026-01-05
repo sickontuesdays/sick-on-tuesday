@@ -109,10 +109,15 @@ export class NewsPanel {
   renderArticle(article) {
     const title = article.Title || article.title || 'Untitled';
     const description = article.Description || article.description || '';
-    const imagePath = article.ImagePath || article.imagePath;
-    const image = imagePath
-      ? `https://www.bungie.net${imagePath.startsWith('/') ? '' : '/'}${imagePath}`
-      : null;
+
+    // Handle both imageUrl (from server transform) and ImagePath (raw API)
+    let image = article.imageUrl || null;
+    if (!image) {
+      const imagePath = article.ImagePath || article.imagePath;
+      if (imagePath) {
+        image = `https://www.bungie.net${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+      }
+    }
 
     // Ensure link is absolute URL to bungie.net
     let linkPath = article.Link || article.link;
@@ -156,23 +161,29 @@ export class NewsPanel {
     }
 
     return this.articles.filter(article => {
-      const title = (article.Title || '').toLowerCase();
-      const description = (article.Description || '').toLowerCase();
+      // Handle both API property name cases
+      const title = (article.Title || article.title || '').toLowerCase();
+      const description = (article.Description || article.description || '').toLowerCase();
       const combined = title + ' ' + description;
 
       switch (this.currentFilter) {
         case 'twid':
           return combined.includes('this week') ||
                  combined.includes('twid') ||
-                 combined.includes('twab');
+                 combined.includes('twab') ||
+                 combined.includes('destiny');
         case 'updates':
           return combined.includes('update') ||
                  combined.includes('patch') ||
-                 combined.includes('hotfix');
+                 combined.includes('hotfix') ||
+                 combined.includes('maintenance') ||
+                 combined.includes('fix');
         case 'community':
           return combined.includes('community') ||
                  combined.includes('spotlight') ||
-                 combined.includes('motw');
+                 combined.includes('motw') ||
+                 combined.includes('artist') ||
+                 combined.includes('bungie rewards');
         default:
           return true;
       }
@@ -183,18 +194,19 @@ export class NewsPanel {
    * Get article category
    */
   getArticleCategory(article) {
-    const title = (article.Title || '').toLowerCase();
+    // Handle both API property name cases
+    const title = (article.Title || article.title || '').toLowerCase();
 
-    if (title.includes('this week') || title.includes('twid')) {
+    if (title.includes('this week') || title.includes('twid') || title.includes('twab')) {
       return 'TWID';
     }
-    if (title.includes('update') || title.includes('patch')) {
+    if (title.includes('update') || title.includes('patch') || title.includes('hotfix')) {
       return 'Update';
     }
-    if (title.includes('community') || title.includes('spotlight')) {
+    if (title.includes('community') || title.includes('spotlight') || title.includes('motw')) {
       return 'Community';
     }
-    if (title.includes('destiny 2')) {
+    if (title.includes('destiny 2') || title.includes('destiny')) {
       return 'Destiny 2';
     }
 
