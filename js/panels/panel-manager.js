@@ -4,7 +4,6 @@
 
 import { apiClient } from '../api/bungie-api-client.js';
 import { manifestLoader } from '../api/manifest-loader.js';
-import { inventoryProcessor } from '../utils/inventory-processor.js';
 import { authClient } from '../core/auth-client.js';
 
 // Import panel components
@@ -343,7 +342,7 @@ export class PanelManager {
   }
 
   /**
-   * Load Inventory panel
+   * Load Inventory panel - uses InventoryPanel class for full DIM-style functionality
    */
   async loadInventoryPanel() {
     const panelEl = document.getElementById('inventory-panel');
@@ -355,76 +354,18 @@ export class PanelManager {
     }
 
     try {
-      this.showPanelLoading('inventory-panel');
+      // Get or create InventoryPanel instance
+      let inventoryPanel = this.panelInstances.get('inventory-panel');
 
-      // Process inventory with DIM-style categorization
-      const processed = inventoryProcessor.processProfile(this.profileData);
-
-      let html = '<div class="inventory-content">';
-
-      // Character tabs
-      html += '<div class="character-tabs">';
-      for (const [charId, char] of Object.entries(processed.characters)) {
-        const isActive = charId === this.characterId ? 'active' : '';
-        html += `
-          <button class="char-tab ${isActive}" data-char-id="${charId}">
-            ${this.getClassIcon(char.classType)}
-            <span class="char-light">${char.light}</span>
-          </button>
-        `;
-      }
-      html += '<button class="char-tab" data-char-id="vault">🔒 Vault</button>';
-      html += '</div>';
-
-      // Character content
-      html += '<div class="character-content">';
-
-      // Active character equipment
-      const activeChar = processed.characters[this.characterId];
-      const equipped = processed.equipped[this.characterId];
-
-      if (equipped) {
-        html += '<div class="equipped-section">';
-        html += '<h5>Equipped</h5>';
-        html += '<div class="equipped-grid">';
-
-        // Weapons
-        ['kinetic', 'energy', 'power'].forEach(slot => {
-          const weapon = equipped.weapons[slot];
-          if (weapon) {
-            html += this.renderItemCard(weapon, 'weapon');
-          }
-        });
-
-        // Armor
-        ['helmet', 'gauntlets', 'chest', 'legs', 'class'].forEach(slot => {
-          const armor = equipped.armor[slot];
-          if (armor) {
-            html += this.renderItemCard(armor, 'armor');
-          }
-        });
-
-        html += '</div></div>';
+      if (!inventoryPanel) {
+        inventoryPanel = new InventoryPanel(panelEl);
+        await inventoryPanel.init();
+        this.panelInstances.set('inventory-panel', inventoryPanel);
       }
 
-      // Vault summary
-      html += `
-        <div class="vault-summary">
-          <h5>Vault (${processed.vault.items.length} items)</h5>
-          <div class="vault-stats">
-            <span>Weapons: ${processed.summary.weaponCount}</span>
-            <span>Armor: ${processed.summary.armorCount}</span>
-            <span>Mods: ${processed.summary.modCount}</span>
-          </div>
-        </div>
-      `;
-
-      html += '</div></div>';
-      panelEl.innerHTML = html;
-      this.panels.set('inventory-panel', { loaded: true, data: processed });
-
-      // Add tab switching
-      this.setupInventoryTabs(panelEl, processed);
+      // Load the inventory data using the panel class
+      await inventoryPanel.load();
+      this.panels.set('inventory-panel', { loaded: true });
 
     } catch (error) {
       console.error('Inventory panel error:', error);
@@ -680,40 +621,6 @@ export class PanelManager {
   }
 
   // ==================== HELPERS ====================
-
-  /**
-   * Render item card
-   */
-  renderItemCard(item, type) {
-    const tierClass = item.tierTypeName?.toLowerCase() || 'common';
-    const damageColor = item.damageType ? inventoryProcessor.getDamageTypeColor(item.damageType) : '#ffffff';
-
-    return `
-      <div class="item-card ${tierClass} ${type}" data-hash="${item.itemHash}">
-        ${item.icon ? `<img src="${item.icon}" alt="${item.name}" class="item-icon">` : ''}
-        <div class="item-info">
-          <div class="item-name">${item.name}</div>
-          ${item.primaryStat ? `<div class="item-power" style="color: ${damageColor}">${item.primaryStat.value}</div>` : ''}
-        </div>
-        ${item.isExotic ? '<div class="exotic-badge">★</div>' : ''}
-      </div>
-    `;
-  }
-
-  /**
-   * Setup inventory tab switching
-   */
-  setupInventoryTabs(panelEl, processed) {
-    const tabs = panelEl.querySelectorAll('.char-tab');
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        const charId = tab.dataset.charId;
-        tabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        // TODO: Switch displayed content
-      });
-    });
-  }
 
   /**
    * Get class icon

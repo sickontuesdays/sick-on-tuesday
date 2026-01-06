@@ -44,6 +44,10 @@ export class InventoryPanel {
     try {
       this.showLoading();
 
+      // Ensure manifest analysis data is loaded for item definitions
+      // This is critical for item categorization and display
+      await manifestLoader.loadAnalysisData();
+
       this.profileData = await apiClient.getProfile();
       this.inventory = inventoryProcessor.processProfile(this.profileData);
 
@@ -687,7 +691,11 @@ export class InventoryPanel {
       this.isTransferring = true;
       this.showTransferStatus('Equipping...');
 
-      await apiClient.equipItem(this.selectedItem.itemInstanceId, this.selectedItem.characterId);
+      // API expects: equipItems(itemIds, characterId)
+      await apiClient.equipItems(
+        [this.selectedItem.itemInstanceId],
+        this.selectedItem.characterId
+      );
 
       this.showTransferStatus('Equipped!', 'success');
       setTimeout(() => {
@@ -713,11 +721,13 @@ export class InventoryPanel {
       this.isTransferring = true;
       this.showTransferStatus('Sending to vault...');
 
+      // API expects: transferItem(itemReferenceHash, stackSize, transferToVault, itemId, characterId)
       await apiClient.transferItem(
         this.selectedItem.itemHash,
+        this.selectedItem.quantity || 1,
+        true, // toVault
         this.selectedItem.itemInstanceId,
-        this.selectedItem.characterId,
-        true // toVault
+        this.selectedItem.characterId
       );
 
       this.showTransferStatus('Sent to vault!', 'success');
@@ -788,14 +798,17 @@ export class InventoryPanel {
 
     try {
       this.isTransferring = true;
+      const stackSize = this.selectedItem.quantity || 1;
 
       if (target === 'vault') {
         this.showTransferStatus('Sending to vault...');
+        // API expects: transferItem(itemReferenceHash, stackSize, transferToVault, itemId, characterId)
         await apiClient.transferItem(
           this.selectedItem.itemHash,
+          stackSize,
+          true, // toVault
           this.selectedItem.itemInstanceId,
-          this.selectedItem.characterId,
-          true
+          this.selectedItem.characterId
         );
       } else {
         // Transfer to vault first if coming from another character
@@ -803,9 +816,10 @@ export class InventoryPanel {
           this.showTransferStatus('Moving via vault...');
           await apiClient.transferItem(
             this.selectedItem.itemHash,
+            stackSize,
+            true, // toVault
             this.selectedItem.itemInstanceId,
-            this.selectedItem.characterId,
-            true
+            this.selectedItem.characterId
           );
         }
 
@@ -813,9 +827,10 @@ export class InventoryPanel {
         this.showTransferStatus('Transferring...');
         await apiClient.transferItem(
           this.selectedItem.itemHash,
+          stackSize,
+          false, // fromVault
           this.selectedItem.itemInstanceId,
-          target,
-          false
+          target
         );
       }
 
