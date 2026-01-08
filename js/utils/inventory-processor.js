@@ -252,20 +252,17 @@ export class InventoryProcessor {
       }
     };
 
-    // Bucket hashes that represent actual vault storage (character-based buckets)
-    // Items with these buckets in profileInventory are vault items
-    const vaultBuckets = new Set([
-      ...Object.keys(WEAPON_BUCKETS).map(Number),
-      ...Object.keys(ARMOR_BUCKETS).map(Number),
-      BUCKET_HASHES.GHOST,
-      BUCKET_HASHES.VEHICLE,
-      BUCKET_HASHES.SHIPS
+    // Shared profile buckets that are NOT actual vault items
+    // These are account-wide items that appear in profileInventory but aren't "in the vault"
+    const sharedProfileBuckets = new Set([
+      BUCKET_HASHES.CONSUMABLES,   // 1469714392 - Raid banners, consumables
+      BUCKET_HASHES.MODIFICATIONS  // 3313201758 - Mods
     ]);
 
     for (const item of items) {
-      // Only process items that are actually in the vault
-      // Skip consumables, mods, currencies, etc. (these are shared profile items, not vault)
-      if (!vaultBuckets.has(item.bucketHash)) {
+      // Skip shared profile items (consumables, mods, etc.)
+      // These appear in profileInventory but aren't actual vault items
+      if (sharedProfileBuckets.has(item.bucketHash)) {
         continue;
       }
 
