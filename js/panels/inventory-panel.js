@@ -263,20 +263,44 @@ export class InventoryPanel {
     html += this.renderEquippedSlot(equipped?.armor?.class, 'Class', charId);
     html += '</div>';
 
+    // Ghost
+    html += '<div class="equip-column ghost-column">';
+    html += '<div class="column-label">Ghost</div>';
+    html += this.renderEquippedSlot(equipped?.ghost, 'Ghost', charId);
+    html += '</div>';
+
     html += '</div></div>';
 
-    // Inventory Section
+    // Carried Section (weapons and armor not equipped)
+    html += '<div class="carried-section">';
+    html += '<div class="section-header"><h4>Carried</h4></div>';
+
+    const inventory = char.inventory || {};
+    let carriedItems = this.getFilteredCarriedItems(inventory);
+
+    if (carriedItems.length === 0) {
+      html += '<div class="no-items">No carried items</div>';
+    } else {
+      html += '<div class="inventory-items-grid">';
+      carriedItems.forEach(item => {
+        html += this.renderInventoryItem(item, charId);
+      });
+      html += '</div>';
+    }
+
+    html += '</div>';
+
+    // Inventory Section (consumables, mods, materials, etc.)
     html += '<div class="inventory-section">';
     html += '<div class="section-header"><h4>Inventory</h4></div>';
 
-    const inventory = char.inventory || {};
-    let items = this.getFilteredItems(inventory);
+    let inventoryItems = this.getFilteredInventoryItems(inventory);
 
-    if (items.length === 0) {
-      html += '<div class="no-items">No items match your filters</div>';
+    if (inventoryItems.length === 0) {
+      html += '<div class="no-items">No inventory items</div>';
     } else {
       html += '<div class="inventory-items-grid">';
-      items.forEach(item => {
+      inventoryItems.forEach(item => {
         html += this.renderInventoryItem(item, charId);
       });
       html += '</div>';
@@ -404,7 +428,7 @@ export class InventoryPanel {
   }
 
   /**
-   * Get filtered items from character inventory
+   * Get filtered items from character inventory (legacy - all items)
    */
   getFilteredItems(inventory) {
     let items = [];
@@ -423,6 +447,85 @@ export class InventoryPanel {
         items = [
           ...(inventory.weapons || []),
           ...(inventory.armor || []),
+          ...(inventory.mods || []),
+          ...(inventory.consumables || []),
+          ...(inventory.other || [])
+        ];
+    }
+
+    // Apply tier filter
+    if (this.filterTier !== 'all') {
+      items = items.filter(i => i.tierType === parseInt(this.filterTier));
+    }
+
+    // Apply search
+    if (this.searchTerm) {
+      const term = this.searchTerm.toLowerCase();
+      items = items.filter(i => i.name?.toLowerCase().includes(term));
+    }
+
+    // Apply sorting
+    items = this.sortItems(items);
+
+    return items;
+  }
+
+  /**
+   * Get filtered carried items (weapons and armor only)
+   */
+  getFilteredCarriedItems(inventory) {
+    let items = [];
+
+    switch (this.currentCategory) {
+      case 'weapons':
+        items = [...(inventory.weapons || [])];
+        break;
+      case 'armor':
+        items = [...(inventory.armor || [])];
+        break;
+      case 'general':
+        // General category doesn't show in Carried section
+        return [];
+      default:
+        items = [
+          ...(inventory.weapons || []),
+          ...(inventory.armor || [])
+        ];
+    }
+
+    // Apply tier filter
+    if (this.filterTier !== 'all') {
+      items = items.filter(i => i.tierType === parseInt(this.filterTier));
+    }
+
+    // Apply search
+    if (this.searchTerm) {
+      const term = this.searchTerm.toLowerCase();
+      items = items.filter(i => i.name?.toLowerCase().includes(term));
+    }
+
+    // Apply sorting
+    items = this.sortItems(items);
+
+    return items;
+  }
+
+  /**
+   * Get filtered inventory items (consumables, mods, materials, etc.)
+   */
+  getFilteredInventoryItems(inventory) {
+    let items = [];
+
+    switch (this.currentCategory) {
+      case 'weapons':
+      case 'armor':
+        // Weapons/armor category doesn't show in Inventory section
+        return [];
+      case 'general':
+        items = [...(inventory.mods || []), ...(inventory.consumables || []), ...(inventory.other || [])];
+        break;
+      default:
+        items = [
           ...(inventory.mods || []),
           ...(inventory.consumables || []),
           ...(inventory.other || [])

@@ -3564,7 +3564,27 @@
   box-shadow: 0 0 6px rgba(206, 174, 51, 0.5);
 }
 
-/* Inventory Section */
+/* Carried Section (weapons/armor not equipped) */
+.carried-section {
+  flex: 1;
+  margin-bottom: 16px;
+}
+
+.carried-section .section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.carried-section .section-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+/* Inventory Section (consumables, mods, etc.) */
 .inventory-section {
   flex: 1;
 }
