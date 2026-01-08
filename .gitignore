@@ -33,3 +33,4 @@ manifest-data/
 
 # Test files
 test-*.html
+/research
