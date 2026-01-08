@@ -713,15 +713,22 @@ export class InventoryPanel {
 
     // Stats
     let statsHtml = '';
-    if (item.primaryStat?.value) {
-      const statName = item.isWeapon ? 'Attack' : 'Defense';
-      statsHtml += `<div class="modal-stat"><span class="stat-name">${statName}</span><span class="stat-value">${item.primaryStat.value}</span></div>`;
+    // Show power level for weapons only (armor already shows light level in the slot)
+    if (item.primaryStat?.value && item.isWeapon) {
+      statsHtml += `<div class="modal-stat"><span class="stat-name">Power</span><span class="stat-value">${item.primaryStat.value}</span></div>`;
     }
+    // Show armor stats (Mobility, Resilience, etc.)
     if (item.stats) {
       for (const [name, value] of Object.entries(item.stats)) {
         if (name !== 'total') {
-          statsHtml += `<div class="modal-stat"><span class="stat-name">${name}</span><span class="stat-value">${value}</span></div>`;
+          // Capitalize first letter of stat name
+          const displayName = name.charAt(0).toUpperCase() + name.slice(1);
+          statsHtml += `<div class="modal-stat"><span class="stat-name">${displayName}</span><span class="stat-value">${value}</span></div>`;
         }
+      }
+      // Show total for armor
+      if (item.isArmor && item.stats.total) {
+        statsHtml += `<div class="modal-stat total"><span class="stat-name">Total</span><span class="stat-value">${item.stats.total}</span></div>`;
       }
     }
     statsEl.innerHTML = statsHtml;
