@@ -359,7 +359,7 @@ export class InventoryPanel {
       if (this.currentCategory === 'all' || this.currentCategory === 'general') {
         if (other.length > 0) {
           html += '<div class="vault-category">';
-          html += '<div class="category-label">General (' + other.length + ')</div>';
+          html += '<div class="category-label">Other (' + other.length + ')</div>';
           html += '<div class="inventory-items-grid">';
           other.forEach(item => {
             html += this.renderInventoryItem(item, 'vault');

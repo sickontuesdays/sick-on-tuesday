@@ -238,6 +238,9 @@ export class InventoryProcessor {
 
   /**
    * Process vault items
+   * Only includes actual vault items (weapons/armor), not shared profile items (consumables, mods)
+   * Shared items like raid banners, consumables, and currencies are in profileInventory
+   * but have bucket location: 0 (profile) rather than location: 2 (vault)
    */
   processVault(items, instances, stats, sockets) {
     const vault = {
@@ -245,14 +248,27 @@ export class InventoryProcessor {
       categories: {
         weapons: { kinetic: [], energy: [], power: [] },
         armor: { helmet: [], gauntlets: [], chest: [], legs: [], class: [] },
-        mods: [],
-        consumables: [],
-        materials: [],
         other: []
       }
     };
 
+    // Bucket hashes that represent actual vault storage (character-based buckets)
+    // Items with these buckets in profileInventory are vault items
+    const vaultBuckets = new Set([
+      ...Object.keys(WEAPON_BUCKETS).map(Number),
+      ...Object.keys(ARMOR_BUCKETS).map(Number),
+      BUCKET_HASHES.GHOST,
+      BUCKET_HASHES.VEHICLE,
+      BUCKET_HASHES.SHIPS
+    ]);
+
     for (const item of items) {
+      // Only process items that are actually in the vault
+      // Skip consumables, mods, currencies, etc. (these are shared profile items, not vault)
+      if (!vaultBuckets.has(item.bucketHash)) {
+        continue;
+      }
+
       const processed = this.processItem(item, instances, stats, sockets);
       if (!processed) continue;
 
@@ -263,10 +279,6 @@ export class InventoryProcessor {
         vault.categories.weapons[processed.weaponSlot]?.push(processed);
       } else if (processed.isArmor && processed.armorSlot) {
         vault.categories.armor[processed.armorSlot]?.push(processed);
-      } else if (processed.isMod) {
-        vault.categories.mods.push(processed);
-      } else if (processed.isConsumable) {
-        vault.categories.consumables.push(processed);
       } else {
         vault.categories.other.push(processed);
       }
