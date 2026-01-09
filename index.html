@@ -1159,7 +1159,8 @@
     .mobile-panel-menu,
     .mobile-friends-btn,
     .mobile-friends-drawer,
-    .mobile-drawer-backdrop {
+    .mobile-drawer-backdrop,
+    .mobile-auth-toggle {
       display: none;
     }
 
@@ -1195,10 +1196,43 @@
         padding: 12px 16px;
         margin-bottom: 0;
         border-bottom: 1px solid var(--border);
+        justify-content: space-between;
+      }
+
+      .brand {
+        justify-content: flex-start;
       }
 
       .brand h1 {
-        font-size: 16px;
+        font-size: 14px;
+      }
+
+      /* Mobile auth toggle */
+      .mobile-auth-toggle {
+        display: flex !important;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .mobile-auth-toggle:hover {
+        border-color: var(--arc);
+        color: var(--arc);
+      }
+
+      .mobile-auth-toggle.authenticated {
+        background: rgba(125,211,252,0.1);
+        border-color: var(--arc);
+        color: var(--arc);
       }
 
       /* Hide sign-in prompt on mobile (use auth toggle instead) */
@@ -1269,13 +1303,13 @@
         height: auto !important;
         min-height: 300px;
         margin-bottom: 0;
-        display: none;
+        display: none !important;
         grid-column: unset !important;
         grid-row: unset !important;
       }
 
       .card.mobile-active {
-        display: flex;
+        display: flex !important;
       }
 
       .card .bar {
@@ -1447,6 +1481,11 @@
         <div class="brand">
           <h1><span class="accent">SoT</span> Guardian Command Center</h1>
         </div>
+
+        <!-- Mobile Auth Toggle (visible only on mobile) -->
+        <button class="mobile-auth-toggle" id="mobileAuthToggle">
+          <span class="mobile-auth-text">Sign In</span>
+        </button>
 
         <div class="header-controls">
           <!-- Panel Selector -->

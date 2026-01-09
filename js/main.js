@@ -172,18 +172,35 @@ class Dashboard {
    */
   updateAuthUI() {
     const authToggle = document.getElementById('authToggle');
-    if (!authToggle) return;
+    const mobileAuthToggle = document.getElementById('mobileAuthToggle');
+    const isAuthenticated = this.authClient.checkAuthenticated();
+    const user = this.authClient.getUser();
 
-    const textEl = authToggle.querySelector('.text');
+    // Update desktop auth toggle
+    if (authToggle) {
+      const textEl = authToggle.querySelector('.text');
 
-    if (this.authClient.checkAuthenticated()) {
-      const user = this.authClient.getUser();
-      authToggle.classList.add('authenticated');
-      authToggle.classList.remove('loading');
-      if (textEl) textEl.textContent = user?.displayName || 'Signed In';
-    } else {
-      authToggle.classList.remove('authenticated', 'loading');
-      if (textEl) textEl.textContent = 'Sign In';
+      if (isAuthenticated) {
+        authToggle.classList.add('authenticated');
+        authToggle.classList.remove('loading');
+        if (textEl) textEl.textContent = user?.displayName || 'Signed In';
+      } else {
+        authToggle.classList.remove('authenticated', 'loading');
+        if (textEl) textEl.textContent = 'Sign In';
+      }
+    }
+
+    // Update mobile auth toggle
+    if (mobileAuthToggle) {
+      const mobileTextEl = mobileAuthToggle.querySelector('.mobile-auth-text');
+
+      if (isAuthenticated) {
+        mobileAuthToggle.classList.add('authenticated');
+        if (mobileTextEl) mobileTextEl.textContent = user?.displayName || 'Signed In';
+      } else {
+        mobileAuthToggle.classList.remove('authenticated');
+        if (mobileTextEl) mobileTextEl.textContent = 'Sign In';
+      }
     }
   }
 
@@ -246,6 +263,20 @@ class Dashboard {
       });
     });
 
+    // Mobile auth toggle
+    const mobileAuthToggle = document.getElementById('mobileAuthToggle');
+    if (mobileAuthToggle) {
+      mobileAuthToggle.addEventListener('click', () => {
+        if (this.authClient.checkAuthenticated()) {
+          if (confirm('Sign out?')) {
+            this.authClient.logout();
+          }
+        } else {
+          this.authClient.login();
+        }
+      });
+    }
+
     // Mobile friends button
     const mobileFriendsBtn = document.getElementById('mobileFriendsBtn');
     const mobileFriendsDrawer = document.getElementById('mobileFriendsDrawer');
@@ -273,10 +304,79 @@ class Dashboard {
       }
     }
 
+    // Setup swipe gestures for panel navigation
+    this.setupMobileSwipe();
+
     // Set initial mobile panel if on mobile
     if (this.isMobile()) {
       this.initMobileView();
     }
+  }
+
+  /**
+   * Setup swipe gestures for mobile panel navigation
+   */
+  setupMobileSwipe() {
+    const grid = document.getElementById('grid');
+    if (!grid) return;
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const minSwipeDistance = 50;
+
+    grid.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    grid.addEventListener('touchend', (e) => {
+      if (!this.isMobile()) return;
+
+      touchEndX = e.changedTouches[0].screenX;
+      const swipeDistance = touchEndX - touchStartX;
+
+      if (Math.abs(swipeDistance) > minSwipeDistance) {
+        if (swipeDistance > 0) {
+          // Swiped right - go to previous panel
+          this.navigateMobilePanel(-1);
+        } else {
+          // Swiped left - go to next panel
+          this.navigateMobilePanel(1);
+        }
+      }
+    }, { passive: true });
+  }
+
+  /**
+   * Navigate to adjacent mobile panel
+   * @param {number} direction - -1 for previous, 1 for next
+   */
+  navigateMobilePanel(direction) {
+    const visibleBtns = Array.from(document.querySelectorAll('.mobile-panel-btn'))
+      .filter(btn => btn.style.display !== 'none');
+
+    if (visibleBtns.length === 0) return;
+
+    // Find current active button
+    const currentBtn = visibleBtns.find(btn => btn.classList.contains('active'));
+    const currentIndex = currentBtn ? visibleBtns.indexOf(currentBtn) : 0;
+
+    // Calculate new index with wrapping
+    let newIndex = currentIndex + direction;
+    if (newIndex < 0) newIndex = visibleBtns.length - 1;
+    if (newIndex >= visibleBtns.length) newIndex = 0;
+
+    // Switch to new panel
+    const newBtn = visibleBtns[newIndex];
+    const panelId = newBtn.dataset.panel;
+
+    this.switchMobilePanel(panelId);
+
+    // Update button states
+    visibleBtns.forEach(b => b.classList.remove('active'));
+    newBtn.classList.add('active');
+
+    // Scroll the button into view
+    newBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }
 
   /**
@@ -301,12 +401,26 @@ class Dashboard {
   initMobileView() {
     document.body.classList.add('is-mobile');
 
-    // Activate the first panel by default (rotators)
-    const firstBtn = document.querySelector('.mobile-panel-btn');
-    if (firstBtn) {
-      const panelId = firstBtn.dataset.panel;
+    // If logged in, make all panels available
+    if (this.authClient.checkAuthenticated()) {
+      const allPanels = this.gridManager?.getItems() || [];
+      allPanels.forEach(panel => {
+        panel.hidden = false;
+      });
+      this.updateMobileMenuForAuth(true);
+    } else {
+      this.updateMobileMenuForAuth(false);
+    }
+
+    // Activate the first visible panel
+    const firstVisibleBtn = Array.from(document.querySelectorAll('.mobile-panel-btn'))
+      .find(btn => btn.style.display !== 'none');
+
+    if (firstVisibleBtn) {
+      const panelId = firstVisibleBtn.dataset.panel;
       this.switchMobilePanel(panelId);
-      firstBtn.classList.add('active');
+      document.querySelectorAll('.mobile-panel-btn').forEach(b => b.classList.remove('active'));
+      firstVisibleBtn.classList.add('active');
     }
 
     // Update friends badge
@@ -341,6 +455,14 @@ class Dashboard {
     const targetCard = document.querySelector(`.card[data-id="${panelId}"]`);
     if (targetCard) {
       targetCard.classList.add('mobile-active');
+      // Ensure the panel is not hidden by gridManager
+      targetCard.style.display = '';
+    }
+
+    // Also update the panel's hidden state in gridManager
+    const panel = this.gridManager?.getItems()?.find(p => p.id === panelId);
+    if (panel) {
+      panel.hidden = false;
     }
   }
 
@@ -1170,7 +1292,7 @@ class Dashboard {
     // Update mobile menu to show all panels
     this.updateMobileMenuForAuth(true);
 
-    // Load saved layout
+    // Load saved layout (for desktop)
     if (this.activeTabId) {
       const layout = this.storageManager.loadLayout(
         this.activeTabId,
@@ -1179,13 +1301,29 @@ class Dashboard {
       this.gridManager.restoreLayout(layout);
     }
 
-    // Refresh panel selector state
-    this.refreshPanelSelectorState();
-
-    // Update friends badge on mobile
+    // On mobile, ensure all panels are available and activate first one
     if (this.isMobile()) {
+      // Make all panels visible (not hidden) so they can be switched to
+      const allPanels = this.gridManager.getItems();
+      allPanels.forEach(panel => {
+        panel.hidden = false;
+      });
+
+      // Activate the first panel (Season)
+      const firstBtn = document.querySelector('.mobile-panel-btn');
+      if (firstBtn) {
+        const panelId = firstBtn.dataset.panel;
+        this.switchMobilePanel(panelId);
+        document.querySelectorAll('.mobile-panel-btn').forEach(b => b.classList.remove('active'));
+        firstBtn.classList.add('active');
+      }
+
+      // Update friends badge
       this.updateMobileFriendsBadge();
     }
+
+    // Refresh panel selector state
+    this.refreshPanelSelectorState();
   }
 
   /**
