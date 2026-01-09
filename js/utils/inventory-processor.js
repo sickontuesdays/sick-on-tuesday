@@ -39,7 +39,7 @@ const TIER_TYPES = {
   6: 'Exotic'
 };
 
-// Stat hashes
+// Stat hashes - Armor
 const STAT_HASHES = {
   ATTACK: 1480404414,
   DEFENSE: 3897883278,
@@ -49,6 +49,27 @@ const STAT_HASHES = {
   DISCIPLINE: 1735777505,
   INTELLECT: 144602215,
   STRENGTH: 4244567218
+};
+
+// Stat hashes - Weapons
+const WEAPON_STAT_HASHES = {
+  IMPACT: 4043523819,
+  RANGE: 1240592695,
+  STABILITY: 155624089,
+  HANDLING: 943549884,
+  RELOAD_SPEED: 4188031367,
+  AIM_ASSISTANCE: 1345609583,
+  ZOOM: 3555269338,
+  MAGAZINE: 3871231066,
+  ROUNDS_PER_MINUTE: 4284893193,
+  CHARGE_TIME: 2961396640,
+  DRAW_TIME: 447667954,
+  ACCURACY: 1591432999,
+  BLAST_RADIUS: 3614673599,
+  VELOCITY: 2523465841,
+  AIRBORNE: 2714457168,
+  SHIELD_DURATION: 1842278586,
+  CHARGE_RATE: 3022301683
 };
 
 export class InventoryProcessor {
@@ -342,7 +363,16 @@ export class InventoryProcessor {
 
     // Add stats if available
     if (itemStats?.stats) {
-      processed.stats = this.processStats(itemStats.stats);
+      if (processed.isWeapon) {
+        processed.stats = this.processWeaponStats(itemStats.stats);
+      } else if (processed.isArmor) {
+        processed.stats = this.processArmorStats(itemStats.stats);
+      }
+    }
+
+    // Add sockets/perks if available (for weapons and armor)
+    if (itemSockets?.sockets && (processed.isWeapon || processed.isArmor)) {
+      processed.sockets = this.processSockets(itemSockets.sockets, definition);
     }
 
     return processed;
@@ -395,9 +425,9 @@ export class InventoryProcessor {
   }
 
   /**
-   * Process item stats
+   * Process armor stats (Mobility, Resilience, etc.)
    */
-  processStats(statsData) {
+  processArmorStats(statsData) {
     const statNames = {
       [STAT_HASHES.MOBILITY]: 'Mobility',
       [STAT_HASHES.RESILIENCE]: 'Resilience',
@@ -420,6 +450,126 @@ export class InventoryProcessor {
     processed.total = Object.values(processed).reduce((sum, val) => sum + (val || 0), 0);
 
     return processed;
+  }
+
+  /**
+   * Process weapon stats (Impact, Range, Stability, etc.)
+   */
+  processWeaponStats(statsData) {
+    const statNames = {
+      [WEAPON_STAT_HASHES.IMPACT]: 'Impact',
+      [WEAPON_STAT_HASHES.RANGE]: 'Range',
+      [WEAPON_STAT_HASHES.STABILITY]: 'Stability',
+      [WEAPON_STAT_HASHES.HANDLING]: 'Handling',
+      [WEAPON_STAT_HASHES.RELOAD_SPEED]: 'Reload Speed',
+      [WEAPON_STAT_HASHES.AIM_ASSISTANCE]: 'Aim Assist',
+      [WEAPON_STAT_HASHES.ZOOM]: 'Zoom',
+      [WEAPON_STAT_HASHES.MAGAZINE]: 'Magazine',
+      [WEAPON_STAT_HASHES.ROUNDS_PER_MINUTE]: 'RPM',
+      [WEAPON_STAT_HASHES.CHARGE_TIME]: 'Charge Time',
+      [WEAPON_STAT_HASHES.DRAW_TIME]: 'Draw Time',
+      [WEAPON_STAT_HASHES.ACCURACY]: 'Accuracy',
+      [WEAPON_STAT_HASHES.BLAST_RADIUS]: 'Blast Radius',
+      [WEAPON_STAT_HASHES.VELOCITY]: 'Velocity',
+      [WEAPON_STAT_HASHES.AIRBORNE]: 'Airborne',
+      [WEAPON_STAT_HASHES.SHIELD_DURATION]: 'Shield Duration',
+      [WEAPON_STAT_HASHES.CHARGE_RATE]: 'Charge Rate'
+    };
+
+    const processed = {};
+
+    for (const [hash, data] of Object.entries(statsData)) {
+      const statName = statNames[hash];
+      if (statName) {
+        processed[statName] = data.value;
+      }
+    }
+
+    return processed;
+  }
+
+  /**
+   * Process item sockets (perks, mods, etc.)
+   */
+  processSockets(socketsData, definition) {
+    const sockets = [];
+    const socketEntries = definition?.sockets?.socketEntries || [];
+
+    for (let i = 0; i < socketsData.length; i++) {
+      const socket = socketsData[i];
+      const socketEntry = socketEntries[i];
+
+      // Skip empty sockets
+      if (!socket.plugHash) continue;
+
+      // Get plug definition from manifest
+      const plugDef = this.manifestLoader.getItemDefinition(socket.plugHash);
+      if (!plugDef) continue;
+
+      // Determine socket type from category
+      const socketCategoryHash = socketEntry?.socketTypeHash;
+      const isVisible = socket.isVisible !== false;
+
+      // Only include visible sockets with display properties
+      if (!isVisible || !plugDef.displayProperties?.name) continue;
+
+      sockets.push({
+        plugHash: socket.plugHash,
+        name: plugDef.displayProperties.name,
+        description: plugDef.displayProperties.description || '',
+        icon: plugDef.displayProperties.icon
+          ? `https://www.bungie.net${plugDef.displayProperties.icon}`
+          : null,
+        isEnabled: socket.isEnabled !== false,
+        // Categorize the socket type
+        isPerk: this.isWeaponPerk(plugDef),
+        isMod: this.isModSocket(plugDef),
+        isIntrinsic: this.isIntrinsicPerk(plugDef),
+        isMasterwork: this.isMasterwork(plugDef),
+        socketIndex: i
+      });
+    }
+
+    return sockets;
+  }
+
+  /**
+   * Check if plug is a weapon perk (column perks)
+   */
+  isWeaponPerk(plugDef) {
+    const categoryHashes = plugDef.itemCategoryHashes || [];
+    // Weapon perk category hashes
+    return categoryHashes.includes(610365472) || // Weapon Perks
+           categoryHashes.includes(7906839) ||   // Weapon Perks (Barrels, etc.)
+           plugDef.plug?.plugCategoryIdentifier?.includes('frames') ||
+           plugDef.plug?.plugCategoryIdentifier?.includes('barrels') ||
+           plugDef.plug?.plugCategoryIdentifier?.includes('magazines') ||
+           plugDef.plug?.plugCategoryIdentifier?.includes('traits');
+  }
+
+  /**
+   * Check if plug is a mod
+   */
+  isModSocket(plugDef) {
+    const categoryHashes = plugDef.itemCategoryHashes || [];
+    return categoryHashes.includes(59) || // Mod category
+           plugDef.plug?.plugCategoryIdentifier?.includes('mod');
+  }
+
+  /**
+   * Check if plug is an intrinsic perk (exotic perk, frame type)
+   */
+  isIntrinsicPerk(plugDef) {
+    return plugDef.plug?.plugCategoryIdentifier?.includes('intrinsics') ||
+           plugDef.itemTypeDisplayName?.toLowerCase().includes('intrinsic');
+  }
+
+  /**
+   * Check if plug is a masterwork
+   */
+  isMasterwork(plugDef) {
+    return plugDef.plug?.plugCategoryIdentifier?.includes('masterworks') ||
+           plugDef.itemTypeDisplayName?.toLowerCase().includes('masterwork');
   }
 
   /**

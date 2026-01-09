@@ -713,25 +713,99 @@ export class InventoryPanel {
 
     // Stats
     let statsHtml = '';
-    // Show power level for weapons only (armor already shows light level in the slot)
-    if (item.primaryStat?.value && item.isWeapon) {
-      statsHtml += `<div class="modal-stat"><span class="stat-name">Power</span><span class="stat-value">${item.primaryStat.value}</span></div>`;
-    }
-    // Show armor stats (Mobility, Resilience, etc.)
-    if (item.stats) {
-      for (const [name, value] of Object.entries(item.stats)) {
-        if (name !== 'total') {
-          // Capitalize first letter of stat name
-          const displayName = name.charAt(0).toUpperCase() + name.slice(1);
-          statsHtml += `<div class="modal-stat"><span class="stat-name">${displayName}</span><span class="stat-value">${value}</span></div>`;
+
+    if (item.isWeapon) {
+      // Weapon stats with bars
+      if (item.primaryStat?.value) {
+        statsHtml += `<div class="modal-stat power-stat"><span class="stat-name">Power</span><span class="stat-value">${item.primaryStat.value}</span></div>`;
+      }
+      if (item.stats) {
+        // Primary weapon stats (with bars, max 100)
+        const barStats = ['Impact', 'Range', 'Stability', 'Handling', 'Reload Speed', 'Aim Assist'];
+        const numericStats = ['RPM', 'Magazine', 'Zoom', 'Charge Time', 'Draw Time'];
+
+        for (const statName of barStats) {
+          if (item.stats[statName] !== undefined) {
+            const value = item.stats[statName];
+            const percentage = Math.min(value, 100);
+            statsHtml += `
+              <div class="modal-stat bar-stat">
+                <span class="stat-name">${statName}</span>
+                <div class="stat-bar-container">
+                  <div class="stat-bar" style="width: ${percentage}%"></div>
+                </div>
+                <span class="stat-value">${value}</span>
+              </div>`;
+          }
+        }
+
+        // Numeric-only stats (no bar)
+        for (const statName of numericStats) {
+          if (item.stats[statName] !== undefined) {
+            statsHtml += `<div class="modal-stat"><span class="stat-name">${statName}</span><span class="stat-value">${item.stats[statName]}</span></div>`;
+          }
         }
       }
-      // Show total for armor
-      if (item.isArmor && item.stats.total) {
-        statsHtml += `<div class="modal-stat total"><span class="stat-name">Total</span><span class="stat-value">${item.stats.total}</span></div>`;
+    } else if (item.isArmor) {
+      // Armor stats
+      if (item.stats) {
+        for (const [name, value] of Object.entries(item.stats)) {
+          if (name !== 'total') {
+            const displayName = name.charAt(0).toUpperCase() + name.slice(1);
+            statsHtml += `<div class="modal-stat"><span class="stat-name">${displayName}</span><span class="stat-value">${value}</span></div>`;
+          }
+        }
+        if (item.stats.total) {
+          statsHtml += `<div class="modal-stat total"><span class="stat-name">Total</span><span class="stat-value">${item.stats.total}</span></div>`;
+        }
       }
     }
     statsEl.innerHTML = statsHtml;
+
+    // Perks/Sockets
+    let perksHtml = '';
+    if (item.sockets && item.sockets.length > 0) {
+      // Filter to show only perks (not mods, trackers, etc.)
+      const perks = item.sockets.filter(s => s.isPerk || s.isIntrinsic);
+      const mods = item.sockets.filter(s => s.isMod);
+      const masterwork = item.sockets.find(s => s.isMasterwork);
+
+      if (perks.length > 0) {
+        perksHtml += '<div class="perks-section"><div class="perks-label">Perks</div><div class="perks-grid">';
+        for (const perk of perks) {
+          perksHtml += `
+            <div class="perk-item ${perk.isIntrinsic ? 'intrinsic' : ''}" title="${perk.description}">
+              ${perk.icon ? `<img src="${perk.icon}" alt="${perk.name}" class="perk-icon">` : ''}
+              <span class="perk-name">${perk.name}</span>
+            </div>`;
+        }
+        perksHtml += '</div></div>';
+      }
+
+      if (masterwork) {
+        perksHtml += `
+          <div class="masterwork-section">
+            <div class="perks-label">Masterwork</div>
+            <div class="perk-item masterwork" title="${masterwork.description}">
+              ${masterwork.icon ? `<img src="${masterwork.icon}" alt="${masterwork.name}" class="perk-icon">` : ''}
+              <span class="perk-name">${masterwork.name}</span>
+            </div>
+          </div>`;
+      }
+
+      if (mods.length > 0) {
+        perksHtml += '<div class="mods-section"><div class="perks-label">Mods</div><div class="perks-grid">';
+        for (const mod of mods) {
+          perksHtml += `
+            <div class="perk-item mod" title="${mod.description}">
+              ${mod.icon ? `<img src="${mod.icon}" alt="${mod.name}" class="perk-icon">` : ''}
+              <span class="perk-name">${mod.name}</span>
+            </div>`;
+        }
+        perksHtml += '</div></div>';
+      }
+    }
+    perksEl.innerHTML = perksHtml;
 
     // Show/hide action buttons based on context
     const equipBtn = modal.querySelector('.item-action-equip');
