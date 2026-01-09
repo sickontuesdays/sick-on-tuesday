@@ -490,10 +490,38 @@ export class InventoryProcessor {
 
   /**
    * Process item sockets (perks, mods, etc.)
+   * Organizes sockets by category (perks, mods, cosmetics) using socket categories from definition
    */
   processSockets(socketsData, definition) {
-    const sockets = [];
+    const result = {
+      perks: [],      // Weapon perks organized by column
+      intrinsic: null, // Frame/intrinsic trait
+      mod: null,       // Weapon mod
+      masterwork: null, // Masterwork
+      origin: null     // Origin trait
+    };
+
     const socketEntries = definition?.sockets?.socketEntries || [];
+    const socketCategories = definition?.sockets?.socketCategories || [];
+
+    // Socket category hashes for weapons
+    const SOCKET_CATEGORIES = {
+      WEAPON_PERKS: 4241085061,      // Main perk columns
+      INTRINSIC: 3956125808,         // Frame/intrinsic
+      WEAPON_MODS: 2685412949,       // Mods
+      WEAPON_COSMETICS: 2048875504   // Shaders, ornaments
+    };
+
+    // Build a map of socket index to category
+    const socketCategoryMap = new Map();
+    for (const category of socketCategories) {
+      for (const socketIndex of category.socketIndexes || []) {
+        socketCategoryMap.set(socketIndex, category.socketCategoryHash);
+      }
+    }
+
+    // Track perk columns (for column-based display)
+    let perkColumnIndex = 0;
 
     for (let i = 0; i < socketsData.length; i++) {
       const socket = socketsData[i];
@@ -506,14 +534,13 @@ export class InventoryProcessor {
       const plugDef = this.manifestLoader.getItemDefinition(socket.plugHash);
       if (!plugDef) continue;
 
-      // Determine socket type from category
-      const socketCategoryHash = socketEntry?.socketTypeHash;
-      const isVisible = socket.isVisible !== false;
+      // Skip if no display name (hidden sockets like trackers)
+      if (!plugDef.displayProperties?.name) continue;
 
-      // Only include visible sockets with display properties
-      if (!isVisible || !plugDef.displayProperties?.name) continue;
+      const categoryHash = socketCategoryMap.get(i);
+      const plugCategoryId = plugDef.plug?.plugCategoryIdentifier || '';
 
-      sockets.push({
+      const socketInfo = {
         plugHash: socket.plugHash,
         name: plugDef.displayProperties.name,
         description: plugDef.displayProperties.description || '',
@@ -521,55 +548,53 @@ export class InventoryProcessor {
           ? `https://www.bungie.net${plugDef.displayProperties.icon}`
           : null,
         isEnabled: socket.isEnabled !== false,
-        // Categorize the socket type
-        isPerk: this.isWeaponPerk(plugDef),
-        isMod: this.isModSocket(plugDef),
-        isIntrinsic: this.isIntrinsicPerk(plugDef),
-        isMasterwork: this.isMasterwork(plugDef),
         socketIndex: i
-      });
+      };
+
+      // Categorize based on socket category and plug type
+      if (categoryHash === SOCKET_CATEGORIES.INTRINSIC ||
+          plugCategoryId.includes('intrinsics') ||
+          plugCategoryId.includes('frames.exotic')) {
+        // Intrinsic/frame trait
+        result.intrinsic = socketInfo;
+      } else if (categoryHash === SOCKET_CATEGORIES.WEAPON_MODS ||
+                 plugCategoryId.includes('enhancements.weapon')) {
+        // Weapon mod slot
+        // Only set if it's an actual mod (not empty mod slot)
+        if (!plugDef.displayProperties.name.includes('Empty') &&
+            !plugDef.displayProperties.name.includes('Default')) {
+          result.mod = socketInfo;
+        }
+      } else if (plugCategoryId.includes('masterworks')) {
+        // Masterwork
+        result.masterwork = socketInfo;
+      } else if (plugCategoryId.includes('origins')) {
+        // Origin trait
+        result.origin = socketInfo;
+      } else if (categoryHash === SOCKET_CATEGORIES.WEAPON_PERKS ||
+                 plugCategoryId.includes('barrels') ||
+                 plugCategoryId.includes('magazines') ||
+                 plugCategoryId.includes('batteries') ||
+                 plugCategoryId.includes('scopes') ||
+                 plugCategoryId.includes('traits') ||
+                 plugCategoryId.includes('frames') ||
+                 plugCategoryId.includes('grips') ||
+                 plugCategoryId.includes('stocks') ||
+                 plugCategoryId.includes('arrows') ||
+                 plugCategoryId.includes('bowstrings') ||
+                 plugCategoryId.includes('blades') ||
+                 plugCategoryId.includes('guards') ||
+                 plugCategoryId.includes('tubes')) {
+        // Weapon perk columns (barrel, magazine, trait 1, trait 2)
+        socketInfo.column = perkColumnIndex++;
+        result.perks.push(socketInfo);
+      } else if (categoryHash === SOCKET_CATEGORIES.WEAPON_COSMETICS) {
+        // Skip cosmetics (shaders, ornaments)
+        continue;
+      }
     }
 
-    return sockets;
-  }
-
-  /**
-   * Check if plug is a weapon perk (column perks)
-   */
-  isWeaponPerk(plugDef) {
-    const categoryHashes = plugDef.itemCategoryHashes || [];
-    // Weapon perk category hashes
-    return categoryHashes.includes(610365472) || // Weapon Perks
-           categoryHashes.includes(7906839) ||   // Weapon Perks (Barrels, etc.)
-           plugDef.plug?.plugCategoryIdentifier?.includes('frames') ||
-           plugDef.plug?.plugCategoryIdentifier?.includes('barrels') ||
-           plugDef.plug?.plugCategoryIdentifier?.includes('magazines') ||
-           plugDef.plug?.plugCategoryIdentifier?.includes('traits');
-  }
-
-  /**
-   * Check if plug is a mod
-   */
-  isModSocket(plugDef) {
-    const categoryHashes = plugDef.itemCategoryHashes || [];
-    return categoryHashes.includes(59) || // Mod category
-           plugDef.plug?.plugCategoryIdentifier?.includes('mod');
-  }
-
-  /**
-   * Check if plug is an intrinsic perk (exotic perk, frame type)
-   */
-  isIntrinsicPerk(plugDef) {
-    return plugDef.plug?.plugCategoryIdentifier?.includes('intrinsics') ||
-           plugDef.itemTypeDisplayName?.toLowerCase().includes('intrinsic');
-  }
-
-  /**
-   * Check if plug is a masterwork
-   */
-  isMasterwork(plugDef) {
-    return plugDef.plug?.plugCategoryIdentifier?.includes('masterworks') ||
-           plugDef.itemTypeDisplayName?.toLowerCase().includes('masterwork');
+    return result;
   }
 
   /**

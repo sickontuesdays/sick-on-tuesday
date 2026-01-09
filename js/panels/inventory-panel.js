@@ -762,19 +762,28 @@ export class InventoryPanel {
     }
     statsEl.innerHTML = statsHtml;
 
-    // Perks/Sockets
+    // Perks/Sockets - Organized by column like in-game/DIM
     let perksHtml = '';
-    if (item.sockets && item.sockets.length > 0) {
-      // Filter to show only perks (not mods, trackers, etc.)
-      const perks = item.sockets.filter(s => s.isPerk || s.isIntrinsic);
-      const mods = item.sockets.filter(s => s.isMod);
-      const masterwork = item.sockets.find(s => s.isMasterwork);
+    if (item.sockets) {
+      const { perks, intrinsic, mod, masterwork, origin } = item.sockets;
 
-      if (perks.length > 0) {
-        perksHtml += '<div class="perks-section"><div class="perks-label">Perks</div><div class="perks-grid">';
+      // Intrinsic trait (frame type for weapons)
+      if (intrinsic) {
+        perksHtml += `
+          <div class="intrinsic-section">
+            <div class="perk-item intrinsic" title="${intrinsic.description}">
+              ${intrinsic.icon ? `<img src="${intrinsic.icon}" alt="${intrinsic.name}" class="perk-icon">` : ''}
+              <span class="perk-name">${intrinsic.name}</span>
+            </div>
+          </div>`;
+      }
+
+      // Perk columns (barrel, magazine, trait 1, trait 2)
+      if (perks && perks.length > 0) {
+        perksHtml += '<div class="perks-section"><div class="perks-label">Perks</div><div class="perks-columns">';
         for (const perk of perks) {
           perksHtml += `
-            <div class="perk-item ${perk.isIntrinsic ? 'intrinsic' : ''}" title="${perk.description}">
+            <div class="perk-column" title="${perk.description}">
               ${perk.icon ? `<img src="${perk.icon}" alt="${perk.name}" class="perk-icon">` : ''}
               <span class="perk-name">${perk.name}</span>
             </div>`;
@@ -782,6 +791,19 @@ export class InventoryPanel {
         perksHtml += '</div></div>';
       }
 
+      // Origin trait
+      if (origin) {
+        perksHtml += `
+          <div class="origin-section">
+            <div class="perks-label">Origin Trait</div>
+            <div class="perk-item origin" title="${origin.description}">
+              ${origin.icon ? `<img src="${origin.icon}" alt="${origin.name}" class="perk-icon">` : ''}
+              <span class="perk-name">${origin.name}</span>
+            </div>
+          </div>`;
+      }
+
+      // Masterwork
       if (masterwork) {
         perksHtml += `
           <div class="masterwork-section">
@@ -793,16 +815,16 @@ export class InventoryPanel {
           </div>`;
       }
 
-      if (mods.length > 0) {
-        perksHtml += '<div class="mods-section"><div class="perks-label">Mods</div><div class="perks-grid">';
-        for (const mod of mods) {
-          perksHtml += `
+      // Mod (only if one is equipped)
+      if (mod) {
+        perksHtml += `
+          <div class="mods-section">
+            <div class="perks-label">Mod</div>
             <div class="perk-item mod" title="${mod.description}">
               ${mod.icon ? `<img src="${mod.icon}" alt="${mod.name}" class="perk-icon">` : ''}
               <span class="perk-name">${mod.name}</span>
-            </div>`;
-        }
-        perksHtml += '</div></div>';
+            </div>
+          </div>`;
       }
     }
     perksEl.innerHTML = perksHtml;
