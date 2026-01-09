@@ -212,10 +212,200 @@ class Dashboard {
     // Panel navigation buttons
     this.setupPanelNavigation();
 
+    // Mobile functionality
+    this.setupMobile();
+
     // Window resize
     window.addEventListener('resize', () => {
       this.gridManager?.updateDimensions();
+      this.handleMobileResize();
     });
+  }
+
+  /**
+   * Check if device is mobile
+   */
+  isMobile() {
+    return window.innerWidth <= 768;
+  }
+
+  /**
+   * Setup mobile functionality
+   */
+  setupMobile() {
+    // Mobile panel menu buttons
+    const mobileMenuBtns = document.querySelectorAll('.mobile-panel-btn');
+    mobileMenuBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const panelId = btn.dataset.panel;
+        this.switchMobilePanel(panelId);
+
+        // Update active state on buttons
+        mobileMenuBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // Mobile friends button
+    const mobileFriendsBtn = document.getElementById('mobileFriendsBtn');
+    const mobileFriendsDrawer = document.getElementById('mobileFriendsDrawer');
+    const mobileDrawerBackdrop = document.getElementById('mobileDrawerBackdrop');
+    const closeFriendsDrawer = document.getElementById('mobileFriendsClose');
+
+    if (mobileFriendsBtn && mobileFriendsDrawer) {
+      // Open friends drawer
+      mobileFriendsBtn.addEventListener('click', () => {
+        this.openMobileFriendsDrawer();
+      });
+
+      // Close via close button
+      if (closeFriendsDrawer) {
+        closeFriendsDrawer.addEventListener('click', () => {
+          this.closeMobileFriendsDrawer();
+        });
+      }
+
+      // Close via backdrop
+      if (mobileDrawerBackdrop) {
+        mobileDrawerBackdrop.addEventListener('click', () => {
+          this.closeMobileFriendsDrawer();
+        });
+      }
+    }
+
+    // Set initial mobile panel if on mobile
+    if (this.isMobile()) {
+      this.initMobileView();
+    }
+  }
+
+  /**
+   * Handle window resize for mobile/desktop transitions
+   */
+  handleMobileResize() {
+    const wasMobile = document.body.classList.contains('is-mobile');
+    const isMobile = this.isMobile();
+
+    if (isMobile && !wasMobile) {
+      // Switched to mobile
+      this.initMobileView();
+    } else if (!isMobile && wasMobile) {
+      // Switched to desktop
+      this.exitMobileView();
+    }
+  }
+
+  /**
+   * Initialize mobile view
+   */
+  initMobileView() {
+    document.body.classList.add('is-mobile');
+
+    // Activate the first panel by default (rotators)
+    const firstBtn = document.querySelector('.mobile-panel-btn');
+    if (firstBtn) {
+      const panelId = firstBtn.dataset.panel;
+      this.switchMobilePanel(panelId);
+      firstBtn.classList.add('active');
+    }
+
+    // Update friends badge
+    this.updateMobileFriendsBadge();
+  }
+
+  /**
+   * Exit mobile view
+   */
+  exitMobileView() {
+    document.body.classList.remove('is-mobile');
+
+    // Remove mobile-active from all cards
+    document.querySelectorAll('.card.mobile-active').forEach(card => {
+      card.classList.remove('mobile-active');
+    });
+
+    // Close friends drawer if open
+    this.closeMobileFriendsDrawer();
+  }
+
+  /**
+   * Switch active mobile panel
+   */
+  switchMobilePanel(panelId) {
+    // Remove mobile-active from all cards
+    document.querySelectorAll('.card').forEach(card => {
+      card.classList.remove('mobile-active');
+    });
+
+    // Add mobile-active to selected panel
+    const targetCard = document.querySelector(`.card[data-id="${panelId}"]`);
+    if (targetCard) {
+      targetCard.classList.add('mobile-active');
+    }
+  }
+
+  /**
+   * Open mobile friends drawer
+   */
+  openMobileFriendsDrawer() {
+    const drawer = document.getElementById('mobileFriendsDrawer');
+    const backdrop = document.getElementById('mobileDrawerBackdrop');
+
+    if (drawer) {
+      drawer.classList.add('open');
+      // Sync friends list content to mobile drawer
+      this.syncMobileFriendsList();
+    }
+    if (backdrop) {
+      backdrop.classList.add('visible');
+    }
+  }
+
+  /**
+   * Close mobile friends drawer
+   */
+  closeMobileFriendsDrawer() {
+    const drawer = document.getElementById('mobileFriendsDrawer');
+    const backdrop = document.getElementById('mobileDrawerBackdrop');
+
+    if (drawer) {
+      drawer.classList.remove('open');
+    }
+    if (backdrop) {
+      backdrop.classList.remove('visible');
+    }
+  }
+
+  /**
+   * Sync friends list to mobile drawer
+   */
+  syncMobileFriendsList() {
+    const desktopFriendsList = document.getElementById('friends-list');
+    const mobileFriendsContent = document.getElementById('mobileFriendsList');
+
+    if (desktopFriendsList && mobileFriendsContent) {
+      // Clone the friends list content
+      mobileFriendsContent.innerHTML = desktopFriendsList.innerHTML;
+    }
+  }
+
+  /**
+   * Update mobile friends badge count
+   */
+  updateMobileFriendsBadge() {
+    const badge = document.getElementById('mobileFriendsCount');
+    if (!badge) return;
+
+    // Get online friends count from the friends list
+    const onlineFriends = document.querySelectorAll('#friends-list .friend-item.online');
+    const count = onlineFriends.length;
+
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : count;
+      badge.style.display = 'flex';
+    } else {
+      badge.textContent = '0';
+    }
   }
 
   /**
@@ -895,6 +1085,10 @@ class Dashboard {
     if (lockToggle) lockToggle.style.display = 'none';
     if (panelSelectorWrapper) panelSelectorWrapper.style.display = 'none';
 
+    // Hide mobile friends button when logged out
+    const mobileFriendsBtn = document.getElementById('mobileFriendsBtn');
+    if (mobileFriendsBtn) mobileFriendsBtn.style.display = 'none';
+
     // Panels to show when logged out
     const publicPanels = ['rotators', 'news'];
 
@@ -908,8 +1102,21 @@ class Dashboard {
       }
     });
 
+    // Update mobile menu to only show public panels
+    this.updateMobileMenuForAuth(false);
+
     // Apply a simple side-by-side layout for the two public panels
     this.applyPublicLayout();
+
+    // If on mobile, activate rotators panel
+    if (this.isMobile()) {
+      this.switchMobilePanel('rotators');
+      const rotatorsBtn = document.querySelector('.mobile-panel-btn[data-panel="rotators"]');
+      if (rotatorsBtn) {
+        document.querySelectorAll('.mobile-panel-btn').forEach(b => b.classList.remove('active'));
+        rotatorsBtn.classList.add('active');
+      }
+    }
   }
 
   /**
@@ -956,6 +1163,13 @@ class Dashboard {
     if (lockToggle) lockToggle.style.display = '';
     if (panelSelectorWrapper) panelSelectorWrapper.style.display = '';
 
+    // Show mobile friends button when logged in
+    const mobileFriendsBtn = document.getElementById('mobileFriendsBtn');
+    if (mobileFriendsBtn) mobileFriendsBtn.style.display = '';
+
+    // Update mobile menu to show all panels
+    this.updateMobileMenuForAuth(true);
+
     // Load saved layout
     if (this.activeTabId) {
       const layout = this.storageManager.loadLayout(
@@ -967,6 +1181,34 @@ class Dashboard {
 
     // Refresh panel selector state
     this.refreshPanelSelectorState();
+
+    // Update friends badge on mobile
+    if (this.isMobile()) {
+      this.updateMobileFriendsBadge();
+    }
+  }
+
+  /**
+   * Update mobile menu based on auth state
+   */
+  updateMobileMenuForAuth(isLoggedIn) {
+    const publicPanels = ['rotators', 'news'];
+    const mobileMenuBtns = document.querySelectorAll('.mobile-panel-btn');
+
+    mobileMenuBtns.forEach(btn => {
+      const panelId = btn.dataset.panel;
+      if (isLoggedIn) {
+        // Show all panel buttons
+        btn.style.display = '';
+      } else {
+        // Only show public panel buttons
+        if (publicPanels.includes(panelId)) {
+          btn.style.display = '';
+        } else {
+          btn.style.display = 'none';
+        }
+      }
+    });
   }
 
   /**
