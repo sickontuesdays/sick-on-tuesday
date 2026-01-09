@@ -108,6 +108,40 @@
       color: var(--arc);
     }
 
+    /* Sign-in Prompt */
+    .sign-in-prompt {
+      display: none;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .sign-in-prompt p {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+
+    body.logged-out .sign-in-prompt {
+      display: block;
+    }
+
+    /* Adjust main content when logged out (no layout sidebar) */
+    body.logged-out .main-content {
+      padding-left: 16px;
+    }
+
+    /* Hide friends sidebar when logged out */
+    body.logged-out .friends-sidebar {
+      display: none;
+    }
+
+    /* Adjust header controls position when logged out (no friends sidebar) */
+    body.logged-out .header-controls {
+      right: 16px;
+    }
+
     .header-controls {
       position: absolute;
       right: calc(var(--friendsW) + 16px);
@@ -1155,6 +1189,11 @@
           </div>
         </div>
       </header>
+
+      <!-- Sign-in Prompt (shown when logged out) -->
+      <div id="signInPrompt" class="sign-in-prompt">
+        <p>Please sign in for full experience.</p>
+      </div>
 
       <!-- Grid Dashboard -->
       <main class="grid" id="grid">

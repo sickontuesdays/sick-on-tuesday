@@ -155,8 +155,14 @@ class Dashboard {
       });
 
       // Listen for auth changes
-      this.authClient.onAuthChange(() => {
+      this.authClient.onAuthChange((event) => {
         this.updateAuthUI();
+        // Switch layout state based on auth
+        if (event.isAuthenticated) {
+          this.applyLoggedInState();
+        } else {
+          this.applyLoggedOutState();
+        }
       });
     }
   }
@@ -863,6 +869,94 @@ class Dashboard {
    * Load initial layout
    */
   loadInitialLayout() {
+    if (this.authClient.checkAuthenticated()) {
+      // User is logged in - load saved layouts
+      this.applyLoggedInState();
+    } else {
+      // User is logged out - show minimal public layout
+      this.applyLoggedOutState();
+    }
+  }
+
+  /**
+   * Apply logged-out state - minimal public layout
+   * Shows only Active Rotators and Intel Feed panels
+   */
+  applyLoggedOutState() {
+    document.body.classList.add('logged-out');
+
+    // Hide layout sidebar
+    const layoutSidebar = document.querySelector('.layouts-sidebar');
+    if (layoutSidebar) layoutSidebar.style.display = 'none';
+
+    // Hide header controls that require auth
+    const lockToggle = document.getElementById('lockToggle');
+    const panelSelectorWrapper = document.querySelector('.panel-selector-wrapper');
+    if (lockToggle) lockToggle.style.display = 'none';
+    if (panelSelectorWrapper) panelSelectorWrapper.style.display = 'none';
+
+    // Panels to show when logged out
+    const publicPanels = ['rotators', 'news'];
+
+    // Hide all panels except public ones
+    const allPanels = this.gridManager.getItems();
+    allPanels.forEach(panel => {
+      if (publicPanels.includes(panel.id)) {
+        this.gridManager.toggleItemVisibility(panel.id, true);
+      } else {
+        this.gridManager.toggleItemVisibility(panel.id, false);
+      }
+    });
+
+    // Apply a simple side-by-side layout for the two public panels
+    this.applyPublicLayout();
+  }
+
+  /**
+   * Apply public layout for logged-out users
+   * Rotators and Intel Feed side by side
+   */
+  applyPublicLayout() {
+    const items = this.gridManager.getItems();
+
+    items.forEach(item => {
+      if (item.id === 'rotators') {
+        item.x = 0;
+        item.y = 0;
+        item.w = 6;
+        item.h = 5;
+        item.hidden = false;
+      } else if (item.id === 'news') {
+        item.x = 6;
+        item.y = 0;
+        item.w = 6;
+        item.h = 5;
+        item.hidden = false;
+      } else {
+        item.hidden = true;
+      }
+    });
+
+    this.gridManager.applyLayout();
+  }
+
+  /**
+   * Apply logged-in state - restore full functionality
+   */
+  applyLoggedInState() {
+    document.body.classList.remove('logged-out');
+
+    // Show layout sidebar
+    const layoutSidebar = document.querySelector('.layouts-sidebar');
+    if (layoutSidebar) layoutSidebar.style.display = '';
+
+    // Show header controls
+    const lockToggle = document.getElementById('lockToggle');
+    const panelSelectorWrapper = document.querySelector('.panel-selector-wrapper');
+    if (lockToggle) lockToggle.style.display = '';
+    if (panelSelectorWrapper) panelSelectorWrapper.style.display = '';
+
+    // Load saved layout
     if (this.activeTabId) {
       const layout = this.storageManager.loadLayout(
         this.activeTabId,
@@ -870,6 +964,9 @@ class Dashboard {
       );
       this.gridManager.restoreLayout(layout);
     }
+
+    // Refresh panel selector state
+    this.refreshPanelSelectorState();
   }
 
   /**
