@@ -2266,6 +2266,472 @@
   color: #ef4444 !important;
 }
 
+/* Build crafter additional styles */
+.crafter-description {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.generate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.activity-tags {
+  margin-top: 8px;
+}
+
+.login-prompt {
+  background: rgba(255,255,255,0.03);
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+  margin-bottom: 20px;
+}
+
+.build-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.activity-type {
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 12px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.equip-build-btn {
+  background: rgba(34, 197, 94, 0.2) !important;
+  border-color: #22c55e !important;
+  color: #22c55e !important;
+}
+
+.equip-build-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.build-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Subclass section */
+.subclass-section {
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.subclass-super {
+  margin-bottom: 12px;
+}
+
+.subclass-super .label,
+.aspects-container .label,
+.fragments-container .label {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 8px;
+}
+
+.subclass-super .value {
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.aspects-container,
+.fragments-container {
+  margin-bottom: 12px;
+}
+
+.aspect-item,
+.fragment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 6px;
+}
+
+.aspect-icon,
+.fragment-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+}
+
+.aspect-name,
+.fragment-name {
+  font-size: 13px;
+  color: #e5e7eb;
+}
+
+.fragment-slots {
+  font-size: 11px;
+  color: #6b7280;
+  padding: 2px 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+}
+
+.stat-bonuses {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-left: auto;
+}
+
+.no-data {
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Weapons section */
+.weapons-section {
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.weapons-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.weapon-slot {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.weapon-slot.exotic {
+  border-color: rgba(206, 174, 51, 0.5);
+  background: rgba(206, 174, 51, 0.05);
+}
+
+.weapon-slot .slot-label {
+  display: block;
+  font-size: 11px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.weapon-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.weapon-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.3);
+}
+
+.weapon-info {
+  flex: 1;
+}
+
+.weapon-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #e5e7eb;
+}
+
+.weapon-slot.exotic .weapon-name {
+  color: #ceae33;
+}
+
+.weapon-power {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.no-weapon {
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Armor section */
+.armor-section {
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.armor-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.armor-slot {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.armor-slot.exotic {
+  border-color: rgba(206, 174, 51, 0.5);
+  background: rgba(206, 174, 51, 0.05);
+}
+
+.armor-slot .slot-label {
+  display: block;
+  font-size: 10px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.armor-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.armor-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.3);
+}
+
+.armor-info {
+  text-align: center;
+  width: 100%;
+}
+
+.armor-name {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #e5e7eb;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.armor-slot.exotic .armor-name {
+  color: #ceae33;
+}
+
+.armor-stats-mini {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.armor-stats-mini span {
+  font-size: 9px;
+  color: #6b7280;
+  padding: 2px 4px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 3px;
+}
+
+.armor-mods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.mod-chip {
+  font-size: 9px;
+  padding: 2px 6px;
+  background: rgba(125, 211, 252, 0.15);
+  border-radius: 3px;
+  color: #7dd3fc;
+}
+
+.no-armor {
+  font-size: 11px;
+  color: #6b7280;
+  font-style: italic;
+  text-align: center;
+}
+
+/* Stats section */
+.stats-section {
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 40px 30px;
+  gap: 10px;
+  align-items: center;
+}
+
+.stat-row.has-secondary {
+  grid-template-columns: 90px 1fr 40px 30px 1fr;
+}
+
+.stat-name {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.stat-bar-container {
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.stat-bar {
+  height: 100%;
+  background: var(--arc, #7dd3fc);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.stat-bar-overflow {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  height: 100%;
+  background: #22c55e;
+  border-radius: 3px;
+}
+
+.stat-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e5e7eb;
+  text-align: right;
+}
+
+.stat-tier {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.secondary-bonus {
+  font-size: 11px;
+  color: #22c55e;
+  padding: 2px 6px;
+  background: rgba(34, 197, 94, 0.15);
+  border-radius: 4px;
+}
+
+/* Artifact section */
+.artifact-section {
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.artifact-mods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.artifact-mod {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 6px;
+}
+
+.artifact-mod .mod-name {
+  font-size: 13px;
+  color: #e5e7eb;
+}
+
+.artifact-mod .mod-priority {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.artifact-mod.required .mod-priority {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.artifact-mod.recommended .mod-priority {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.artifact-mod.suggested .mod-priority {
+  background: rgba(125, 211, 252, 0.2);
+  color: #7dd3fc;
+}
+
+/* Build notes */
+.build-notes {
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.build-notes p {
+  font-size: 13px;
+  color: #9ca3af;
+  line-height: 1.6;
+}
+
+/* Responsive adjustments for build crafter */
+@media (max-width: 768px) {
+  .weapons-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .armor-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .stat-row {
+    grid-template-columns: 80px 1fr 35px 25px;
+  }
+
+  .stat-row.has-secondary {
+    grid-template-columns: 80px 1fr 35px 25px;
+  }
+
+  .secondary-bonus {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+  }
+}
+
 /* ==================== FRIENDS LIST STYLES ==================== */
 
 .friends-list-container {

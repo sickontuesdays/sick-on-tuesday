@@ -1,95 +1,12 @@
 /**
- * Build Crafter Panel - Natural language build generation and loadout management
+ * Build Crafter Panel - Complete build generation from user's inventory
+ * Uses the BuildEngine to create optimized loadouts with actual items
  */
 
 import { apiClient } from '../api/bungie-api-client.js';
-import { manifestLoader } from '../api/manifest-loader.js';
 import { inventoryProcessor } from '../utils/inventory-processor.js';
 import { storageManager } from '../core/storage-manager.js';
-
-// Build archetypes with keywords
-const BUILD_ARCHETYPES = {
-  solar: {
-    keywords: ['solar', 'sun', 'fire', 'burn', 'radiant', 'scorch', 'ignition'],
-    exotics: {
-      titan: ['Loreley Splendor Helm', 'Hallowfire Heart', 'Phoenix Cradle'],
-      hunter: ['Celestial Nighthawk', 'Star-Eater Scales', 'Caliban\'s Hand'],
-      warlock: ['Dawn Chorus', 'Sunbracers', 'Rain of Fire']
-    },
-    aspects: ['Sol Invictus', 'Consecration', 'Knock \'Em Down', 'Heat Rises'],
-    fragments: ['Ember of Torches', 'Ember of Singeing', 'Ember of Ashes']
-  },
-  arc: {
-    keywords: ['arc', 'lightning', 'electric', 'thunder', 'amplified', 'blind', 'jolt'],
-    exotics: {
-      titan: ['Cuirass of the Falling Star', 'Heart of Inmost Light', 'Dunemarchers'],
-      hunter: ['Star-Eater Scales', 'Raiju\'s Harness', 'Lucky Raspberry'],
-      warlock: ['Fallen Sunstar', 'Crown of Tempests', 'Getaway Artist']
-    },
-    aspects: ['Knockout', 'Juggernaut', 'Flow State', 'Electrostatic Mind'],
-    fragments: ['Spark of Ions', 'Spark of Shock', 'Spark of Magnitude']
-  },
-  void: {
-    keywords: ['void', 'purple', 'volatile', 'suppress', 'weaken', 'devour', 'invisibility', 'invis'],
-    exotics: {
-      titan: ['Helm of Saint-14', 'Ursa Furiosa', 'Doom Fang Pauldron'],
-      hunter: ['Orpheus Rig', 'Omnioculus', 'Gyrfalcon\'s Hauberk'],
-      warlock: ['Contraverse Hold', 'Nothing Manacles', 'Nezarec\'s Sin']
-    },
-    aspects: ['Offensive Bulwark', 'Bastion', 'Stylish Executioner', 'Child of the Old Gods'],
-    fragments: ['Echo of Undermining', 'Echo of Instability', 'Echo of Persistence']
-  },
-  stasis: {
-    keywords: ['stasis', 'ice', 'freeze', 'crystal', 'shatter', 'slow', 'cold'],
-    exotics: {
-      titan: ['Hoarfrost-Z', 'Precious Scars', 'Armamentarium'],
-      hunter: ['Renewal Grasps', 'Mask of Bakris', 'Fr0st-EE5'],
-      warlock: ['Osmiomancy Gloves', 'Verity\'s Brow', 'Eye of Another World']
-    },
-    aspects: ['Howl of the Storm', 'Tectonic Harvest', 'Grim Harvest', 'Bleak Watcher'],
-    fragments: ['Whisper of Chains', 'Whisper of Shards', 'Whisper of Fissures']
-  },
-  strand: {
-    keywords: ['strand', 'green', 'suspend', 'sever', 'tangle', 'unravel', 'woven'],
-    exotics: {
-      titan: ['Abeyant Leap', 'Synthoceps', 'Wormgod Caress'],
-      hunter: ['Cyrtarachne\'s Facade', 'Speedloader Slacks', 'The Sixth Coyote'],
-      warlock: ['Swarmers', 'Necrotic Grip', 'Apotheosis Veil']
-    },
-    aspects: ['Into the Fray', 'Drengr\'s Lash', 'Ensnaring Slam', 'Weaver\'s Call'],
-    fragments: ['Thread of Continuity', 'Thread of Generation', 'Thread of Mind']
-  },
-  prismatic: {
-    keywords: ['prismatic', 'transcend', 'transcendence', 'light', 'dark', 'all'],
-    exotics: {
-      titan: ['Heart of Inmost Light', 'Synthoceps', 'Cuirass of the Falling Star'],
-      hunter: ['Assassin\'s Cowl', 'Star-Eater Scales', 'Wormhusk Crown'],
-      warlock: ['Verity\'s Brow', 'Sunbracers', 'Apotheosis Veil']
-    },
-    aspects: ['Consecration', 'Stylish Executioner', 'Hellion', 'Weaver\'s Call'],
-    fragments: ['Facet of Grace', 'Facet of Ruin', 'Facet of Dawn']
-  }
-};
-
-// Activity-specific build templates
-const ACTIVITY_BUILDS = {
-  raid: {
-    keywords: ['raid', 'pve', 'endgame', 'boss', 'dps'],
-    focus: ['high damage', 'survivability', 'utility']
-  },
-  gm: {
-    keywords: ['gm', 'grandmaster', 'nightfall', 'champion'],
-    focus: ['champion mods', 'survivability', 'team support']
-  },
-  pvp: {
-    keywords: ['pvp', 'crucible', 'trials', 'competitive', 'iron banner'],
-    focus: ['mobility', 'recovery', 'ability cooldowns']
-  },
-  gambit: {
-    keywords: ['gambit', 'invade', 'motes'],
-    focus: ['ad clear', 'burst damage', 'survivability']
-  }
-};
+import { buildEngine } from '../utils/build-engine.js';
 
 export class BuildCrafterPanel {
   constructor(containerEl) {
@@ -99,6 +16,8 @@ export class BuildCrafterPanel {
     this.currentBuild = null;
     this.savedBuilds = [];
     this.inputValue = '';
+    this.isLoading = false;
+    this.isEquipping = false;
   }
 
   /**
@@ -114,10 +33,13 @@ export class BuildCrafterPanel {
    */
   async load() {
     try {
-      this.showLoading();
+      this.showLoading('Loading inventory...');
 
       const profileData = await apiClient.getProfile();
       this.inventory = inventoryProcessor.processProfile(profileData);
+
+      // Set inventory in build engine
+      buildEngine.setInventory(this.inventory);
 
       // Get first character's class
       const charId = Object.keys(this.inventory.characters)[0];
@@ -136,7 +58,7 @@ export class BuildCrafterPanel {
    * Load saved builds from storage
    */
   loadSavedBuilds() {
-    this.savedBuilds = storageManager.getLoadouts();
+    this.savedBuilds = storageManager.getLoadouts() || [];
   }
 
   /**
@@ -146,13 +68,16 @@ export class BuildCrafterPanel {
     let html = `
       <div class="build-crafter-panel">
         <div class="crafter-input-section">
-          <h4>Describe Your Build</h4>
+          <h4>Build Crafter</h4>
+          <p class="crafter-description">Describe your ideal build and we'll create a complete loadout from your inventory.</p>
           <div class="input-wrapper">
             <input type="text"
                    class="build-input"
-                   placeholder="e.g., 'solar titan build for raids' or 'void hunter with invisibility'"
+                   placeholder="e.g., 'solar titan build for raids' or 'void hunter with invis for GMs'"
                    value="${this.inputValue}">
-            <button class="generate-btn">Generate Build</button>
+            <button class="generate-btn" ${!this.inventory ? 'disabled' : ''}>
+              ${this.isLoading ? 'Generating...' : 'Generate Build'}
+            </button>
           </div>
           <div class="quick-tags">
             <span class="quick-tag" data-tag="solar">Solar</span>
@@ -161,14 +86,18 @@ export class BuildCrafterPanel {
             <span class="quick-tag" data-tag="stasis">Stasis</span>
             <span class="quick-tag" data-tag="strand">Strand</span>
             <span class="quick-tag" data-tag="prismatic">Prismatic</span>
+          </div>
+          <div class="quick-tags activity-tags">
             <span class="quick-tag" data-tag="raid">Raid</span>
-            <span class="quick-tag" data-tag="pvp">PvP</span>
+            <span class="quick-tag" data-tag="dungeon">Dungeon</span>
             <span class="quick-tag" data-tag="gm">GM</span>
+            <span class="quick-tag" data-tag="pvp">PvP</span>
+            <span class="quick-tag" data-tag="gambit">Gambit</span>
           </div>
         </div>
 
+        ${!this.inventory ? this.renderLoginPrompt() : ''}
         ${this.currentBuild ? this.renderBuildResult() : this.renderBuildPlaceholder()}
-
         ${this.renderSavedBuilds()}
       </div>
     `;
@@ -178,17 +107,30 @@ export class BuildCrafterPanel {
   }
 
   /**
+   * Render login prompt
+   */
+  renderLoginPrompt() {
+    return `
+      <div class="login-prompt">
+        <p>Log in with Bungie to access your inventory and generate builds.</p>
+      </div>
+    `;
+  }
+
+  /**
    * Render build placeholder
    */
   renderBuildPlaceholder() {
+    if (!this.inventory) return '';
+
     return `
       <div class="build-placeholder">
         <p>Describe your ideal build using natural language.</p>
-        <p>Examples:</p>
+        <p class="placeholder-examples">Examples:</p>
         <ul>
           <li>"Solar titan build for raids with sunspots"</li>
           <li>"Void hunter build with invisibility for GMs"</li>
-          <li>"Arc warlock PvP build for Trials"</li>
+          <li>"Arc warlock for PvP with high recovery"</li>
           <li>"Strand build with grapple for add clear"</li>
         </ul>
       </div>
@@ -205,74 +147,236 @@ export class BuildCrafterPanel {
       <div class="build-result">
         <div class="build-header">
           <h4>${build.name}</h4>
+          <div class="build-meta">
+            <span class="subclass-element ${build.element.toLowerCase()}">${build.element}</span>
+            <span class="subclass-class">${build.class}</span>
+            ${build.activity ? `<span class="activity-type">${build.activity.name}</span>` : ''}
+          </div>
           <div class="build-actions">
-            <button class="save-build-btn">Save Build</button>
+            <button class="save-build-btn">Save</button>
             <button class="share-build-btn">Share</button>
-            ${build.canEquip ? '<button class="equip-build-btn">Equip</button>' : ''}
+            ${build.canEquip ? `<button class="equip-build-btn" ${this.isEquipping ? 'disabled' : ''}>${this.isEquipping ? 'Equipping...' : 'Equip Build'}</button>` : ''}
           </div>
         </div>
 
-        <div class="build-subclass">
-          <span class="subclass-element ${build.element}">${build.element}</span>
-          <span class="subclass-class">${build.class}</span>
+        <div class="build-content">
+          ${this.renderSubclassSection(build.subclass)}
+          ${this.renderWeaponsSection(build.weapons)}
+          ${this.renderArmorSection(build.armor)}
+          ${this.renderStatsSection(build.stats, build.secondaryBonuses)}
+          ${this.renderArtifactSection(build.artifactMods)}
+          ${build.notes ? `<div class="build-notes"><h5>Notes</h5><p>${build.notes}</p></div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Render subclass section
+   */
+  renderSubclassSection(subclass) {
+    if (!subclass) return '';
+
+    return `
+      <div class="build-section subclass-section">
+        <h5>Subclass Configuration</h5>
+        <div class="subclass-super">
+          <span class="label">Super:</span>
+          <span class="value">${subclass.super || 'Default'}</span>
         </div>
 
-        <div class="build-sections">
-          <div class="build-section exotic">
-            <h5>Recommended Exotic</h5>
-            <div class="exotic-item">
-              <span class="exotic-name">${build.exotic || 'Any'}</span>
-              <span class="exotic-reason">${build.exoticReason || ''}</span>
-            </div>
-          </div>
-
-          <div class="build-section aspects">
-            <h5>Aspects</h5>
-            <div class="aspect-list">
-              ${build.aspects.map(a => `<span class="aspect-item">${a}</span>`).join('')}
-            </div>
-          </div>
-
-          <div class="build-section fragments">
-            <h5>Fragments</h5>
-            <div class="fragment-list">
-              ${build.fragments.map(f => `<span class="fragment-item">${f}</span>`).join('')}
-            </div>
-          </div>
-
-          ${build.stats ? `
-            <div class="build-section stats">
-              <h5>Recommended Stats</h5>
-              <div class="stats-priority">
-                ${build.stats.map((s, i) => `<span class="stat-item">${i + 1}. ${s}</span>`).join('')}
+        <div class="aspects-container">
+          <span class="label">Aspects:</span>
+          <div class="aspect-list">
+            ${subclass.aspects?.map(a => `
+              <div class="aspect-item" title="${a.description || ''}">
+                ${a.icon ? `<img src="${a.icon}" alt="${a.name}" class="aspect-icon">` : ''}
+                <span class="aspect-name">${a.name}</span>
+                ${a.fragmentSlots ? `<span class="fragment-slots">${a.fragmentSlots} slots</span>` : ''}
               </div>
-            </div>
-          ` : ''}
+            `).join('') || '<span class="no-data">None selected</span>'}
+          </div>
+        </div>
 
-          ${build.weapons ? `
-            <div class="build-section weapons">
-              <h5>Weapon Suggestions</h5>
-              <div class="weapon-list">
-                ${build.weapons.map(w => `<span class="weapon-item">${w}</span>`).join('')}
+        <div class="fragments-container">
+          <span class="label">Fragments:</span>
+          <div class="fragment-list">
+            ${subclass.fragments?.map(f => `
+              <div class="fragment-item" title="${f.description || ''}">
+                ${f.icon ? `<img src="${f.icon}" alt="${f.name}" class="fragment-icon">` : ''}
+                <span class="fragment-name">${f.name}</span>
+                ${f.statBonuses && Object.keys(f.statBonuses).length > 0 ?
+                  `<span class="stat-bonuses">${Object.entries(f.statBonuses).map(([stat, val]) =>
+                    `${val > 0 ? '+' : ''}${val} ${stat.charAt(0).toUpperCase()}`
+                  ).join(', ')}</span>` : ''}
               </div>
-            </div>
-          ` : ''}
+            `).join('') || '<span class="no-data">None selected</span>'}
+          </div>
+        </div>
+      </div>
+    `;
+  }
 
-          ${build.mods ? `
-            <div class="build-section mods">
-              <h5>Recommended Mods</h5>
-              <div class="mod-list">
-                ${build.mods.map(m => `<span class="mod-item">${m}</span>`).join('')}
+  /**
+   * Render weapons section
+   */
+  renderWeaponsSection(weapons) {
+    if (!weapons) return '';
+
+    return `
+      <div class="build-section weapons-section">
+        <h5>Weapons</h5>
+        <div class="weapons-grid">
+          ${this.renderWeaponSlot('Kinetic', weapons.kinetic)}
+          ${this.renderWeaponSlot('Energy', weapons.energy)}
+          ${this.renderWeaponSlot('Power', weapons.power)}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Render single weapon slot
+   */
+  renderWeaponSlot(slotName, weapon) {
+    if (!weapon) {
+      return `
+        <div class="weapon-slot empty">
+          <span class="slot-label">${slotName}</span>
+          <span class="no-weapon">No weapon selected</span>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="weapon-slot ${weapon.isExotic ? 'exotic' : 'legendary'}">
+        <span class="slot-label">${slotName}</span>
+        <div class="weapon-item">
+          ${weapon.icon ? `<img src="${weapon.icon}" alt="${weapon.name}" class="weapon-icon">` : ''}
+          <div class="weapon-info">
+            <span class="weapon-name">${weapon.name}</span>
+            <span class="weapon-power">${weapon.primaryStat?.value || '???'}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Render armor section
+   */
+  renderArmorSection(armor) {
+    if (!armor) return '';
+
+    return `
+      <div class="build-section armor-section">
+        <h5>Armor</h5>
+        <div class="armor-grid">
+          ${this.renderArmorSlot('Helmet', armor.helmet)}
+          ${this.renderArmorSlot('Gauntlets', armor.gauntlets)}
+          ${this.renderArmorSlot('Chest', armor.chest)}
+          ${this.renderArmorSlot('Legs', armor.legs)}
+          ${this.renderArmorSlot('Class', armor.class)}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Render single armor slot
+   */
+  renderArmorSlot(slotName, armorData) {
+    const armor = armorData?.item;
+    const mods = armorData?.mods || [];
+
+    if (!armor) {
+      return `
+        <div class="armor-slot empty">
+          <span class="slot-label">${slotName}</span>
+          <span class="no-armor">No armor selected</span>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="armor-slot ${armor.isExotic ? 'exotic' : 'legendary'}">
+        <span class="slot-label">${slotName}</span>
+        <div class="armor-item">
+          ${armor.icon ? `<img src="${armor.icon}" alt="${armor.name}" class="armor-icon">` : ''}
+          <div class="armor-info">
+            <span class="armor-name">${armor.name}</span>
+            ${armor.stats ? `
+              <div class="armor-stats-mini">
+                <span title="Mobility">${armor.stats.mobility || 0}</span>
+                <span title="Resilience">${armor.stats.resilience || 0}</span>
+                <span title="Recovery">${armor.stats.recovery || 0}</span>
+                <span title="Discipline">${armor.stats.discipline || 0}</span>
+                <span title="Intellect">${armor.stats.intellect || 0}</span>
+                <span title="Strength">${armor.stats.strength || 0}</span>
               </div>
-            </div>
-          ` : ''}
+            ` : ''}
+          </div>
+        </div>
+        ${mods.length > 0 ? `
+          <div class="armor-mods">
+            ${mods.map(m => `<span class="mod-chip" title="${m.name}">${m.name}</span>`).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
 
-          ${build.notes ? `
-            <div class="build-section notes">
-              <h5>Build Notes</h5>
-              <p>${build.notes}</p>
+  /**
+   * Render stats section
+   */
+  renderStatsSection(stats, secondaryBonuses) {
+    if (!stats) return '';
+
+    const statOrder = ['mobility', 'resilience', 'recovery', 'discipline', 'intellect', 'strength'];
+
+    return `
+      <div class="build-section stats-section">
+        <h5>Total Stats</h5>
+        <div class="stats-grid">
+          ${statOrder.map(stat => {
+            const value = stats[stat] || 0;
+            const tier = Math.min(10, Math.floor(value / 10));
+            const hasSecondary = secondaryBonuses && secondaryBonuses[stat];
+
+            return `
+              <div class="stat-row ${hasSecondary ? 'has-secondary' : ''}">
+                <span class="stat-name">${stat.charAt(0).toUpperCase() + stat.slice(1)}</span>
+                <div class="stat-bar-container">
+                  <div class="stat-bar" style="width: ${Math.min(100, value)}%"></div>
+                  ${value > 100 ? `<div class="stat-bar-overflow" style="width: ${value - 100}%"></div>` : ''}
+                </div>
+                <span class="stat-value">${value}</span>
+                <span class="stat-tier">T${tier}</span>
+                ${hasSecondary ? `<span class="secondary-bonus" title="${secondaryBonuses[stat].description}">${secondaryBonuses[stat].description}</span>` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Render artifact section
+   */
+  renderArtifactSection(artifactMods) {
+    if (!artifactMods || artifactMods.length === 0) return '';
+
+    return `
+      <div class="build-section artifact-section">
+        <h5>Recommended Artifact Mods</h5>
+        <div class="artifact-mods">
+          ${artifactMods.map(mod => `
+            <div class="artifact-mod ${mod.priority}">
+              <span class="mod-name">${mod.name}</span>
+              <span class="mod-priority">${mod.priority}</span>
             </div>
-          ` : ''}
+          `).join('')}
         </div>
       </div>
     `;
@@ -299,7 +403,7 @@ export class BuildCrafterPanel {
             <div class="saved-build-item" data-build-index="${index}">
               <div class="build-info">
                 <span class="build-name">${build.name}</span>
-                <span class="build-element ${build.element}">${build.element} ${build.class}</span>
+                <span class="build-element ${(build.element || '').toLowerCase()}">${build.element} ${build.class}</span>
               </div>
               <div class="build-actions">
                 <button class="load-btn" data-index="${index}">Load</button>
@@ -315,168 +419,85 @@ export class BuildCrafterPanel {
   /**
    * Generate build from natural language input
    */
-  generateBuild(input) {
-    const inputLower = input.toLowerCase();
-
-    // Detect class
-    let buildClass = this.currentClass || 'titan';
-    if (inputLower.includes('titan')) buildClass = 'titan';
-    else if (inputLower.includes('hunter')) buildClass = 'hunter';
-    else if (inputLower.includes('warlock')) buildClass = 'warlock';
-
-    // Detect element
-    let element = null;
-    let archetype = null;
-
-    for (const [key, data] of Object.entries(BUILD_ARCHETYPES)) {
-      for (const keyword of data.keywords) {
-        if (inputLower.includes(keyword)) {
-          element = key;
-          archetype = data;
-          break;
-        }
-      }
-      if (element) break;
+  async generateBuild(input) {
+    if (!this.inventory) {
+      alert('Please log in first to access your inventory.');
+      return;
     }
 
-    // Default to solar if no element detected
-    if (!element) {
-      element = 'solar';
-      archetype = BUILD_ARCHETYPES.solar;
-    }
-
-    // Detect activity type
-    let activity = null;
-    let activityBuild = null;
-
-    for (const [key, data] of Object.entries(ACTIVITY_BUILDS)) {
-      for (const keyword of data.keywords) {
-        if (inputLower.includes(keyword)) {
-          activity = key;
-          activityBuild = data;
-          break;
-        }
-      }
-      if (activity) break;
-    }
-
-    // Build the recommendation
-    const exotics = archetype.exotics[buildClass] || [];
-    const exotic = exotics[0] || 'Any Exotic';
-
-    const build = {
-      name: this.generateBuildName(element, buildClass, activity),
-      class: buildClass.charAt(0).toUpperCase() + buildClass.slice(1),
-      element: element.charAt(0).toUpperCase() + element.slice(1),
-      exotic: exotic,
-      exoticReason: this.getExoticReason(exotic, element),
-      aspects: archetype.aspects.slice(0, 2),
-      fragments: archetype.fragments.slice(0, 4),
-      stats: this.getStatPriority(activity),
-      weapons: this.getWeaponSuggestions(element, activity),
-      mods: this.getModSuggestions(element, activity),
-      notes: this.generateBuildNotes(element, buildClass, activity),
-      canEquip: !!this.inventory
-    };
-
-    this.currentBuild = build;
+    this.isLoading = true;
+    this.inputValue = input;
     this.render();
-  }
 
-  /**
-   * Generate build name
-   */
-  generateBuildName(element, buildClass, activity) {
-    const activityName = activity ? ` (${activity.toUpperCase()})` : '';
-    return `${element.charAt(0).toUpperCase() + element.slice(1)} ${buildClass.charAt(0).toUpperCase() + buildClass.slice(1)}${activityName}`;
-  }
-
-  /**
-   * Get exotic reason
-   */
-  getExoticReason(exotic, element) {
-    const reasons = {
-      'Loreley Splendor Helm': 'Automatic Sunspots for healing',
-      'Cuirass of the Falling Star': 'Massive Thundercrash damage',
-      'Helm of Saint-14': 'Blinding bubble and overshield',
-      'Celestial Nighthawk': 'One-shot Golden Gun for boss DPS',
-      'Orpheus Rig': 'Super energy on tethered enemies',
-      'Star-Eater Scales': 'Enhanced super damage',
-      'Dawn Chorus': 'Increased Daybreak damage',
-      'Contraverse Hold': 'Grenade energy on hits',
-      'Crown of Tempests': 'Faster ability regen'
-    };
-
-    return reasons[exotic] || `Synergizes well with ${element} builds`;
-  }
-
-  /**
-   * Get stat priority based on activity
-   */
-  getStatPriority(activity) {
-    if (activity === 'pvp') {
-      return ['Recovery', 'Resilience', 'Mobility'];
+    try {
+      // Use the build engine to generate a complete build
+      const build = await buildEngine.generateBuild(input, null, this.currentClass);
+      this.currentBuild = build;
+    } catch (error) {
+      console.error('Build generation error:', error);
+      alert('Failed to generate build: ' + error.message);
+    } finally {
+      this.isLoading = false;
+      this.render();
     }
-    if (activity === 'gm') {
-      return ['Resilience', 'Recovery', 'Discipline'];
-    }
-    return ['Resilience', 'Discipline', 'Recovery'];
   }
 
   /**
-   * Get weapon suggestions
+   * Equip the current build
    */
-  getWeaponSuggestions(element, activity) {
-    const elementWeapons = {
-      solar: ['Sunshot', 'Prometheus Lens', 'Skyburner\'s Oath'],
-      arc: ['Riskrunner', 'Trinity Ghoul', 'Thunderlord'],
-      void: ['Graviton Lance', 'Le Monarque', 'Collective Obligation'],
-      stasis: ['Ager\'s Scepter', 'Verglas Curve', 'Conditional Finality'],
-      strand: ['Quicksilver Storm', 'Osteo Striga', 'Bad Juju'],
-      prismatic: ['The Final Shape exotics', 'Ergo Sum', 'Still Hunt']
-    };
+  async equipBuild() {
+    if (!this.currentBuild || !this.inventory) return;
 
-    return elementWeapons[element] || ['Any legendary weapons'];
-  }
+    this.isEquipping = true;
+    this.render();
 
-  /**
-   * Get mod suggestions
-   */
-  getModSuggestions(element, activity) {
-    const elementMods = {
-      solar: ['Font of Might', 'Radiant Light', 'Heal Thyself'],
-      arc: ['Font of Might', 'Spark of Focus', 'Bolstering Detonation'],
-      void: ['Font of Might', 'Reaping Wellmaker', 'Devour'],
-      stasis: ['Font of Might', 'Elemental Shards', 'Whisper of Chains'],
-      strand: ['Font of Might', 'Thread of Warding', 'Threadling grenades'],
-      prismatic: ['Facet of Dawn', 'Facet of Hope', 'Super regen mods']
-    };
+    try {
+      const charId = Object.keys(this.inventory.characters)[0];
+      if (!charId) throw new Error('No character found');
 
-    const activityMods = [];
-    if (activity === 'gm') {
-      activityMods.push('Champion mods', 'Resist mods');
+      const itemIds = [];
+
+      // Collect weapon item IDs
+      if (this.currentBuild.weapons) {
+        if (this.currentBuild.weapons.kinetic?.itemInstanceId) {
+          itemIds.push(this.currentBuild.weapons.kinetic.itemInstanceId);
+        }
+        if (this.currentBuild.weapons.energy?.itemInstanceId) {
+          itemIds.push(this.currentBuild.weapons.energy.itemInstanceId);
+        }
+        if (this.currentBuild.weapons.power?.itemInstanceId) {
+          itemIds.push(this.currentBuild.weapons.power.itemInstanceId);
+        }
+      }
+
+      // Collect armor item IDs
+      if (this.currentBuild.armor) {
+        for (const slot of ['helmet', 'gauntlets', 'chest', 'legs', 'class']) {
+          const armorData = this.currentBuild.armor[slot];
+          if (armorData?.item?.itemInstanceId) {
+            itemIds.push(armorData.item.itemInstanceId);
+          }
+        }
+      }
+
+      if (itemIds.length === 0) {
+        throw new Error('No items to equip');
+      }
+
+      // Equip all items
+      await apiClient.equipItems(itemIds, charId);
+
+      alert('Build equipped successfully!');
+
+      // Refresh inventory
+      await this.load();
+    } catch (error) {
+      console.error('Equip build error:', error);
+      alert('Failed to equip build: ' + error.message);
+    } finally {
+      this.isEquipping = false;
+      this.render();
     }
-
-    return [...(elementMods[element] || []), ...activityMods];
-  }
-
-  /**
-   * Generate build notes
-   */
-  generateBuildNotes(element, buildClass, activity) {
-    let notes = `This ${element} ${buildClass} build focuses on `;
-
-    if (activity === 'raid') {
-      notes += 'high damage output and survivability for raid encounters.';
-    } else if (activity === 'gm') {
-      notes += 'staying alive and supporting your team in Grandmaster content.';
-    } else if (activity === 'pvp') {
-      notes += 'quick ability regeneration and movement in Crucible.';
-    } else {
-      notes += 'general gameplay with good ability uptime.';
-    }
-
-    return notes;
   }
 
   /**
@@ -529,9 +550,9 @@ export class BuildCrafterPanel {
       n: this.currentBuild.name,
       c: this.currentBuild.class,
       e: this.currentBuild.element,
-      x: this.currentBuild.exotic,
-      a: this.currentBuild.aspects,
-      f: this.currentBuild.fragments
+      s: this.currentBuild.subclass?.super,
+      a: this.currentBuild.subclass?.aspects?.map(a => a.name),
+      f: this.currentBuild.subclass?.fragments?.map(f => f.name)
     };
 
     const encoded = btoa(JSON.stringify(buildData));
@@ -566,7 +587,6 @@ export class BuildCrafterPanel {
       generateBtn.addEventListener('click', () => {
         const value = input.value.trim();
         if (value) {
-          this.inputValue = value;
           this.generateBuild(value);
         }
       });
@@ -575,7 +595,6 @@ export class BuildCrafterPanel {
         if (e.key === 'Enter') {
           const value = input.value.trim();
           if (value) {
-            this.inputValue = value;
             this.generateBuild(value);
           }
         }
@@ -590,13 +609,15 @@ export class BuildCrafterPanel {
           const currentValue = input.value.trim();
           const tagValue = tag.dataset.tag;
 
-          if (currentValue.includes(tagValue)) {
-            input.value = currentValue.replace(tagValue, '').trim();
+          if (currentValue.toLowerCase().includes(tagValue)) {
+            // Remove tag if already present
+            input.value = currentValue.replace(new RegExp(tagValue, 'gi'), '').trim();
+            tag.classList.remove('active');
           } else {
+            // Add tag
             input.value = currentValue ? `${currentValue} ${tagValue}` : tagValue;
+            tag.classList.add('active');
           }
-
-          tag.classList.toggle('active');
         }
       });
     });
@@ -611,6 +632,12 @@ export class BuildCrafterPanel {
     const shareBtn = this.container.querySelector('.share-build-btn');
     if (shareBtn) {
       shareBtn.addEventListener('click', () => this.shareBuild());
+    }
+
+    // Equip build button
+    const equipBtn = this.container.querySelector('.equip-build-btn');
+    if (equipBtn) {
+      equipBtn.addEventListener('click', () => this.equipBuild());
     }
 
     // Load/delete saved builds
@@ -634,11 +661,11 @@ export class BuildCrafterPanel {
   /**
    * Show loading state
    */
-  showLoading() {
+  showLoading(message = 'Loading...') {
     this.container.innerHTML = `
       <div class="panel-loading">
         <div class="loading-spinner"></div>
-        <span>Loading build crafter...</span>
+        <span>${message}</span>
       </div>
     `;
   }
