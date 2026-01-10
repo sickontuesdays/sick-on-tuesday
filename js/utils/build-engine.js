@@ -134,11 +134,15 @@ export class BuildEngine {
       const plugCategoryId = item.plug?.plugCategoryIdentifier || '';
       const itemTypeDisplayName = item.itemTypeDisplayName || '';
 
+      // Skip items without proper class type for class-specific items
+      // classType: 0=Titan, 1=Hunter, 2=Warlock, 3=All classes
+      const classType = item.classType;
+      const hasValidClassType = classType !== undefined && classType !== null;
+
       // Detect subclasses (items in subclass bucket)
       if (item.inventory?.bucketTypeHash === BUCKET_HASHES.SUBCLASS) {
         const element = this.detectElementFromItem(item);
-        const classType = item.classType;
-        if (element) {
+        if (element && hasValidClassType) {
           if (!subclasses[element]) subclasses[element] = {};
           subclasses[element][hash] = {
             hash: parseInt(hash),
@@ -155,50 +159,75 @@ export class BuildEngine {
       if (plugCategoryId.includes('aspects') || itemTypeDisplayName.toLowerCase().includes('aspect')) {
         const element = this.detectElementFromPlugCategory(plugCategoryId) ||
                        this.detectElementFromDescription(item.displayProperties.description);
-        aspects.push({
-          hash: parseInt(hash),
-          name,
-          element,
-          classType: item.classType,
-          description: item.displayProperties.description || '',
-          icon: item.displayProperties.icon ? `https://www.bungie.net${item.displayProperties.icon}` : null,
-          fragmentSlots: item.plug?.energyCost?.energyCost || 2
-        });
+
+        // Only add aspects with valid class types (must be class-specific, not undefined)
+        if (hasValidClassType && classType !== 3) {
+          // Determine fragment slots from the aspect
+          // Most aspects provide 2 fragment slots, some provide 1 or 3
+          const fragmentSlots = this.getAspectFragmentSlots(name, plugCategoryId);
+
+          aspects.push({
+            hash: parseInt(hash),
+            name,
+            element,
+            classType,
+            description: item.displayProperties.description || '',
+            icon: item.displayProperties.icon ? `https://www.bungie.net${item.displayProperties.icon}` : null,
+            fragmentSlots
+          });
+        }
       }
 
       // Detect fragments (plug category contains 'fragments')
+      // Fragments are NOT class-specific (all classes can use same fragments)
       if (plugCategoryId.includes('fragments') || itemTypeDisplayName.toLowerCase().includes('fragment')) {
         const element = this.detectElementFromPlugCategory(plugCategoryId) ||
                        this.detectElementFromDescription(item.displayProperties.description);
-        // Parse stat bonuses from description or investment stats
-        const statBonuses = this.parseStatBonuses(item);
 
-        fragments.push({
-          hash: parseInt(hash),
-          name,
-          element,
-          description: item.displayProperties.description || '',
-          icon: item.displayProperties.icon ? `https://www.bungie.net${item.displayProperties.icon}` : null,
-          statBonuses
-        });
+        if (element) {
+          // Parse stat bonuses from description or investment stats
+          const statBonuses = this.parseStatBonuses(item);
+
+          fragments.push({
+            hash: parseInt(hash),
+            name,
+            element,
+            description: item.displayProperties.description || '',
+            icon: item.displayProperties.icon ? `https://www.bungie.net${item.displayProperties.icon}` : null,
+            statBonuses
+          });
+        }
       }
 
-      // Detect supers
-      if (plugCategoryId.includes('supers') || plugCategoryId.includes('super.')) {
+      // Detect supers - must have valid class type
+      if ((plugCategoryId.includes('supers') || plugCategoryId.includes('super.')) && hasValidClassType && classType !== 3) {
         const element = this.detectElementFromPlugCategory(plugCategoryId);
-        supers.push({
-          hash: parseInt(hash),
-          name,
-          element,
-          classType: item.classType,
-          description: item.displayProperties.description || '',
-          icon: item.displayProperties.icon ? `https://www.bungie.net${item.displayProperties.icon}` : null
-        });
+        if (element) {
+          supers.push({
+            hash: parseInt(hash),
+            name,
+            element,
+            classType,
+            description: item.displayProperties.description || '',
+            icon: item.displayProperties.icon ? `https://www.bungie.net${item.displayProperties.icon}` : null
+          });
+        }
       }
     }
 
     this.subclassCache = { subclasses, aspects, fragments, supers };
     return this.subclassCache;
+  }
+
+  /**
+   * Get fragment slots for an aspect based on known values
+   * Most aspects give 2 slots, but this varies
+   */
+  getAspectFragmentSlots(name, plugCategoryId) {
+    // Default is 2 fragment slots
+    // Some aspects give fewer or more - this would ideally come from manifest data
+    // but the manifest structure for this isn't reliable, so we use defaults
+    return 2;
   }
 
   /**
@@ -558,23 +587,31 @@ export class BuildEngine {
   buildSubclassConfig(subclassData, element, buildClass, activity) {
     const classTypeNum = this.getClassType(buildClass);
 
-    // Filter aspects for this element and class
+    // Filter aspects for this element and class - STRICT class matching
+    // Only include aspects where classType exactly matches the target class
     const elementAspects = subclassData.aspects.filter(a =>
-      a.element === element && (a.classType === classTypeNum || a.classType === 3 || a.classType === undefined)
+      a.element === element && a.classType === classTypeNum
     );
 
-    // Filter fragments for this element
+    // Filter fragments for this element (fragments are NOT class-specific)
     const elementFragments = subclassData.fragments.filter(f => f.element === element);
 
-    // Select best aspects based on activity
+    // Select best aspects based on activity (returns up to 2)
     const selectedAspects = this.selectAspects(elementAspects, activity);
 
-    // Select best fragments based on activity and stat priorities
-    const selectedFragments = this.selectFragments(elementFragments, activity, activity.statPriority);
+    // Calculate total available fragment slots from selected aspects
+    const totalFragmentSlots = selectedAspects.reduce((total, aspect) => {
+      return total + (aspect.fragmentSlots || 2);
+    }, 0);
 
-    // Find supers for this element and class
+    // Select best fragments based on activity and stat priorities
+    // Limit to the number of available slots from aspects
+    const selectedFragments = this.selectFragments(elementFragments, activity, activity.statPriority, totalFragmentSlots);
+
+    // Find supers for this element and class - STRICT class matching
+    // Supers MUST match the target class exactly, no fallbacks
     const elementSupers = subclassData.supers.filter(s =>
-      s.element === element && (s.classType === classTypeNum || s.classType === 3 || s.classType === undefined)
+      s.element === element && s.classType === classTypeNum
     );
 
     return {
@@ -585,7 +622,7 @@ export class BuildEngine {
         name: a.name,
         description: a.description,
         icon: a.icon,
-        fragmentSlots: a.fragmentSlots
+        fragmentSlots: a.fragmentSlots || 2
       })),
       fragments: selectedFragments.map(f => ({
         name: f.name,
@@ -593,6 +630,7 @@ export class BuildEngine {
         icon: f.icon,
         statBonuses: f.statBonuses
       })),
+      totalFragmentSlots: totalFragmentSlots,
       availableAspects: elementAspects.length,
       availableFragments: elementFragments.length
     };
@@ -709,8 +747,12 @@ export class BuildEngine {
 
   /**
    * Select fragments for activity
+   * @param {Array} fragments - Available fragments for this element
+   * @param {Object} activity - Activity requirements
+   * @param {Array} statPriority - Stat priority order
+   * @param {number} maxSlots - Maximum number of fragments to select (from aspects)
    */
-  selectFragments(fragments, activity, statPriority) {
+  selectFragments(fragments, activity, statPriority, maxSlots = 5) {
     if (!fragments || fragments.length === 0) return [];
 
     // Score fragments based on stat bonuses and activity type
@@ -730,9 +772,9 @@ export class BuildEngine {
       return { ...f, score };
     });
 
-    // Sort by score and take top 5 (most builds use 4-5 fragments)
+    // Sort by score and take up to maxSlots (limited by aspect fragment slots)
     scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, 5);
+    return scored.slice(0, Math.max(0, maxSlots));
   }
 
   /**
@@ -744,50 +786,104 @@ export class BuildEngine {
       armor: { helmet: [], gauntlets: [], chest: [], legs: [], class: [] }
     };
 
-    if (!this.inventory) return items;
+    if (!this.inventory) {
+      console.warn('BuildEngine: No inventory data available');
+      return items;
+    }
 
     const buildClassType = this.getClassType(buildClass);
+    console.log(`BuildEngine: Collecting items for class ${buildClass} (type ${buildClassType})`);
 
     // Collect from all characters
     for (const [charId, charData] of Object.entries(this.inventory.characters || {})) {
       const charClassType = charData.classType;
+      console.log(`BuildEngine: Processing character ${charId} (class type ${charClassType})`);
 
-      // Collect weapons (class-agnostic)
-      if (this.inventory.equipped?.[charId]?.weapons) {
-        this.addWeaponsToCollection(items.weapons, this.inventory.equipped[charId].weapons);
+      // Collect EQUIPPED weapons from all characters (weapons are class-agnostic)
+      const equippedData = this.inventory.equipped?.[charId];
+      if (equippedData?.weapons) {
+        if (equippedData.weapons.kinetic) {
+          items.weapons.kinetic.push(equippedData.weapons.kinetic);
+        }
+        if (equippedData.weapons.energy) {
+          items.weapons.energy.push(equippedData.weapons.energy);
+        }
+        if (equippedData.weapons.power) {
+          items.weapons.power.push(equippedData.weapons.power);
+        }
       }
-      if (charData.inventory?.weapons) {
+
+      // Collect weapons from character INVENTORY (not equipped)
+      if (charData.inventory?.weapons && Array.isArray(charData.inventory.weapons)) {
         for (const weapon of charData.inventory.weapons) {
-          this.addWeaponToSlot(items.weapons, weapon);
+          if (weapon.weaponSlot && items.weapons[weapon.weaponSlot]) {
+            items.weapons[weapon.weaponSlot].push(weapon);
+          }
         }
       }
 
-      // Collect armor (class-specific)
-      if (charClassType === buildClassType) {
-        if (this.inventory.equipped?.[charId]?.armor) {
-          this.addArmorToCollection(items.armor, this.inventory.equipped[charId].armor);
-        }
-        if (charData.inventory?.armor) {
-          for (const armor of charData.inventory.armor) {
-            this.addArmorToSlot(items.armor, armor);
+      // Collect EQUIPPED armor (only from matching class)
+      if (charClassType === buildClassType && equippedData?.armor) {
+        if (equippedData.armor.helmet) items.armor.helmet.push(equippedData.armor.helmet);
+        if (equippedData.armor.gauntlets) items.armor.gauntlets.push(equippedData.armor.gauntlets);
+        if (equippedData.armor.chest) items.armor.chest.push(equippedData.armor.chest);
+        if (equippedData.armor.legs) items.armor.legs.push(equippedData.armor.legs);
+        if (equippedData.armor.class) items.armor.class.push(equippedData.armor.class);
+      }
+
+      // Collect armor from character INVENTORY (only matching class)
+      if (charClassType === buildClassType && charData.inventory?.armor && Array.isArray(charData.inventory.armor)) {
+        for (const armor of charData.inventory.armor) {
+          if (armor.armorSlot && items.armor[armor.armorSlot]) {
+            items.armor[armor.armorSlot].push(armor);
           }
         }
       }
     }
 
-    // Collect from vault
-    if (this.inventory.vault?.items) {
+    // Collect from vault - use categorized data if available for better performance
+    if (this.inventory.vault?.categories) {
+      const vaultCats = this.inventory.vault.categories;
+
+      // Vault weapons
+      if (vaultCats.weapons) {
+        for (const slot of ['kinetic', 'energy', 'power']) {
+          if (vaultCats.weapons[slot] && Array.isArray(vaultCats.weapons[slot])) {
+            items.weapons[slot].push(...vaultCats.weapons[slot]);
+          }
+        }
+      }
+
+      // Vault armor (filter by class)
+      if (vaultCats.armor) {
+        for (const slot of ['helmet', 'gauntlets', 'chest', 'legs', 'class']) {
+          if (vaultCats.armor[slot] && Array.isArray(vaultCats.armor[slot])) {
+            for (const armor of vaultCats.armor[slot]) {
+              // classType: 0=Titan, 1=Hunter, 2=Warlock, 3=any
+              if (armor.classType === buildClassType || armor.classType === 3) {
+                items.armor[slot].push(armor);
+              }
+            }
+          }
+        }
+      }
+    } else if (this.inventory.vault?.items) {
+      // Fallback to unorganized vault items
       for (const item of this.inventory.vault.items) {
-        if (item.isWeapon) {
-          this.addWeaponToSlot(items.weapons, item);
-        } else if (item.isArmor) {
-          // Check if armor is for this class (classType 3 = any class)
+        if (item.isWeapon && item.weaponSlot) {
+          items.weapons[item.weaponSlot]?.push(item);
+        } else if (item.isArmor && item.armorSlot) {
           if (item.classType === buildClassType || item.classType === 3) {
-            this.addArmorToSlot(items.armor, item);
+            items.armor[item.armorSlot]?.push(item);
           }
         }
       }
     }
+
+    // Log collection summary
+    const weaponCounts = Object.entries(items.weapons).map(([slot, arr]) => `${slot}:${arr.length}`).join(', ');
+    const armorCounts = Object.entries(items.armor).map(([slot, arr]) => `${slot}:${arr.length}`).join(', ');
+    console.log(`BuildEngine: Collected weapons [${weaponCounts}], armor [${armorCounts}]`);
 
     return items;
   }
@@ -1164,35 +1260,87 @@ export class BuildEngine {
   }
 
   /**
-   * Get artifact recommendations
+   * Get artifact recommendations for the build
+   * Returns recommendations for seasonal artifact perks that synergize with the build
    */
   getArtifactRecommendations(activity, element) {
     const recommendations = [];
 
-    // Champion mods based on activity
+    // Champion mod recommendations based on activity
+    // These are weapon/ability type suggestions for unlocking champion mods
     if (activity.champions?.barrier) {
-      recommendations.push({ name: 'Anti-Barrier', type: 'champion', priority: 'required' });
+      recommendations.push({
+        name: 'Anti-Barrier Rounds',
+        type: 'champion',
+        priority: 'required',
+        description: 'Required for Barrier Champions - check artifact for available weapon types'
+      });
     }
     if (activity.champions?.overload) {
-      recommendations.push({ name: 'Overload', type: 'champion', priority: 'required' });
+      recommendations.push({
+        name: 'Overload Rounds',
+        type: 'champion',
+        priority: 'required',
+        description: 'Required for Overload Champions - check artifact for available weapon types'
+      });
     }
     if (activity.champions?.unstoppable) {
-      recommendations.push({ name: 'Unstoppable', type: 'champion', priority: 'required' });
+      recommendations.push({
+        name: 'Unstoppable Rounds',
+        type: 'champion',
+        priority: 'required',
+        description: 'Required for Unstoppable Champions - check artifact for available weapon types'
+      });
     }
 
-    // Element-specific recommendations
-    const elementMods = {
-      solar: ['Solar Surge', 'Radiant Orbs', 'Font of Might'],
-      arc: ['Arc Surge', 'Ionic Traces', 'Font of Might'],
-      void: ['Void Surge', 'Volatile Flow', 'Font of Might'],
-      stasis: ['Stasis Surge', 'Elemental Shards', 'Font of Might'],
-      strand: ['Strand Surge', 'Thread of Warding', 'Font of Might'],
-      prismatic: ['Prismatic Transfer', 'Transcendence', 'Font of Might']
+    // Element-specific artifact perk suggestions
+    // These are common seasonal artifact perks that appear each season
+    const elementPerks = {
+      solar: [
+        { name: 'Solar Siphon', description: 'Create orbs with Solar weapons' },
+        { name: 'Ember of Empyrean', description: 'Extend Solar buffs with weapon kills' }
+      ],
+      arc: [
+        { name: 'Arc Siphon', description: 'Create orbs with Arc weapons' },
+        { name: 'Amplified Surge', description: 'Enhanced abilities while Amplified' }
+      ],
+      void: [
+        { name: 'Void Siphon', description: 'Create orbs with Void weapons' },
+        { name: 'Devour Enhancement', description: 'Extended Devour benefits' }
+      ],
+      stasis: [
+        { name: 'Stasis Siphon', description: 'Create orbs with Stasis weapons' },
+        { name: 'Shatter Damage', description: 'Increased shatter damage' }
+      ],
+      strand: [
+        { name: 'Strand Siphon', description: 'Create orbs with Strand weapons' },
+        { name: 'Threaded Blast', description: 'Enhanced Strand explosions' }
+      ],
+      prismatic: [
+        { name: 'Prismatic Transfer', description: 'Share Light and Dark buffs' },
+        { name: 'Transcendence', description: 'Enhanced Transcendence duration' }
+      ]
     };
 
-    const suggested = elementMods[element] || [];
-    for (const mod of suggested) {
-      recommendations.push({ name: mod, type: 'suggested', priority: 'recommended' });
+    // Activity-specific artifact recommendations
+    if (activity.type === 'gm' || activity.type === 'raid' || activity.type === 'dungeon') {
+      recommendations.push({
+        name: 'Recuperation',
+        type: 'utility',
+        priority: 'recommended',
+        description: 'Restore health on orb pickup - critical for survivability'
+      });
+    }
+
+    // Add element-specific perks
+    const perks = elementPerks[element] || [];
+    for (const perk of perks) {
+      recommendations.push({
+        name: perk.name,
+        type: 'suggested',
+        priority: 'optional',
+        description: perk.description
+      });
     }
 
     return recommendations;

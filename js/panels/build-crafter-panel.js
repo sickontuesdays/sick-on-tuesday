@@ -177,6 +177,11 @@ export class BuildCrafterPanel {
   renderSubclassSection(subclass) {
     if (!subclass) return '';
 
+    // Calculate fragment slot usage
+    const totalSlots = subclass.totalFragmentSlots || 0;
+    const usedSlots = subclass.fragments?.length || 0;
+    const emptySlots = Math.max(0, totalSlots - usedSlots);
+
     return `
       <div class="build-section subclass-section">
         <h5>Subclass Configuration</h5>
@@ -186,20 +191,20 @@ export class BuildCrafterPanel {
         </div>
 
         <div class="aspects-container">
-          <span class="label">Aspects:</span>
+          <span class="label">Aspects (${subclass.aspects?.length || 0}/2):</span>
           <div class="aspect-list">
             ${subclass.aspects?.map(a => `
               <div class="aspect-item" title="${a.description || ''}">
                 ${a.icon ? `<img src="${a.icon}" alt="${a.name}" class="aspect-icon">` : ''}
                 <span class="aspect-name">${a.name}</span>
-                ${a.fragmentSlots ? `<span class="fragment-slots">${a.fragmentSlots} slots</span>` : ''}
+                <span class="fragment-slots">${a.fragmentSlots || 2} fragment slots</span>
               </div>
-            `).join('') || '<span class="no-data">None selected</span>'}
+            `).join('') || '<span class="no-data">No aspects available for this element/class</span>'}
           </div>
         </div>
 
         <div class="fragments-container">
-          <span class="label">Fragments:</span>
+          <span class="label">Fragments (${usedSlots}/${totalSlots} slots):</span>
           <div class="fragment-list">
             ${subclass.fragments?.map(f => `
               <div class="fragment-item" title="${f.description || ''}">
@@ -210,7 +215,12 @@ export class BuildCrafterPanel {
                     `${val > 0 ? '+' : ''}${val} ${stat.charAt(0).toUpperCase()}`
                   ).join(', ')}</span>` : ''}
               </div>
-            `).join('') || '<span class="no-data">None selected</span>'}
+            `).join('') || '<span class="no-data">No fragments available</span>'}
+            ${emptySlots > 0 ? `
+              <div class="fragment-item empty-slot">
+                <span class="fragment-name">${emptySlots} empty slot${emptySlots > 1 ? 's' : ''}</span>
+              </div>
+            ` : ''}
           </div>
         </div>
       </div>
@@ -367,16 +377,49 @@ export class BuildCrafterPanel {
   renderArtifactSection(artifactMods) {
     if (!artifactMods || artifactMods.length === 0) return '';
 
+    // Group by priority
+    const required = artifactMods.filter(m => m.priority === 'required');
+    const recommended = artifactMods.filter(m => m.priority === 'recommended');
+    const optional = artifactMods.filter(m => m.priority === 'optional');
+
     return `
       <div class="build-section artifact-section">
-        <h5>Recommended Artifact Mods</h5>
+        <h5>Seasonal Artifact Recommendations</h5>
+        <p class="artifact-note">Check the current seasonal artifact for these perks:</p>
         <div class="artifact-mods">
-          ${artifactMods.map(mod => `
-            <div class="artifact-mod ${mod.priority}">
-              <span class="mod-name">${mod.name}</span>
-              <span class="mod-priority">${mod.priority}</span>
+          ${required.length > 0 ? `
+            <div class="artifact-group required-group">
+              <span class="group-label">Required:</span>
+              ${required.map(mod => `
+                <div class="artifact-mod ${mod.type}" title="${mod.description || ''}">
+                  <span class="mod-name">${mod.name}</span>
+                  ${mod.description ? `<span class="mod-desc">${mod.description}</span>` : ''}
+                </div>
+              `).join('')}
             </div>
-          `).join('')}
+          ` : ''}
+          ${recommended.length > 0 ? `
+            <div class="artifact-group recommended-group">
+              <span class="group-label">Recommended:</span>
+              ${recommended.map(mod => `
+                <div class="artifact-mod ${mod.type}" title="${mod.description || ''}">
+                  <span class="mod-name">${mod.name}</span>
+                  ${mod.description ? `<span class="mod-desc">${mod.description}</span>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+          ${optional.length > 0 ? `
+            <div class="artifact-group optional-group">
+              <span class="group-label">Suggested:</span>
+              ${optional.map(mod => `
+                <div class="artifact-mod ${mod.type}" title="${mod.description || ''}">
+                  <span class="mod-name">${mod.name}</span>
+                  ${mod.description ? `<span class="mod-desc">${mod.description}</span>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
