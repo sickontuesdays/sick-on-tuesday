@@ -3868,7 +3868,8 @@
 
 .perks-section,
 .mods-section,
-.masterwork-section {
+.masterwork-section,
+.enhancement-section {
   margin-bottom: 16px;
 }
 
@@ -3978,6 +3979,11 @@
 .perk-item.mod {
   background: rgba(96, 165, 250, 0.1);
   border-color: rgba(96, 165, 250, 0.3);
+}
+
+.perk-item.enhancement {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.4);
 }
 
 .perk-icon {

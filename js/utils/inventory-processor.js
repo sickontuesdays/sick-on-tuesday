@@ -494,11 +494,12 @@ export class InventoryProcessor {
    */
   processSockets(socketsData, definition) {
     const result = {
-      perks: [],      // Weapon perks organized by column
+      perks: [],       // Weapon perks organized by column
       intrinsic: null, // Frame/intrinsic trait
       mod: null,       // Weapon mod
       masterwork: null, // Masterwork
-      origin: null     // Origin trait
+      origin: null,    // Origin trait
+      enhancement: null // Enhancement level for crafted weapons
     };
 
     const socketEntries = definition?.sockets?.socketEntries || [];
@@ -560,6 +561,17 @@ export class InventoryProcessor {
         continue;
       }
 
+      // Check for enhancement level (crafted weapons)
+      // These have plugCategoryIdentifier like 'crafting.plugs.weapons.mods.enhancers'
+      // or names like "Level 10" for the weapon level
+      if (plugCategoryId.includes('enhancers') ||
+          plugCategoryId.includes('crafting.plugs.weapons.mods.levels') ||
+          plugCategoryId.includes('shaped_weapons') ||
+          /^Level \d+$/.test(plugDef.displayProperties.name)) {
+        result.enhancement = socketInfo;
+        continue;
+      }
+
       if (categoryHash === SOCKET_CATEGORIES.INTRINSIC ||
           plugCategoryId.includes('intrinsics') ||
           plugCategoryId.includes('frames.exotic')) {
@@ -572,7 +584,6 @@ export class InventoryProcessor {
         // Origin trait
         result.origin = socketInfo;
       } else if (categoryHash === SOCKET_CATEGORIES.WEAPON_MODS ||
-                 plugCategoryId.includes('enhancements.weapon') ||
                  plugCategoryId.includes('v400.weapon.mod') ||
                  plugCategoryId.includes('v300.weapon.mod')) {
         // Weapon mod slot (Backup Mag, Boss Spec, etc.)

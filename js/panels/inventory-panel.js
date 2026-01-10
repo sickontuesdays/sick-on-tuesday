@@ -765,7 +765,7 @@ export class InventoryPanel {
     // Perks/Sockets - Organized by column like in-game/DIM
     let perksHtml = '';
     if (item.sockets) {
-      const { perks, intrinsic, mod, masterwork, origin } = item.sockets;
+      const { perks, intrinsic, mod, masterwork, origin, enhancement } = item.sockets;
 
       // Intrinsic trait (frame type for weapons)
       if (intrinsic) {
@@ -823,6 +823,18 @@ export class InventoryPanel {
             <div class="perk-item mod" title="${mod.description}">
               ${mod.icon ? `<img src="${mod.icon}" alt="${mod.name}" class="perk-icon">` : ''}
               <span class="perk-name">${mod.name}</span>
+            </div>
+          </div>`;
+      }
+
+      // Enhancement level (crafted weapons)
+      if (enhancement) {
+        perksHtml += `
+          <div class="enhancement-section">
+            <div class="perks-label">Enhancement</div>
+            <div class="perk-item enhancement" title="${enhancement.description}">
+              ${enhancement.icon ? `<img src="${enhancement.icon}" alt="${enhancement.name}" class="perk-icon">` : ''}
+              <span class="perk-name">${enhancement.name}</span>
             </div>
           </div>`;
       }
