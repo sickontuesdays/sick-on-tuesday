@@ -552,25 +552,35 @@ export class InventoryProcessor {
       };
 
       // Categorize based on socket category and plug type
+      // Order matters! Check specific types before general categories
+
+      // Skip trackers (kill tracker, crucible tracker, etc.)
+      if (plugCategoryId.includes('trackers') ||
+          plugDef.displayProperties.name.includes('Tracker')) {
+        continue;
+      }
+
       if (categoryHash === SOCKET_CATEGORIES.INTRINSIC ||
           plugCategoryId.includes('intrinsics') ||
           plugCategoryId.includes('frames.exotic')) {
         // Intrinsic/frame trait
         result.intrinsic = socketInfo;
-      } else if (categoryHash === SOCKET_CATEGORIES.WEAPON_MODS ||
-                 plugCategoryId.includes('enhancements.weapon')) {
-        // Weapon mod slot
-        // Only set if it's an actual mod (not empty mod slot)
-        if (!plugDef.displayProperties.name.includes('Empty') &&
-            !plugDef.displayProperties.name.includes('Default')) {
-          result.mod = socketInfo;
-        }
       } else if (plugCategoryId.includes('masterworks')) {
-        // Masterwork
+        // Masterwork - check BEFORE weapon mods since masterworks are in mod socket
         result.masterwork = socketInfo;
       } else if (plugCategoryId.includes('origins')) {
         // Origin trait
         result.origin = socketInfo;
+      } else if (categoryHash === SOCKET_CATEGORIES.WEAPON_MODS ||
+                 plugCategoryId.includes('enhancements.weapon') ||
+                 plugCategoryId.includes('v400.weapon.mod') ||
+                 plugCategoryId.includes('v300.weapon.mod')) {
+        // Weapon mod slot (Backup Mag, Boss Spec, etc.)
+        // Only set if it's an actual mod (not empty mod slot)
+        const name = plugDef.displayProperties.name.toLowerCase();
+        if (!name.includes('empty') && !name.includes('default')) {
+          result.mod = socketInfo;
+        }
       } else if (categoryHash === SOCKET_CATEGORIES.WEAPON_PERKS ||
                  plugCategoryId.includes('barrels') ||
                  plugCategoryId.includes('magazines') ||
